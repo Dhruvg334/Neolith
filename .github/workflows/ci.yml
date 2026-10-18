@@ -1,0 +1,96 @@
+name: Neolith CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+env:
+  APP_ENV: test
+  LLM_PROVIDER: mock
+  LLM_API_KEY: ""
+
+jobs:
+  backend-and-contracts:
+    name: Backend & Contracts (Python 3.12)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.lock
+          python -m pip install --no-deps -e .
+
+      - name: Validate documentation and contracts
+        run: |
+          python scripts/check_docs.py
+          python scripts/validate_contracts.py
+
+      - name: Run Ruff linter and format check
+        run: |
+          python -m ruff check .
+          python -m ruff format --check .
+
+      - name: Run mypy type check
+        run: python -m mypy
+
+      - name: Run pytest suite
+        run: python -m pytest
+
+  policy:
+    name: Policy (OPA Rego)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Open Policy Agent
+        uses: open-policy-agent/setup-opa@v2
+        with:
+          version: latest
+
+      - name: Validate Rego syntax and run policy tests
+        run: |
+          opa check policy/rego policy/tests
+          opa test policy/rego policy/tests -v
+
+  frontend:
+    name: Frontend (Next.js & TypeScript)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies with frozen lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: Run ESLint
+        run: pnpm lint
+
+      - name: Run TypeScript typecheck
+        run: pnpm typecheck
+
+      - name: Build Next.js application
+        run: pnpm build

@@ -1,0 +1,28 @@
+{
+  "name": "@neolith/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Neolith web application shell for requester and operator workflows",
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@neolith/contracts": "workspace:*",
+    "next": "15.2.4",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "3.3.1",
+    "@types/node": "22.13.10",
+    "@types/react": "19.0.10",
+    "@types/react-dom": "19.0.4",
+    "eslint": "9.22.0",
+    "eslint-config-next": "15.2.4",
+    "typescript": "5.7.3"
+  }
+}

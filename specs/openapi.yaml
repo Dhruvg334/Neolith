@@ -13,6 +13,27 @@ paths:
       responses:
         "200":
           description: Service health
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /ready:
+    get:
+      operationId: getReadiness
+      responses:
+        "200":
+          description: Service ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessResponse"
+        "503":
+          description: Service dependencies not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessResponse"
 
   /tasks:
     post:
@@ -293,6 +314,50 @@ components:
           type: [object, "null"]
         trace_id: {type: string}
 
+    HealthResponse:
+      type: object
+      required: [status, service, version]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        service:
+          type: string
+        version:
+          type: string
+
+    DependencyStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, error]
+        detail:
+          type: [string, "null"]
+
+    ReadinessResponse:
+      type: object
+      required: [status, service, version, dependencies]
+      properties:
+        status:
+          type: string
+          enum: [ready, degraded]
+        service:
+          type: string
+        version:
+          type: string
+        dependencies:
+          type: object
+          required: [postgres, redis, opa]
+          properties:
+            postgres:
+              $ref: "#/components/schemas/DependencyStatus"
+            redis:
+              $ref: "#/components/schemas/DependencyStatus"
+            opa:
+              $ref: "#/components/schemas/DependencyStatus"
+
     Problem:
       type: object
       required: [type, title, status, detail]
@@ -303,3 +368,4 @@ components:
         detail: {type: string}
         reason_code: {type: string}
         trace_id: {type: string}
+

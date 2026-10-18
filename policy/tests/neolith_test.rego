@@ -1,5 +1,6 @@
 package neolith.decision_test
 
+import rego.v1
 import data.neolith.decision
 
 base_input := {

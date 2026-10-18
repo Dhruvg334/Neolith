@@ -1,0 +1,17 @@
+{
+  "name": "neolith",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Neolith — AI-Powered Agentic Decision and Execution System",
+  "packageManager": "pnpm@12.14.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @neolith/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "validate:contracts": "python scripts/validate_contracts.py"
+  }
+}
