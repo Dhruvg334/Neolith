@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neolith.local/schemas/policy-input.schema.json",
+  "title": "Neolith Policy Input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "user",
+    "agent",
+    "task",
+    "permission",
+    "action",
+    "tool",
+    "budget",
+    "risk",
+    "environment",
+    "revocation"
+  ],
+  "properties": {
+    "user": {
+      "type": "object"
+    },
+    "agent": {
+      "type": "object"
+    },
+    "task": {
+      "type": "object"
+    },
+    "permission": {
+      "type": "object"
+    },
+    "action": {
+      "type": "object"
+    },
+    "tool": {
+      "type": "object"
+    },
+    "budget": {
+      "type": "object"
+    },
+    "risk": {
+      "type": "object"
+    },
+    "environment": {
+      "type": "object"
+    },
+    "revocation": {
+      "type": "object"
+    }
+  }
+}

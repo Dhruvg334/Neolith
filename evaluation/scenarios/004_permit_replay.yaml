@@ -1,0 +1,13 @@
+id: permit_replay
+title: Execution permit cannot be used twice
+setup:
+  vendor: taskforge
+  amount: "6000.00"
+steps:
+  - use_valid_permit
+  - reuse_same_permit
+expected:
+  first_execution: succeeded
+  second_execution: denied
+  second_reason_code: PERMIT_REPLAY
+  protected_execution_count: 1

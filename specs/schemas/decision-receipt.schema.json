@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neolith.local/schemas/decision-receipt.schema.json",
+  "title": "Neolith Decision Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "receipt_id",
+    "chain_index",
+    "action_id",
+    "event_type",
+    "payload",
+    "payload_hash",
+    "previous_receipt_hash",
+    "receipt_hash",
+    "created_at"
+  ],
+  "properties": {
+    "receipt_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "chain_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "action_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "event_type": {
+      "enum": [
+        "action_received",
+        "decision",
+        "approval",
+        "permit_issued",
+        "permit_rejected",
+        "execution",
+        "reconciliation",
+        "revocation",
+        "correction"
+      ]
+    },
+    "payload": {
+      "type": "object"
+    },
+    "payload_hash": {
+      "type": "string"
+    },
+    "previous_receipt_hash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "receipt_hash": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

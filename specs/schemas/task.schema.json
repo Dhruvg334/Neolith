@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neolith.local/schemas/task.schema.json",
+  "title": "Neolith Task",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task_id",
+    "user_id",
+    "request",
+    "state",
+    "created_at"
+  ],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "user_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "request": {
+      "type": "string",
+      "minLength": 1
+    },
+    "objective": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "constraints": {
+      "type": "object"
+    },
+    "state": {
+      "enum": [
+        "draft",
+        "understanding",
+        "needs_clarification",
+        "researching",
+        "planning",
+        "awaiting_governance",
+        "awaiting_approval",
+        "ready_to_execute",
+        "executing",
+        "completed",
+        "failed",
+        "cancelled",
+        "denied",
+        "execution_pending_reconciliation"
+      ]
+    },
+    "trace_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time"
+    }
+  }
+}

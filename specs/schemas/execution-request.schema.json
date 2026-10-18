@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neolith.local/schemas/execution-request.schema.json",
+  "title": "Neolith Execution Request Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "action_id",
+    "trace_id",
+    "task_id",
+    "user_id",
+    "agent_id",
+    "agent_version",
+    "tool_id",
+    "operation",
+    "parameters",
+    "parameters_hash",
+    "context_hash",
+    "requested_at",
+    "nonce"
+  ],
+  "properties": {
+    "action_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "trace_id": {
+      "type": "string",
+      "minLength": 8
+    },
+    "task_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "user_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "agent_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "agent_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "delegation_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid"
+    },
+    "tool_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "tool_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "operation": {
+      "type": "string",
+      "minLength": 1
+    },
+    "resource": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "category": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "amount": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9]+(\\.[0-9]{1,2})?$"
+    },
+    "currency": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[A-Z]{3}$"
+    },
+    "parameters": {
+      "type": "object"
+    },
+    "parameters_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "context": {
+      "type": "object"
+    },
+    "context_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "nonce": {
+      "type": "string",
+      "minLength": 16
+    }
+  }
+}

@@ -1,0 +1,100 @@
+# ------------------------------------------------------------
+# Neolith private project material
+# These files exist locally for continuity and engineering-agent use
+# but must not be published to the repository.
+# ------------------------------------------------------------
+.project-private/
+docs/internal/
+docs/drafts/
+source-material/
+
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+.secrets/
+secrets/
+credentials/
+*.credentials.json
+
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.turbo/
+.vercel/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local databases / generated data
+*.db
+*.sqlite
+*.sqlite3
+data/local/
+data/generated/
+vector_store/
+chroma/
+*.rdb
+dump.rdb
+
+# Evaluation and runtime artifacts
+evaluation/runs/
+evaluation/reports/generated/
+artifacts/
+reports/generated/
+traces/
+logs/
+*.log
+
+# Test / coverage output
+coverage/
+playwright-report/
+test-results/
+.nyc_output/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# OS / temporary
+tmp/
+temp/
+.cache/
+*.tmp
+*.bak
+*.orig
+
+# Generated contracts and build output
+packages/contracts/generated/
+openapi-generated/

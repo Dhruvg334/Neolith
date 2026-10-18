@@ -1,0 +1,14 @@
+id: procurement_over_budget
+title: Over-budget procurement is denied
+setup:
+  candidate_vendor: plagridx
+action:
+  operation: procure_subscription
+  amount: "9500.00"
+  currency: INR
+expected:
+  governance_decision: deny
+  reason_codes:
+    - BUDGET_EXCEEDED
+  protected_execution_count: 0
+  receipt_created: true

@@ -1,0 +1,36 @@
+{
+  "catalog_version": "1.0.0",
+  "currency": "INR",
+  "vendors": [
+    {
+      "id": "taskforge",
+      "name": "TaskForge",
+      "monthly_price": "6000.00",
+      "included_seats": 15,
+      "sso": true,
+      "data_export": true,
+      "risk_tier": "low",
+      "description": "Project planning, issue tracking, SSO and data export for small teams."
+    },
+    {
+      "id": "plagridx",
+      "name": "PlanGridX",
+      "monthly_price": "9500.00",
+      "included_seats": 20,
+      "sso": true,
+      "data_export": true,
+      "risk_tier": "medium",
+      "description": "Advanced project portfolio management for larger teams."
+    },
+    {
+      "id": "sprintdesk",
+      "name": "SprintDesk",
+      "monthly_price": "4500.00",
+      "included_seats": 10,
+      "sso": false,
+      "data_export": true,
+      "risk_tier": "medium",
+      "description": "Simple sprint planning and export for small teams."
+    }
+  ]
+}

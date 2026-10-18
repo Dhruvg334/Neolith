@@ -1,0 +1,10 @@
+id: emergency_stop
+title: Old permit fails after system stop
+steps:
+  - issue_valid_permit
+  - activate_emergency_stop
+  - execute_old_permit
+expected:
+  execution: denied
+  reason_code: REVOCATION_EPOCH_MISMATCH
+  protected_execution_count: 0

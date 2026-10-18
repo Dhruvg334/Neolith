@@ -1,0 +1,14 @@
+id: procurement_happy_path
+title: Compliant project-management software procurement
+input:
+  request: >
+    We need project-management software for a 10-person team.
+    Monthly budget is 8000 INR. Prefer SSO and data export.
+    Recommend the best option and procure it if policy permits.
+expected:
+  recommended_vendor: taskforge
+  governance_decision: allow
+  amount: "6000.00"
+  currency: INR
+  protected_execution_count: 1
+  receipt_created: true

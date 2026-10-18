@@ -1,0 +1,12 @@
+id: permit_parameter_mutation
+title: Approved parameters cannot change after permit issue
+approved:
+  vendor: taskforge
+  amount: "6000.00"
+attempted:
+  vendor: plagridx
+  amount: "9500.00"
+expected:
+  execution: denied
+  reason_code: PARAMETER_HASH_MISMATCH
+  protected_execution_count: 0

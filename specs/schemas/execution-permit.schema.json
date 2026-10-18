@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neolith.local/schemas/execution-permit.schema.json",
+  "title": "Neolith Execution Permit Claims",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "iss",
+    "aud",
+    "sub",
+    "jti",
+    "iat",
+    "nbf",
+    "exp",
+    "user_id",
+    "task_id",
+    "action_id",
+    "tool_id",
+    "operation",
+    "parameters_hash",
+    "context_hash",
+    "policy_digest",
+    "revocation_epoch"
+  ],
+  "properties": {
+    "iss": {
+      "type": "string"
+    },
+    "aud": {
+      "type": "string"
+    },
+    "sub": {
+      "type": "string"
+    },
+    "jti": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "iat": {
+      "type": "integer"
+    },
+    "nbf": {
+      "type": "integer"
+    },
+    "exp": {
+      "type": "integer"
+    },
+    "user_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "task_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "action_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "tool_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "parameters_hash": {
+      "type": "string"
+    },
+    "context_hash": {
+      "type": "string"
+    },
+    "amount": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "currency": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reservation_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uuid"
+    },
+    "policy_digest": {
+      "type": "string"
+    },
+    "revocation_epoch": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

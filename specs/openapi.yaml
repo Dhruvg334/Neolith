@@ -1,0 +1,305 @@
+openapi: 3.1.0
+info:
+  title: Neolith API
+  version: 0.1.0
+  description: Agentic decision and governed execution API.
+servers:
+  - url: http://localhost:8000/api/v1
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service health
+
+  /tasks:
+    post:
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [request]
+              properties:
+                request:
+                  type: string
+                  minLength: 1
+      responses:
+        "201":
+          description: Task created
+    get:
+      operationId: listTasks
+      responses:
+        "200":
+          description: Task list
+
+  /tasks/{task_id}:
+    get:
+      operationId: getTask
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      responses:
+        "200":
+          description: Task detail
+
+  /tasks/{task_id}/message:
+    post:
+      operationId: addTaskMessage
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      responses:
+        "200":
+          description: Message accepted
+
+  /agents:
+    get:
+      operationId: listAgents
+      responses:
+        "200":
+          description: Agent list
+    post:
+      operationId: createAgent
+      responses:
+        "201":
+          description: Agent created
+
+  /tools:
+    get:
+      operationId: listTools
+      responses:
+        "200":
+          description: Tool list
+    post:
+      operationId: createTool
+      responses:
+        "201":
+          description: Tool created
+
+  /permissions/effective:
+    get:
+      operationId: getEffectivePermissions
+      responses:
+        "200":
+          description: Effective permissions
+
+  /budgets:
+    get:
+      operationId: listBudgets
+      responses:
+        "200":
+          description: Budget list
+    post:
+      operationId: createBudget
+      responses:
+        "201":
+          description: Budget created
+
+  /actions/evaluate:
+    post:
+      operationId: evaluateAction
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./schemas/execution-request.schema.json"
+      responses:
+        "200":
+          description: Governance decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GovernanceDecision"
+        "409":
+          $ref: "#/components/responses/Problem"
+        "422":
+          $ref: "#/components/responses/Problem"
+
+  /actions/{action_id}:
+    get:
+      operationId: getAction
+      parameters:
+        - $ref: "#/components/parameters/ActionId"
+      responses:
+        "200":
+          description: Action detail
+
+  /actions/{action_id}/result:
+    post:
+      operationId: reportActionResult
+      parameters:
+        - $ref: "#/components/parameters/ActionId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Result reconciled
+
+  /approvals:
+    get:
+      operationId: listApprovals
+      responses:
+        "200":
+          description: Approval list
+
+  /approvals/{approval_id}/approve:
+    post:
+      operationId: approveAction
+      parameters:
+        - $ref: "#/components/parameters/ApprovalId"
+      responses:
+        "200":
+          description: Approved
+
+  /approvals/{approval_id}/reject:
+    post:
+      operationId: rejectAction
+      parameters:
+        - $ref: "#/components/parameters/ApprovalId"
+      responses:
+        "200":
+          description: Rejected
+
+  /permits/{permit_id}/consume:
+    post:
+      operationId: consumePermit
+      parameters:
+        - $ref: "#/components/parameters/PermitId"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Permit consumed
+
+  /agents/{agent_id}/quarantine:
+    post:
+      operationId: quarantineAgent
+      parameters:
+        - $ref: "#/components/parameters/AgentId"
+      responses:
+        "200":
+          description: Agent quarantined
+
+  /system/emergency-stop:
+    post:
+      operationId: emergencyStop
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Emergency stop activated
+
+  /system/restore:
+    post:
+      operationId: restoreSystem
+      responses:
+        "200":
+          description: System restored
+
+  /receipts/{receipt_id}:
+    get:
+      operationId: getReceipt
+      parameters:
+        - $ref: "#/components/parameters/ReceiptId"
+      responses:
+        "200":
+          description: Receipt detail
+
+  /receipts/{receipt_id}/verify:
+    post:
+      operationId: verifyReceipt
+      parameters:
+        - $ref: "#/components/parameters/ReceiptId"
+      responses:
+        "200":
+          description: Receipt verification
+
+  /evaluation/runs:
+    post:
+      operationId: createEvaluationRun
+      responses:
+        "202":
+          description: Evaluation started
+
+components:
+  parameters:
+    TaskId:
+      name: task_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    ActionId:
+      name: action_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    AgentId:
+      name: agent_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    ApprovalId:
+      name: approval_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    PermitId:
+      name: permit_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    ReceiptId:
+      name: receipt_id
+      in: path
+      required: true
+      schema: {type: string, format: uuid}
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+
+  responses:
+    Problem:
+      description: Problem detail
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/Problem"
+
+  schemas:
+    GovernanceDecision:
+      type: object
+      required: [action_id, decision, reason_codes, trace_id]
+      properties:
+        action_id: {type: string, format: uuid}
+        decision:
+          type: string
+          enum: [allow, deny, review, allow_with_constraints]
+        reason_codes:
+          type: array
+          items: {type: string}
+        permit:
+          oneOf:
+            - $ref: "./schemas/execution-permit.schema.json"
+            - type: "null"
+        approval:
+          type: [object, "null"]
+        trace_id: {type: string}
+
+    Problem:
+      type: object
+      required: [type, title, status, detail]
+      properties:
+        type: {type: string}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        reason_code: {type: string}
+        trace_id: {type: string}

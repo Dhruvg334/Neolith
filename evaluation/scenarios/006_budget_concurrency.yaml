@@ -1,0 +1,10 @@
+id: budget_concurrency
+title: Concurrent actions cannot jointly exceed budget
+setup:
+  remaining_budget: "8000.00"
+parallel_actions:
+  - amount: "6000.00"
+  - amount: "3000.00"
+expected:
+  successful_reservations: 1
+  max_reserved_plus_committed: "8000.00"
