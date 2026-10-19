@@ -1,3 +1,5 @@
+import { Badge, Card, CardHeader, CopyableId } from "@/components/ui";
+
 interface TaskDetailPageProps {
   readonly params: Promise<{ id: string }>;
 }
@@ -7,22 +9,25 @@ export default async function TaskDetailPage({ params }: TaskDetailPageProps) {
 
   return (
     <div>
-      <section className="surface-card">
-        <span className="badge-tag">Task Detail</span>
+      <Card>
+        <Badge variant="info">Task Detail</Badge>
         <h1 className="page-title">Task Inspection</h1>
-        <p className="page-lead">
-          Task Identifier: <code className="inline-code">{id}</code>
-        </p>
-      </section>
+        <div style={{ marginTop: "0.5rem" }}>
+          <CopyableId label="Task ID" value={id} />
+        </div>
+      </Card>
 
-      <section className="surface-card">
-        <h2 className="card-title">Lifecycle Stage</h2>
+      <Card>
+        <CardHeader
+          title="Lifecycle Stage"
+          subtitle="Task state machine and governance correlation."
+        />
         <p className="card-copy">
           Detailed task state transitions, structured comparison tables, and
           governance envelope inspection attach to PostgreSQL task records in
           Phase 1 and Phase 2.
         </p>
-      </section>
+      </Card>
     </div>
   );
 }

@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=69.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neolith-tool-simulator"
+version = "0.1.0"
+description = "Neolith deterministic enterprise service and procurement simulator"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "pydantic>=2.10.0,<3.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

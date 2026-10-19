@@ -33,11 +33,20 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["services/api/src"]
+where = [
+  "services/api/src",
+  "services/agent-worker/src",
+  "services/tool-simulator/src",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["services/api/tests"]
-pythonpath = ["services/api/src", "."]
+pythonpath = [
+  "services/api/src",
+  "services/agent-worker/src",
+  "services/tool-simulator/src",
+  ".",
+]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-q --strict-markers"
@@ -45,21 +54,32 @@ addopts = "-q --strict-markers"
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["services/api/src", "services/api/tests", "scripts"]
+src = [
+  "services/api/src",
+  "services/api/tests",
+  "services/agent-worker/src",
+  "services/tool-simulator/src",
+  "scripts",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N", "SIM", "RUF"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["neolith_api", "scripts"]
+known-first-party = ["neolith_api", "neolith_agent", "neolith_simulator", "scripts"]
 
 [tool.mypy]
 python_version = "3.12"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
-mypy_path = ["services/api/src"]
-packages = ["neolith_api", "scripts"]
+mypy_path = [
+  "services/api/src",
+  "services/agent-worker/src",
+  "services/tool-simulator/src",
+]
+packages = ["neolith_api", "neolith_agent", "neolith_simulator", "scripts"]
+
 
 [[tool.mypy.overrides]]
 module = ["jsonschema"]

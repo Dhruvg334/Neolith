@@ -1,3 +1,5 @@
+import { Badge, Card, CardHeader, CopyableId } from "@/components/ui";
+
 interface ReceiptDetailPageProps {
   readonly params: Promise<{ id: string }>;
 }
@@ -9,21 +11,24 @@ export default async function ReceiptDetailPage({
 
   return (
     <div>
-      <section className="surface-card">
-        <span className="badge-tag">Auditor View</span>
+      <Card>
+        <Badge variant="info">Auditor View</Badge>
         <h1 className="page-title">Decision Receipt Explorer</h1>
-        <p className="page-lead">
-          Receipt Identifier: <code className="inline-code">{id}</code>
-        </p>
-      </section>
+        <div style={{ marginTop: "0.5rem" }}>
+          <CopyableId label="Receipt ID" value={id} />
+        </div>
+      </Card>
 
-      <section className="surface-card">
-        <h2 className="card-title">Evidence Chain Verification</h2>
+      <Card>
+        <CardHeader
+          title="Evidence Chain Verification"
+          subtitle="Tamper-evident append-only receipt chain (F13)."
+        />
         <p className="card-copy">
           Append-only decision receipts and SHA-256 hash-chain verification are
           introduced in Phase 5.
         </p>
-      </section>
+      </Card>
     </div>
   );
 }
