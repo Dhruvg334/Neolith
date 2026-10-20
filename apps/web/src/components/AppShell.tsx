@@ -7,6 +7,9 @@ interface AppShellProps {
 
 const PRIMARY_NAV = [
   { href: "/", label: "Overview" },
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/accounts", label: "Accounts" },
+  { href: "/agent", label: "Financial Agent" },
   { href: "/tasks", label: "Tasks" },
   { href: "/approvals", label: "Approvals" },
   { href: "/operator", label: "Operator" },

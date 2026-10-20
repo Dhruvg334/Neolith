@@ -4,7 +4,7 @@
 
 ### AI-Powered Agentic Decision and Execution System
 
-**An Enterprise Control Plane Separating Autonomous Agent Intelligence from Deterministic Execution Authority**
+**A Smart Governance Checkpoint Separating AI Agent Planning from Real-World Financial & Enterprise Execution**
 
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-0f172a?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
@@ -18,86 +18,156 @@
 
 ---
 
-<h2 align="center">Overview</h2>
+<h2 align="center">What is Neolith? (In Plain English)</h2>
 
-**Neolith** is an enterprise agentic AI decision and execution platform that enforces a strict architectural boundary between **intelligent planning** and **sensitive execution authority**.
+Imagine hiring an **AI assistant** to help run your company's finance department. You want the AI to read invoices, check bank balances, compare software vendors, and prepare payments.
 
-In conventional agent deployments, language models are granted direct access to enterprise APIs and credentials, creating severe exposure to prompt injection, hallucinated parameters, concurrent budget overspend, and unverifiable side effects. Neolith resolves this by splitting the runtime into three isolated layers:
+In most AI systems today, giving an AI the ability to pay an invoice means handing it the company credit card or direct banking API keys. **That is dangerous:**
+- What if a fake invoice tricks the AI (**prompt injection**)?
+- What if the AI hallucinates an extra zero and tries to pay **INR 80,000** instead of **INR 8,000**?
+- What if two AI tasks run at the same time and accidentally spend more than the monthly budget?
 
-1. **AI Agent Layer** — Understands natural-language goals, extracts structured constraints, retrieves grounded enterprise and vendor data via Model Context Protocol (MCP) read tools, compares alternatives, and proposes canonical execution requests.
-2. **Governance & Execution Control Layer** — Independently authenticates workloads, validates capability bindings, evaluates deterministic Open Policy Agent (OPA/Rego) rules, performs atomic pre-execution budget reservations in Redis, classifies risk tiers (`R0`–`R4`), orchestrates hash-bound human approvals, issues short-lived single-use Ed25519 Execution Permits, and appends SHA-256 hash-linked Decision Receipts.
-3. **Enterprise Services Layer** — Rejects direct unpermitted calls and executes protected operations (such as software procurement, ERP, HR, CRM, and scheduling workflows) only after verifying a valid, unrevoked, single-use Execution Permit bound to the exact canonical parameter hash.
+**Neolith solves this by separating *thinking* from *doing*.**
 
-> **Core Invariant:** *Agents may understand, reason, compare, and propose. Sensitive execution requires independent deterministic authority.*
+Instead of giving the AI direct authority to move money or modify company systems, Neolith places a deterministic **Governance & Execution Control Plane** between the AI and the bank:
+
+1. **The AI Agent Layer (The Planner)** — The AI can freely **read** balances, invoices, and budgets, and it can **propose** an action (for example: *"I recommend paying Invoice INV-001 for INR 8,000.00"*). However, the AI has **zero direct power** to execute that payment.
+2. **The Governance Control Layer (The Security Checkpoint)** — Neolith's Runtime Gateway inspects the AI's proposal against strict deterministic rules (Open Policy Agent), locks the required budget in Redis so it cannot be double-spent, checks whether a human manager needs to approve it, and—only if every check passes—mints a **60-second, single-use digital pass (Ed25519 Execution Permit)**.
+3. **The Enterprise Services Layer (The Vault)** — The banking or procurement system refuses to talk to the AI directly unless the AI presents that cryptographic single-use permit matching the exact payment amount and recipient. Every decision is permanently recorded in a tamper-evident **Decision Receipt chain**.
+
+> **Core Principle:** *AI agents may understand, research, compare, and propose. Real-world execution requires independent, deterministic authority.*
 
 ---
 
-<h2 align="center">System Architecture</h2>
+<h2 align="center">System Architecture (HLD & LLD)</h2>
 
-### Three-Layer Governance & Execution Topology
+<h3 align="center">1. High-Level Design (HLD) — Three-Layer Governance Topology</h3>
+
+The **High-Level Design (HLD)** illustrates how user intent flows through the **AI Agent Layer**, is independently verified by the **Governance & Execution Control Layer**, and is executed by **Protected Enterprise Services**.
 
 ```mermaid
 flowchart TB
-    U["User / Enterprise Principal"]
+    U["User / Treasury Operator"]
 
-    subgraph A["1. AI Agent Layer (LangGraph Worker)"]
-        A1["Goal & Constraint Extraction"]
-        A2["Grounded Retrieval (MCP Read Tools)"]
-        A3["Candidate Comparison & Ranking"]
-        A4["Structured Execution Plan"]
-        A5["Execution Request Proposal"]
+    subgraph A["HLD Layer 1: AI Agent Layer (Planning & Research Only)"]
+        A1["Goal & Constraint Understanding"]
+        A2["Read-Only Context Lookup<br/>(Balances, Invoices, Budgets)"]
+        A3["Candidate Comparison & Reasoning"]
+        A4["Structured Action Proposal<br/>(Zero Implicit Authority)"]
     end
 
-    subgraph G["2. Governance & Execution Control Layer (FastAPI + OPA + Redis + PostgreSQL)"]
-        G1["Runtime Gateway & Action Envelope"]
-        G2["Identity & Workload Validator"]
-        G3["Permission Binding Validator"]
-        G4["Policy Engine (OPA / Rego)"]
-        G5["Transactional Budget & Quota Manager"]
-        G6["Deterministic & Semantic Risk Analyzer"]
-        G7["Hash-Bound Human Approval Queue"]
-        G8["Ed25519 Single-Use Permit Service"]
-        G9["Hash-Linked Decision Receipt Ledger"]
+    subgraph G["HLD Layer 2: Governance & Execution Control Layer (Neolith Runtime Gateway)"]
+        G1["Runtime Gateway & Canonical Action Envelope"]
+        G2["Identity & Role Permission Check"]
+        G3["Deterministic Policy Engine (OPA / Rego)"]
+        G4["Atomic Budget Reservation (Redis + PostgreSQL)"]
+        G5["Risk Tiering & Human-in-the-Loop Approval"]
+        G6["60s Single-Use Ed25519 Permit Signer"]
+        G7["Tamper-Evident Decision Receipt Ledger"]
     end
 
-    subgraph E["3. Enterprise Services Layer (Protected Adapters)"]
-        E1["Procurement Subscription Service"]
-        E2["ERP & Finance Workflows"]
-        E3["HR & Access Workflows"]
-        E4["Resource & Scheduling APIs"]
+    subgraph E["HLD Layer 3: Enterprise Services Layer (Permit-Gated Execution)"]
+        E1["Financial Reference Sandbox<br/>(Invoice Payment & Treasury Transfer)"]
+        E2["Procurement Subscription Service"]
     end
 
-    U --> A1 --> A2 --> A3 --> A4 --> A5
-    A5 -->|"Execution Request Envelope"| G1
-    G1 --> G2 --> G3 --> G4 --> G5 --> G6 --> G7 --> G8
-    G8 -->|"Short-Lived Signed Permit (JWS)"| E1
-    G8 --> E2
-    G8 --> E3
-    G8 --> E4
-    G1 --> G9
-    E1 -->|"Execution Outcome"| G9
+    U -->|"Natural-Language Task"| A1
+    A1 --> A2 --> A3 --> A4
+    A4 -->|"Proposed Action Envelope"| G1
+    G1 --> G2 --> G3 --> G4 --> G5 --> G6
+    G6 -->|"Signed Single-Use Permit (JWS)"| E1
+    G6 -->|"Signed Single-Use Permit (JWS)"| E2
+    G1 --> G7
+    E1 -->|"Verified Settlement Receipt"| G7
 ```
 
-### Runtime Component Topology
+---
+
+<h3 align="center">2. Low-Level Design (LLD) — Service, Database & Protocol Component Topology</h3>
+
+The **Low-Level Design (LLD)** shows the concrete runtime services, API routers, SQLAlchemy 2.0 / PostgreSQL tables, Redis atomic locks, and cryptographic verification boundaries inside the monorepo.
 
 ```mermaid
 flowchart LR
-    Browser["Next.js 15 Web Application<br/>(Requester, Approver, Operator, Auditor)"] --> API["FastAPI Control Plane API<br/>(/api/v1)"]
-    Worker["LangGraph Agent Worker"] --> API
+    subgraph Web["LLD: Next.js 15 Web UI (apps/web)"]
+        UI_Dash["/dashboard & /accounts"]
+        UI_Agent["/agent & /tasks"]
+        UI_Op["/operator & /approvals"]
+    end
 
-    API --> PG[("PostgreSQL 17<br/>Authoritative State & Receipts")]
-    API --> Redis[("Redis 7<br/>Atomic Reservations, Nonces & Epoch")]
-    API --> OPA["Open Policy Agent<br/>(Deterministic Rego v1)"]
-    API --> Adapter["Protected Service Adapter"]
+    subgraph API["LLD: FastAPI Control Plane (services/api)"]
+        R_Fin["Financial Router<br/>(/api/v1/financial/*)"]
+        R_Reg["Registry & Task Router<br/>(/api/v1/tasks, /agents, /tools, /budgets)"]
+        R_Gov["Runtime Gateway & Permit Verifier<br/>(/api/v1/actions/*, /permits/*)"]
+        Hash["RFC 8785 Canonical JSON + SHA-256"]
+    end
 
-    Worker --> LLM["LLM Provider Adapter<br/>(OpenAI / Deterministic Mock)"]
-    Worker --> MCP["MCP Read-Only Connectors<br/>(Vendor & Policy Catalogue)"]
-    Worker --> PG
+    subgraph Worker["LLD: Agent Worker (services/agent-worker)"]
+        LG["LangGraph State Machine<br/>(AgentWorkflowState)"]
+        FC["FinancialContext &<br/>FinancialActionProposal"]
+        LLM["LLM Provider Adapter<br/>(OpenAI / Deterministic Mock)"]
+    end
 
-    Adapter --> Sim["Enterprise Tool Simulator<br/>(Procurement Service)"]
-    API --> OTel["OpenTelemetry & Jaeger<br/>(End-to-End Trace Correlation)"]
-    Worker --> OTel
-    Adapter --> OTel
+    subgraph Sim["LLD: Protected Simulator (services/tool-simulator)"]
+        BankR["SimulatedBankingService<br/>Read Tools (R1)"]
+        BankW["SimulatedBankingService<br/>Permit-Gated Write Tools (R2-R4)"]
+    end
+
+    subgraph Infra["LLD: Storage & Policy Infrastructure"]
+        PG[("PostgreSQL 17 / SQLAlchemy 2.0<br/>users, agents, tools, tasks, budgets,<br/>financial_accounts, financial_invoices,<br/>financial_beneficiaries, financial_transactions")]
+        Redis[("Redis 7<br/>Budget Locks, Nonces,<br/>Revocation Epoch")]
+        OPA["Open Policy Agent<br/>(package neolith.decision)"]
+        OTel["OpenTelemetry + Jaeger<br/>(X-Trace-Id Correlation)"]
+    end
+
+    UI_Dash --> R_Fin
+    UI_Agent --> R_Reg
+    UI_Op --> R_Reg
+    LG --> FC --> LLM
+    LG --> BankR
+    LG --> R_Gov
+    R_Fin --> PG
+    R_Reg --> PG
+    R_Gov --> Hash
+    R_Gov --> OPA
+    R_Gov --> Redis
+    R_Gov --> PG
+    R_Gov --> BankW
+    API --> OTel
+```
+
+---
+
+<h3 align="center">3. Low-Level Design (LLD) — Governed Financial Execution Sequence</h3>
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Treasury User
+    participant Agent as Financial AI Agent (LangGraph)
+    participant Gateway as Runtime Gateway (FastAPI)
+    participant OPA as OPA Policy Engine (Rego)
+    participant Redis as Redis Budget & Nonce Store
+    participant Approver as Human Approver
+    participant Bank as SimulatedBankingService
+    participant Ledger as PostgreSQL Ledger & Receipts
+
+    User->>Agent: "Pay invoice INV-001 for Acme Cloud"
+    Agent->>Gateway: GET /api/v1/financial/invoices/INV-001 & /financial/budgets (R1 Read)
+    Agent->>Gateway: Submit FinancialActionProposal (pay_invoice, INR 8000.00, software)
+    Gateway->>Ledger: Record ExecutionRequest & append receipt (action_received)
+    Gateway->>OPA: Evaluate permissions, vendor verification, and category budget
+    OPA-->>Gateway: Decision (ALLOW | REVIEW | DENY) + structured reason_codes
+    alt Decision == REVIEW (e.g., INV-002 INR 35,000.00 exceeds approval threshold)
+        Gateway->>Approver: Queue approval bound to canonical parameters_hash
+        Approver->>Gateway: Approve exact parameters_hash
+    end
+    Gateway->>Redis: Atomically reserve INR 8,000.00 from software budget
+    Gateway->>Gateway: Mint 60s Ed25519 Execution Permit (bound to nonce & epoch)
+    Gateway->>Bank: Invoke pay_invoice with signed Execution Permit
+    Bank->>Gateway: Verify & consume single-use permit nonce
+    Bank->>Ledger: Mark INV-001 paid, debit Operations Account, append DecisionReceipt
+    Gateway-->>User: Settlement confirmed + cryptographic receipt chain
 ```
 
 ---
@@ -107,28 +177,28 @@ flowchart LR
 ```mermaid
 flowchart LR
     subgraph Actors["Enterprise Actors"]
-        Req["End User / Requester"]
-        App["Approver"]
-        Op["Operator / Administrator"]
-        Aud["Auditor / Reviewer"]
-        Ag["Primary AI Agent Workload"]
+        Req["Treasury Requester"]
+        App["Finance Approver"]
+        Op["Platform Operator"]
+        Aud["Compliance Auditor"]
+        Ag["Financial AI Agent"]
     end
 
-    subgraph UseCases["Neolith Platform Capabilities"]
-        UC1(["Submit Natural-Language Procurement Goal"])
-        UC2(["Review Grounded Vendor Comparison & Plan"])
-        UC3(["Retrieve Catalogue & Propose Execution Envelope"])
-        UC4(["Evaluate Permissions, OPA Policy & Risk Tier"])
-        UC5(["Reserve Budget Atomically & Issue Ed25519 Permit"])
-        UC6(["Approve or Reject Hash-Bound High-Risk Action"])
-        UC7(["Manage Agent/Tool Registries, Policies & Budgets"])
+    subgraph UseCases["Neolith Platform Use Cases"]
+        UC1(["Inspect Account Balances, Invoices & Category Budgets"])
+        UC2(["Submit Natural-Language Financial or Procurement Task"])
+        UC3(["Read FinancialContext & Propose Candidate Action"])
+        UC4(["Evaluate Capabilities, OPA Policy & Vendor Verification"])
+        UC5(["Reserve Category Budget & Mint Ed25519 Execution Permit"])
+        UC6(["Approve or Reject High-Value Invoice Payment"])
+        UC7(["Audit Registered Agents, Tools, Risk Tiers & Schemas"])
         UC8(["Quarantine Agent or Trigger Global Emergency Stop"])
-        UC9(["Verify Tamper-Evident Decision Receipt Chain"])
-        UC10(["Execute Reproducible Assurance Lab Scenarios"])
+        UC9(["Verify SHA-256 Hash-Linked Decision Receipt Chain"])
     end
 
     Req --> UC1
     Req --> UC2
+    Ag --> UC1
     Ag --> UC3
     UC3 --> UC4
     UC4 --> UC5
@@ -136,70 +206,65 @@ flowchart LR
     UC6 --> UC5
     Op --> UC7
     Op --> UC8
-    Op --> UC10
     Aud --> UC9
 ```
 
 ---
 
-<h2 align="center">Governed Execution Sequence</h2>
+<h2 align="center">Financial Reference Application (Neolith Demo Corp)</h2>
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as End User
-    participant Agent as LangGraph Primary Agent
-    participant Gateway as Runtime Gateway (FastAPI)
-    participant OPA as Open Policy Agent (Rego)
-    participant Redis as Redis (Reservations & Epoch)
-    participant Approver as Human Approver
-    participant Service as Protected Procurement Service
-    participant Ledger as Decision Receipt Ledger (PostgreSQL)
+While Neolith's governance control plane is general-purpose, the repository includes a complete **Financial Reference Application** (`services/api/src/neolith_api/financial/` and `services/tool-simulator/src/neolith_simulator/banking.py`) pre-seeded with deterministic enterprise treasury data for **Neolith Demo Corp**:
 
-    User->>Agent: Submit goal ("10-seat PM software under INR 8,000/mo with SSO")
-    Agent->>Agent: Retrieve vendor catalogue & compare candidates
-    Agent->>Gateway: POST /api/v1/actions/evaluate (Execution Request Envelope + Idempotency-Key)
-    Gateway->>Ledger: Append receipt (event_type = action_received)
-    Gateway->>Redis: Check revocation_epoch & idempotency state
-    Gateway->>OPA: Evaluate package neolith.decision (identity, permissions, category, budget, risk)
-    OPA-->>Gateway: Decision (allow | review | deny) + structured reason_codes
-    alt Decision == review (Threshold reached)
-        Gateway->>Approver: Create approval bound to canonical parameters_hash
-        Approver->>Gateway: POST /api/v1/approvals/{id}/approve (Verify hash unchanged)
-    end
-    Gateway->>Redis: Atomic pre-execution budget reservation (INR 6,000.00)
-    Gateway->>Gateway: Sign short-lived Ed25519 Execution Permit (60s TTL, nonce, epoch)
-    Gateway->>Ledger: Append receipt (event_type = permit_issued)
-    Gateway-->>Agent: GovernanceDecision (allow + signed JWS permit)
-    Agent->>Service: Invoke procure_subscription with Execution Permit
-    Service->>Gateway: POST /api/v1/permits/{id}/consume (Verify signature, hash, TTL, epoch & consume nonce)
-    Service->>Gateway: POST /api/v1/actions/{id}/result (Commit budget reservation)
-    Gateway->>Ledger: Append receipt (event_type = execution)
-    Gateway-->>User: Completed procurement outcome + verifiable Decision Receipt
-```
+- **Primary Operating Account**: `Operations Account` — Available Balance: **`INR 100,000.00`** (`active`)
+- **Monthly Category Budgets**:
+  - `software`: **`INR 25,000.00`** limit (`INR 15,000.00` approval threshold)
+  - `infrastructure`: **`INR 50,000.00`** limit (`INR 25,000.00` approval threshold)
+  - `miscellaneous`: **`INR 10,000.00`** limit (`INR 5,000.00` approval threshold)
+
+### Benchmark Invoices & Governance Outcomes
+
+| Invoice # | Vendor Name | Amount (`INR`) | Category | Vendor Status | Expected Governance Outcome |
+|:---:|---|---:|:---:|:---:|---|
+| **`INV-001`** | **Acme Cloud** | `8,000.00` | `software` | `Verified` | **`ALLOW`** — Verified vendor and well within the `INR 25,000.00` software budget. |
+| **`INV-002`** | **Nova Compute** | `35,000.00` | `infrastructure` | `Verified` | **`REVIEW`** — Within the `INR 50,000.00` infrastructure budget, but exceeds the `INR 25,000.00` single-payment approval threshold. |
+| **`INV-003`** | **Unknown Supplies** | `75,000.00` | `miscellaneous` | `Unverified` | **`DENY`** — Blocked because the vendor is unverified and `INR 75,000.00` exceeds the `INR 10,000.00` miscellaneous budget. |
+
+### Registered Financial Agent Tools (`financial-ai-agent`)
+
+| Tool Name | Access Mode | Risk Tier | Capability | Description |
+|---|:---:|:---:|---|---|
+| `get_account_balance` | **Read-Only** | `R1` | `finance.account.read` | Inspect synthetic operating account balance (`INR`). |
+| `list_transactions` | **Read-Only** | `R1` | `finance.transaction.read` | List recent treasury ledger transactions. |
+| `get_invoice` | **Read-Only** | `R1` | `finance.invoice.read` | Retrieve vendor invoice details (`INV-001`, `INV-002`, `INV-003`). |
+| `get_budget_status` | **Read-Only** | `R1` | `finance.budget.read` | Check monthly category budget limits, used spend, and remaining balance. |
+| `get_beneficiary` | **Read-Only** | `R1` | `finance.beneficiary.read` | Check whether a vendor beneficiary is verified. |
+| `pay_invoice` | **Protected Write** | `R2` | `finance.invoice.pay` | Settle an unpaid vendor invoice (**requires Runtime Gateway permit**). |
+| `transfer_funds` | **Protected Write** | `R3` | `finance.funds.transfer` | Transfer funds to a registered beneficiary (**requires Runtime Gateway permit**). |
+| `add_beneficiary` | **Protected Write** | `R4` | `finance.beneficiary.manage` | Register a new payment beneficiary (**requires Runtime Gateway permit**). |
+| `cancel_payment` | **Protected Write** | `R2` | `finance.payment.cancel` | Cancel or compensate a pending payment (**requires Runtime Gateway permit**). |
 
 ---
 
-<h2 align="center">Core Features & Capabilities</h2>
+<h2 align="center">Core Platform Features (F01–F16)</h2>
 
 | ID | Feature Module | Description |
 |:---:|---|---|
-| **F01** | **User Task Workspace** | Structured 3-stage workspace for goal submission, grounded vendor comparison, governance status tracking, and receipt inspection. |
-| **F02** | **Primary Agent Planning & Research** | Stateful LangGraph workflow that extracts constraints, queries approved sources with provenance, and emits structured proposals. |
+| **F01** | **User Task Workspace** | Structured workspace (`/tasks`, `/agent`) for goal submission, grounded context inspection, and status tracking. |
+| **F02** | **Primary Agent Planning & Research** | Stateful LangGraph workflow that reads `FinancialContext` and emits typed `FinancialActionProposal` envelopes. |
 | **F03** | **Runtime Gateway & Action Envelope** | Single mandatory entry point normalizing requests into RFC 8785 canonical JSON envelopes with idempotency enforcement. |
-| **F04** | **Identity & Permission Validation** | Separates principal authentication, workload version verification, and RBAC/ABAC capability bindings from contextual policy. |
+| **F04** | **Identity & Permission Validation** | Separates principal authentication, workload version verification, and RBAC/ABAC capability bindings from policy. |
 | **F05** | **Deterministic Policy Engine** | Versioned Open Policy Agent (Rego v1) bundles producing structured `reason_codes` and required approval roles. |
-| **F06** | **Transactional Budget & Quota Manager** | Two-phase atomic Redis + PostgreSQL budget reservations (`pending -> reserved -> committed / released / reconciliation_required`) using exact `Decimal` arithmetic. |
-| **F07** | **Multi-Signal Risk Analyzer** | Combines deterministic risk tiering (`R0`–`R4`) with semantic objective-alignment and velocity anomaly signals that can escalate review but never override a hard deny. |
-| **F08** | **Human Approval Workflow** | Durable workflow pause/resume where human sign-off is cryptographically bound to the exact canonical action hash and expiration window. |
-| **F09** | **Execution Permit Service** | Issues 60-second Ed25519-signed JWS permits bound to `tool_id`, `operation`, `parameters_hash`, `context_hash`, `reservation_id`, and `revocation_epoch`. |
-| **F10** | **Enterprise Service & MCP Connectors** | Read-only MCP discovery tools paired with permit-enforcing protected service adapters and tool-manifest drift detection. |
+| **F06** | **Transactional Budget & Quota Manager** | Authoritative category and task budgets using exact `Decimal` (`Numeric(18, 2)`) arithmetic and atomic reservations. |
+| **F07** | **Multi-Signal Risk Analyzer** | Combines deterministic risk tiering (`R0`–`R4`) with semantic alignment signals that can escalate review but never override a hard deny. |
+| **F08** | **Human Approval Workflow** | Durable workflow pause/resume where human sign-off is cryptographically bound to the exact canonical action hash. |
+| **F09** | **Execution Permit Service** | Issues 60-second Ed25519-signed JWS permits bound to `tool_id`, `operation`, `parameters_hash`, `reservation_id`, and `revocation_epoch`. |
+| **F10** | **Enterprise Service & MCP Connectors** | Read-only context tools paired with permit-enforcing protected service adapters (`SimulatedBankingService`). |
 | **F11** | **Scoped Delegation & Multi-Agent** | Authority-narrowing delegation boundaries with maximum depth and budget ceiling enforcement. |
-| **F12** | **Memory & Governed RAG** | Separates working task state, authoritative PostgreSQL records, and non-authoritative semantic retrieval with untrusted content tagging. |
-| **F13** | **Decision Receipts & Incidents** | Append-only SHA-256 hash-linked evidence chain (`previous_receipt_hash -> receipt_hash`) and security incident timelines. |
-| **F14** | **OpenTelemetry Observability** | End-to-end `X-Trace-Id` propagation, structured JSON logging with secret redaction, and Jaeger distributed tracing. |
-| **F15** | **Evaluation & Assurance Lab** | Reproducible scenario harness testing happy paths, over-budget denials, prompt injection, permit replay, parameter mutation, concurrency races, and emergency stops. |
-| **F16** | **Procurement Demonstration Workflow** | Complete enterprise software procurement slice over a deterministic vendor catalogue (`TaskForge`, `PlanGridX`, `SprintDesk`). |
+| **F12** | **Memory & Governed RAG** | Separates working task state, authoritative PostgreSQL records, and non-authoritative retrieval with untrusted content tagging. |
+| **F13** | **Decision Receipts & Incidents** | Append-only SHA-256 hash-linked evidence chain (`previous_receipt_hash -> receipt_hash`) and incident timelines. |
+| **F14** | **OpenTelemetry Observability** | End-to-end `X-Trace-Id` propagation, structured JSON logging, and Jaeger distributed tracing. |
+| **F15** | **Evaluation & Assurance Lab** | Reproducible scenario harness testing happy paths, over-budget denials, prompt injection, permit replay, and emergency stops. |
+| **F16** | **Financial & Procurement Reference Workflows** | Deterministic enterprise financial sandbox (`Neolith Demo Corp`) and procurement catalogue slice. |
 
 ---
 
@@ -210,39 +275,34 @@ Neolith/
 ├── apps/
 │   └── web/                        # Next.js 15 App Router frontend + reusable enterprise UI library
 │       └── src/
-│           ├── app/                # Routes: /, /tasks, /tasks/[id], /operator, /approvals, /receipts/[id]
-│           └── components/
-│               ├── AppShell.tsx    # Enterprise application shell & navigation
-│               └── ui/             # Reusable UI primitives (Badge, Button, Card, DataTable, BudgetMeter, etc.)
+│           ├── app/                # Routes: /, /dashboard, /accounts, /agent, /tasks, /approvals, /operator
+│           ├── components/         # AppShell, AgentTaskConsole & reusable UI primitives (Card, DataTable, BudgetMeter)
+│           └── lib/                # Typed Financial & Platform API client with offline seed snapshot fallback
 ├── services/
-│   ├── api/                        # FastAPI control plane & governance runtime (/api/v1)
-│   │   ├── src/neolith_api/        # Modular monolith: core, users, agents, tools, tasks, permissions,
-│   │   │                           # policies, budgets, risk, approvals, actions, permits, executions,
-│   │   │                           # receipts, revocations, incidents, evaluations, integrations
-│   │   └── tests/                  # Automated unit, readiness, configuration, skeleton & contract tests
-│   ├── agent-worker/               # LangGraph primary agent state machine & LLM provider adapter
-│   └── tool-simulator/             # Permit-gated enterprise procurement service simulator
+│   ├── api/                        # FastAPI control plane, SQLAlchemy 2.0 ORM, Alembic migrations & seed module
+│   │   ├── migrations/             # Alembic migration environment & Stage 1 initial revision
+│   │   ├── src/neolith_api/        # Core ORM models, isolated financial sandbox, read/registry routers
+│   │   └── tests/                  # Comprehensive pytest suite (health, readiness, financial sandbox, migrations)
+│   ├── agent-worker/               # LangGraph agent state machine, FinancialContext & FinancialActionProposal contracts
+│   └── tool-simulator/             # SimulatedBankingService (R1 read tools + permit-gated R2-R4 write stubs)
 ├── packages/
 │   └── contracts/                  # Shared TypeScript contract interfaces & schema identifiers
 ├── policy/
 │   ├── rego/neolith.rego           # Deterministic OPA Rego v1 decision policy
-│   └── tests/neolith_test.rego     # Rego unit tests (allow, over-budget, permission missing, emergency stop)
+│   └── tests/neolith_test.rego     # Rego unit tests
 ├── specs/
 │   ├── openapi.yaml                # OpenAPI 3.1.0 REST specification
-│   ├── schemas/                    # JSON Schema Draft 2020-12 contracts (envelope, permit, receipt, task, policy)
-│   ├── sql/schema.sql              # Authoritative PostgreSQL 17 DDL schema (25 tables)
+│   ├── schemas/                    # JSON Schema Draft 2020-12 contracts
+│   ├── sql/schema.sql              # Authoritative PostgreSQL 17 DDL schema
 │   └── prompts/                    # Versioned runtime system prompts
 ├── evaluation/
 │   └── scenarios/                  # 7 deterministic YAML assurance & adversarial test fixtures
-├── data/
-│   └── fixtures/vendors.json       # Deterministic vendor catalogue fixture
 ├── infra/
 │   └── docker-compose.yml          # Local PostgreSQL 17, Redis 7, OPA & Jaeger stack
 ├── scripts/
-│   ├── bootstrap.cmd               # Windows environment bootstrap script
 │   ├── check_docs.py               # Documentation & schema presence verifier
 │   └── validate_contracts.py       # Comprehensive OpenAPI, JSON Schema, SQL & YAML validator
-└── docs/                           # SRS, architecture, feature specs (F01-F16), test strategy & engineering rulebook
+└── docs/                           # SRS, architecture, feature specs (F01-F16), Financial Reference App docs & rulebook
 ```
 
 ---
@@ -253,7 +313,7 @@ Neolith/
 
 - **Python**: `3.12+`
 - **Node.js**: `22.0+` with `pnpm` (`corepack enable pnpm`)
-- **Docker Desktop**: Required for local PostgreSQL 17, Redis 7, Open Policy Agent, and Jaeger containers
+- **Docker Desktop**: Optional for local SQLite development; required for full PostgreSQL 17, Redis 7, Open Policy Agent, and Jaeger container stack
 - **Git**: `2.40+`
 
 ### 2. Clone & Configure Environment
@@ -272,12 +332,7 @@ docker compose -f infra\docker-compose.yml up -d
 docker compose -f infra\docker-compose.yml ps
 ```
 
-- **PostgreSQL 17**: `localhost:5432` (automatically initializes `specs/sql/schema.sql`)
-- **Redis 7**: `localhost:6379`
-- **Open Policy Agent**: `http://localhost:8181/health`
-- **Jaeger UI**: `http://localhost:16686`
-
-### 4. Backend Setup & Verification (`services/api`)
+### 4. Backend Setup, Database Migration & Deterministic Seed (`services/api`)
 
 ```cmd
 py -3.12 -m venv .venv
@@ -285,17 +340,29 @@ py -3.12 -m venv .venv
 .venv\Scripts\python.exe -m pip install -e ".[dev]"
 ```
 
-Run the backend API server on `http://localhost:8000`:
+Run Alembic migrations and seed the deterministic Financial Reference Application dataset (`Neolith Demo Corp`):
+
+```cmd
+cd services\api
+..\..\.venv\Scripts\python.exe -m alembic upgrade head
+cd ..\..
+.venv\Scripts\python.exe -m neolith_api.seed
+```
+
+Start the FastAPI server on `http://localhost:8000`:
 
 ```cmd
 .venv\Scripts\python.exe -m uvicorn neolith_api.main:app --app-dir services\api\src --host 0.0.0.0 --port 8000 --reload
 ```
 
-Verify liveness and dependency readiness:
+Verify the health, readiness, and financial sandbox endpoints:
 
 ```cmd
 curl http://localhost:8000/api/v1/health
-curl http://localhost:8000/api/v1/ready
+curl http://localhost:8000/api/v1/financial/summary
+curl http://localhost:8000/api/v1/financial/invoices
+curl http://localhost:8000/api/v1/financial/budgets
+curl http://localhost:8000/api/v1/financial/tools
 ```
 
 ### 5. Frontend Setup & Verification (`apps/web`)
@@ -305,13 +372,15 @@ pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-Open `http://localhost:3000` in your browser to access:
-- `/` — System Overview & Governed Execution Pipeline
-- `/tasks` — Requester Task Workspace & Vendor Catalogue
-- `/approvals` — Human-in-the-Loop Approval Queue
-- `/operator` — Operator Control Plane, Budget Meter & Reason Code Dictionary
+Open `http://localhost:3000` in your browser to explore:
+- `/` — System Overview & Three-Layer Governance Architecture
+- `/dashboard` — Financial Dashboard (`INR 100,000.00` balance, unpaid invoices, monthly category budgets, recent transactions)
+- `/accounts` — Accounts, Vendor Invoices (`INV-001`, `INV-002`, `INV-003`), Beneficiaries & Ledger
+- `/agent` — Financial Agent Console (`financial-ai-agent`), `FinancialContext` inspector & tool permissions
+- `/tasks` — Persisted Task Registry & Goal Intake
+- `/operator` — Operator Control Plane (Registered Agents, `R1`–`R4` Tool Classifications, Budgets & Reason Codes)
 
-### 6. Run Quality Gates, Contract Validators & Tests
+### 6. Run Quality Gates, Contract Validators & Automated Tests
 
 ```cmd
 :: Validate OpenAPI 3.1.0, JSON Schemas, SQL DDL, and Evaluation YAML fixtures
@@ -323,9 +392,6 @@ Open `http://localhost:3000` in your browser to access:
 .venv\Scripts\python.exe -m ruff format --check .
 .venv\Scripts\python.exe -m mypy
 .venv\Scripts\python.exe -m pytest -v
-
-:: Run OPA Rego policy unit tests
-docker run --rm -v "%cd%\policy:/policy:ro" openpolicyagent/opa:latest-static test /policy/rego /policy/tests -v
 
 :: Run Frontend ESLint, TypeScript typecheck, and production build
 pnpm lint

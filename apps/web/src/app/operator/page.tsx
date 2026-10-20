@@ -3,9 +3,24 @@ import {
   BudgetMeter,
   Card,
   CardHeader,
+  CopyableId,
+  DataTable,
   DecisionBadge,
   ReasonCodeList,
+  RiskTierBadge,
+  type DataTableColumn,
 } from "@/components/ui";
+import {
+  FALLBACK_AGENTS,
+  FALLBACK_BUDGETS,
+  FALLBACK_TOOLS,
+  fetchApiWithFallback,
+  type AgentRegistryDto,
+  type FinancialCategoryBudgetDto,
+  type FinancialToolMetadataDto,
+} from "@/lib/financial-api";
+
+export const dynamic = "force-dynamic";
 
 const SAMPLE_REASON_CODES = [
   "BASE_POLICY_ALLOW",
@@ -16,78 +31,230 @@ const SAMPLE_REASON_CODES = [
   "REVOCATION_EPOCH_MISMATCH",
 ] as const;
 
-export default function OperatorPage() {
+const AGENT_COLUMNS: readonly DataTableColumn<AgentRegistryDto>[] = [
+  {
+    key: "name",
+    header: "Agent Identity",
+    render: (row) => (
+      <div>
+        <strong>
+          <code className="inline-code">{row.name}</code>
+        </strong>
+        <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>
+          {row.description}
+        </div>
+      </div>
+    ),
+  },
+  {
+    key: "version",
+    header: "Active Version",
+    render: (row) => (
+      <code className="inline-code">v{row.active_version ?? "0.1.0"}</code>
+    ),
+  },
+  {
+    key: "framework",
+    header: "Framework",
+    render: (row) => row.framework ?? "langgraph",
+  },
+  {
+    key: "tools",
+    header: "Bound Tools",
+    render: (row) => `${row.allowed_tools.length} tools`,
+  },
+  {
+    key: "status",
+    header: "Status",
+    render: (row) => (
+      <Badge variant={row.status === "active" ? "allow" : "deny"}>
+        {row.status.toUpperCase()}
+      </Badge>
+    ),
+  },
+];
+
+const TOOL_COLUMNS: readonly DataTableColumn<FinancialToolMetadataDto>[] = [
+  {
+    key: "name",
+    header: "Tool Name",
+    render: (row) => (
+      <strong>
+        <code className="inline-code">{row.name}</code>
+      </strong>
+    ),
+  },
+  {
+    key: "access",
+    header: "Execution Classification",
+    render: (row) => (
+      <Badge variant={row.protected ? "review" : "allow"}>
+        {row.protected ? "PROTECTED WRITE" : "READ-ONLY"}
+      </Badge>
+    ),
+  },
+  {
+    key: "risk_tier",
+    header: "Risk Tier",
+    render: (row) => <RiskTierBadge tier={row.risk_tier} />,
+  },
+  {
+    key: "reversibility",
+    header: "Reversibility",
+    render: (row) => <code className="inline-code">{row.reversibility}</code>,
+  },
+  {
+    key: "capability",
+    header: "Required Capability",
+    render: (row) => (
+      <code className="inline-code">{row.required_capability}</code>
+    ),
+  },
+  {
+    key: "hash",
+    header: "Schema Hash",
+    render: (row) => (
+      <CopyableId
+        label="schema"
+        value={row.description_hash}
+        truncateLength={10}
+      />
+    ),
+  },
+];
+
+export default async function OperatorPage() {
+  const [agentsRes, toolsRes, budgetsRes] = await Promise.all([
+    fetchApiWithFallback<readonly AgentRegistryDto[]>(
+      "/agents",
+      FALLBACK_AGENTS
+    ),
+    fetchApiWithFallback<readonly FinancialToolMetadataDto[]>(
+      "/tools",
+      FALLBACK_TOOLS
+    ),
+    fetchApiWithFallback<readonly FinancialCategoryBudgetDto[]>(
+      "/financial/budgets",
+      FALLBACK_BUDGETS
+    ),
+  ]);
+
+  const agents = agentsRes.data;
+  const tools = toolsRes.data;
+  const budgets = budgetsRes.data;
+  const readOnlyCount = tools.filter((t) => t.read_only).length;
+  const protectedCount = tools.filter((t) => t.protected).length;
+
   return (
     <div>
       <Card>
-        <Badge variant="info">Operator View</Badge>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "0.5rem",
+          }}
+        >
+          <Badge variant="info">Operator Governance Control Plane</Badge>
+          <Badge variant={agentsRes.live ? "allow" : "review"}>
+            {agentsRes.live
+              ? "System Online — Live Registry"
+              : "Seed Registry Snapshot"}
+          </Badge>
+        </div>
         <h1 className="page-title">Operator Control Plane</h1>
         <p className="page-lead">
-          Administrative interface for registered agents, tool versions,
-          permission bindings, deterministic Rego policies, budgets, runtime
-          containment, and assurance evaluation runs.
+          Administrative oversight for registered AI agents, pinned tool
+          manifests, risk classifications (<code className="inline-code">R1</code>
+          –<code className="inline-code">R4</code>), authoritative category
+          budgets, and deterministic Runtime Gateway reason codes.
         </p>
       </Card>
 
-      <section className="section-grid" aria-label="Operator subsystems">
+      <section className="section-grid" aria-label="Operator telemetry">
         <Card as="article">
           <CardHeader
-            title="Agent & Tool Registry"
-            badge={<Badge variant="neutral">Phase 1</Badge>}
+            title="Registered AI Agents"
+            badge={<Badge variant="allow">{agents.length} ACTIVE</Badge>}
           />
           <p className="card-copy">
-            Tracks immutable agent versions, tool schemas, risk tiers, and
-            reversibility declarations.
+            Immutable agent manifests pinned with SHA-256 artifact digests and
+            explicit tool allowlists.
           </p>
         </Card>
 
         <Card as="article">
           <CardHeader
-            title="Permissions & Policy Engine"
-            badge={<Badge variant="neutral">Phase 3</Badge>}
+            title="Read-Only Tools (R1)"
+            badge={<Badge variant="allow">{readOnlyCount} TOOLS</Badge>}
           />
           <p className="card-copy">
-            Manages deterministic capability bindings and versioned Open Policy
-            Agent bundles.
+            Safe telemetry lookups (<code className="inline-code">get_account_balance</code>
+            , <code className="inline-code">get_invoice</code>,{" "}
+            <code className="inline-code">get_budget_status</code>) available for
+            agent planning.
           </p>
         </Card>
 
         <Card as="article">
           <CardHeader
-            title="Budgets & Execution Permits"
-            badge={<Badge variant="neutral">Phase 4</Badge>}
+            title="Protected Write Tools (R2–R4)"
+            badge={<Badge variant="review">{protectedCount} GATED</Badge>}
           />
           <p className="card-copy">
-            Oversees transactional budget limits, pre-execution reservations,
-            and short-lived Ed25519 permits.
-          </p>
-        </Card>
-
-        <Card as="article">
-          <CardHeader
-            title="Revocation & Incident Control"
-            badge={<Badge variant="neutral">Phase 6</Badge>}
-          />
-          <p className="card-copy">
-            Provides agent quarantine and revocation-epoch emergency stop
-            controls backed by server-side enforcement.
+            Mutating financial tools (<code className="inline-code">pay_invoice</code>
+            , <code className="inline-code">transfer_funds</code>,{" "}
+            <code className="inline-code">add_beneficiary</code>,{" "}
+            <code className="inline-code">cancel_payment</code>) requiring
+            signed Runtime Gateway permits.
           </p>
         </Card>
       </section>
 
       <Card style={{ marginTop: "1.25rem" }}>
         <CardHeader
-          title="Reference Budget Envelope Specification (F06)"
-          subtitle="Exact decimal representation used for pre-execution reservation and settlement."
+          title="Registered Agent Manifests (GET /api/v1/agents)"
+          subtitle="Logical agents and their active deployment versions."
         />
-        <BudgetMeter
-          label="Procurement Demo Scenario Envelope (001_procurement_happy_path)"
-          currency="INR"
-          limitAmount="8000.00"
-          committedAmount="0.00"
-          reservedAmount="6000.00"
-          availableAmount="2000.00"
+        <DataTable
+          columns={AGENT_COLUMNS}
+          rows={agents}
+          getRowKey={(row) => row.id}
         />
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Registered Tool Versions & Risk Classifications (GET /api/v1/tools)"
+          subtitle="Distinguishes R1 read-only context tools from R2–R4 permit-enforced write tools."
+        />
+        <DataTable
+          columns={TOOL_COLUMNS}
+          rows={tools}
+          getRowKey={(row) => row.name}
+        />
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Authoritative Category Budgets (GET /api/v1/financial/budgets)"
+          subtitle="Monthly spend caps enforced for Neolith Demo Corp."
+        />
+        <div style={{ display: "grid", gap: "1rem" }}>
+          {budgets.map((budget) => (
+            <BudgetMeter
+              key={budget.id}
+              label={`Category: ${budget.category.toUpperCase()} (Approval Threshold: ${budget.currency} ${budget.approval_threshold ?? "N/A"})`}
+              currency={budget.currency}
+              limitAmount={budget.limit_amount}
+              committedAmount={budget.used_amount}
+              reservedAmount="0.00"
+              availableAmount={budget.available_amount}
+            />
+          ))}
+        </div>
       </Card>
 
       <Card>

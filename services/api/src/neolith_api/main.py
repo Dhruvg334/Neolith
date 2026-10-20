@@ -4,8 +4,11 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 
+from neolith_api.api.v1.financial import router as financial_router
 from neolith_api.api.v1.health import router as health_router
+from neolith_api.api.v1.registry import router as registry_router
 from neolith_api.core.config import Settings, get_settings
 from neolith_api.core.errors import register_exception_handlers
 from neolith_api.core.telemetry import configure_telemetry, get_request_trace_id, get_tracer
@@ -31,6 +34,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = active_settings
 
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     @app.middleware("http")
     async def trace_correlation_middleware(
         request: Request,
@@ -48,6 +62,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     register_exception_handlers(app)
     app.include_router(health_router, prefix="/api/v1")
+    app.include_router(financial_router, prefix="/api/v1")
+    app.include_router(registry_router, prefix="/api/v1")
     return app
 
 

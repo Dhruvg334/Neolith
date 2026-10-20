@@ -5,25 +5,43 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
       url: `${baseUrl}/`,
-      lastModified: new Date("2026-10-19T00:00:00Z"),
+      lastModified: new Date("2026-10-20T00:00:00Z"),
       changeFrequency: "weekly",
       priority: 1.0,
     },
     {
-      url: `${baseUrl}/tasks`,
-      lastModified: new Date("2026-10-19T00:00:00Z"),
+      url: `${baseUrl}/dashboard`,
+      lastModified: new Date("2026-10-20T00:00:00Z"),
+      changeFrequency: "daily",
+      priority: 0.95,
+    },
+    {
+      url: `${baseUrl}/accounts`,
+      lastModified: new Date("2026-10-20T00:00:00Z"),
       changeFrequency: "daily",
       priority: 0.9,
     },
     {
+      url: `${baseUrl}/agent`,
+      lastModified: new Date("2026-10-20T00:00:00Z"),
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/tasks`,
+      lastModified: new Date("2026-10-20T00:00:00Z"),
+      changeFrequency: "daily",
+      priority: 0.85,
+    },
+    {
       url: `${baseUrl}/approvals`,
-      lastModified: new Date("2026-10-19T00:00:00Z"),
+      lastModified: new Date("2026-10-20T00:00:00Z"),
       changeFrequency: "daily",
       priority: 0.8,
     },
     {
       url: `${baseUrl}/operator`,
-      lastModified: new Date("2026-10-19T00:00:00Z"),
+      lastModified: new Date("2026-10-20T00:00:00Z"),
       changeFrequency: "weekly",
       priority: 0.8,
     },

@@ -103,6 +103,36 @@ export default function HomePage() {
         <section className="section-grid" aria-label="Application workspaces">
           <Card as="article">
             <h2 className="card-title">
+              <Link href="/dashboard">Financial Dashboard &rarr;</Link>
+            </h2>
+            <p className="card-copy">
+              Treasury summary for Neolith Demo Corp showing INR 100,000.00
+              operating balance, unpaid invoices, and monthly category budgets.
+            </p>
+          </Card>
+
+          <Card as="article">
+            <h2 className="card-title">
+              <Link href="/accounts">Accounts &amp; Invoices &rarr;</Link>
+            </h2>
+            <p className="card-copy">
+              Accounts payable ledger with INV-001, INV-002, and INV-003,
+              beneficiary verification status, and settled transactions.
+            </p>
+          </Card>
+
+          <Card as="article">
+            <h2 className="card-title">
+              <Link href="/agent">Financial Agent Console &rarr;</Link>
+            </h2>
+            <p className="card-copy">
+              Submit tasks to financial-ai-agent, inspect read-only
+              FinancialContext, and review R1 vs R2–R4 protected tools.
+            </p>
+          </Card>
+
+          <Card as="article">
+            <h2 className="card-title">
               <Link href="/tasks">Task Workspace &rarr;</Link>
             </h2>
             <p className="card-copy">

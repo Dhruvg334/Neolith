@@ -104,8 +104,14 @@ class Settings(BaseSettings):
     @field_validator("database_url")
     @classmethod
     def validate_database_url(cls, value: str) -> str:
-        if not value.startswith(("postgresql://", "postgresql+psycopg://")):
-            msg = "DATABASE_URL must use a PostgreSQL connection scheme"
+        allowed_prefixes = (
+            "postgresql://",
+            "postgresql+psycopg://",
+            "sqlite://",
+            "sqlite+pysqlite://",
+        )
+        if not value.startswith(allowed_prefixes):
+            msg = "DATABASE_URL must use a PostgreSQL or SQLite connection scheme"
             raise ValueError(msg)
         return value
 

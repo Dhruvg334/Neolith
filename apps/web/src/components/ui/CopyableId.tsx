@@ -5,9 +5,10 @@ import { useState } from "react";
 export interface CopyableIdProps {
   readonly label?: string;
   readonly value: string;
+  readonly truncateLength?: number;
 }
 
-export function CopyableId({ label, value }: CopyableIdProps) {
+export function CopyableId({ label, value, truncateLength }: CopyableIdProps) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -20,10 +21,15 @@ export function CopyableId({ label, value }: CopyableIdProps) {
     }
   }
 
+  const displayValue =
+    truncateLength && value.length > truncateLength
+      ? `${value.slice(0, truncateLength)}…`
+      : value;
+
   return (
     <span className="ui-copyable-id">
       {label ? <strong>{label}:</strong> : null}
-      <code>{value}</code>
+      <code title={value}>{displayValue}</code>
       <button
         type="button"
         onClick={handleCopy}

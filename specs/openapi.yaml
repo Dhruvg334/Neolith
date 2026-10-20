@@ -246,6 +246,90 @@ paths:
         "202":
           description: Evaluation started
 
+  /financial/accounts:
+    get:
+      operationId: listFinancialAccounts
+      responses:
+        "200":
+          description: List synthetic financial accounts
+
+  /financial/accounts/{account_id}:
+    get:
+      operationId: getFinancialAccount
+      parameters:
+        - name: account_id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        "200":
+          description: Financial account detail
+        "404":
+          $ref: "#/components/responses/Problem"
+
+  /financial/invoices:
+    get:
+      operationId: listFinancialInvoices
+      responses:
+        "200":
+          description: List synthetic vendor invoices
+
+  /financial/invoices/{invoice_id}:
+    get:
+      operationId: getFinancialInvoice
+      parameters:
+        - name: invoice_id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: Invoice detail
+        "404":
+          $ref: "#/components/responses/Problem"
+
+  /financial/beneficiaries:
+    get:
+      operationId: listFinancialBeneficiaries
+      responses:
+        "200":
+          description: List synthetic beneficiaries
+
+  /financial/transactions:
+    get:
+      operationId: listFinancialTransactions
+      responses:
+        "200":
+          description: List synthetic financial transactions
+
+  /financial/budgets:
+    get:
+      operationId: listFinancialBudgets
+      responses:
+        "200":
+          description: List monthly category budgets with used and available balances
+
+  /financial/summary:
+    get:
+      operationId: getFinancialSummary
+      responses:
+        "200":
+          description: Aggregated financial demo summary
+
+  /financial/tools:
+    get:
+      operationId: listFinancialTools
+      responses:
+        "200":
+          description: Registered Financial Agent tools metadata
+
+  /financial/seed:
+    post:
+      operationId: seedFinancialDemoData
+      responses:
+        "200":
+          description: Seeded or reset deterministic financial demo data
+
 components:
   parameters:
     TaskId:

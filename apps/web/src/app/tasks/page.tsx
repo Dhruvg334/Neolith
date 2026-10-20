@@ -1,133 +1,130 @@
+import Link from "next/link";
+import { AgentTaskConsole } from "@/components/AgentTaskConsole";
 import {
   Badge,
   Card,
   CardHeader,
+  CopyableId,
   DataTable,
   EmptyState,
-  RiskTierBadge,
   type DataTableColumn,
-  type RiskTier,
 } from "@/components/ui";
+import {
+  FALLBACK_TASKS,
+  fetchApiWithFallback,
+  type TaskRecordDto,
+} from "@/lib/financial-api";
 
-interface SyntheticVendorRow {
-  readonly id: string;
-  readonly name: string;
-  readonly monthlyPrice: string;
-  readonly seats: number;
-  readonly sso: boolean;
-  readonly exportSupported: boolean;
-  readonly riskTier: RiskTier;
-}
+export const dynamic = "force-dynamic";
 
-const CATALOGUE_PREVIEW: readonly SyntheticVendorRow[] = [
+const TASK_COLUMNS: readonly DataTableColumn<TaskRecordDto>[] = [
   {
-    id: "taskforge",
-    name: "TaskForge",
-    monthlyPrice: "INR 6,000.00",
-    seats: 15,
-    sso: true,
-    exportSupported: true,
-    riskTier: "R1",
-  },
-  {
-    id: "plagridx",
-    name: "PlanGridX",
-    monthlyPrice: "INR 9,500.00",
-    seats: 20,
-    sso: true,
-    exportSupported: true,
-    riskTier: "R2",
-  },
-  {
-    id: "sprintdesk",
-    name: "SprintDesk",
-    monthlyPrice: "INR 4,500.00",
-    seats: 10,
-    sso: false,
-    exportSupported: true,
-    riskTier: "R2",
-  },
-];
-
-const VENDOR_COLUMNS: readonly DataTableColumn<SyntheticVendorRow>[] = [
-  {
-    key: "name",
-    header: "Vendor",
+    key: "id",
+    header: "Task ID",
     render: (row) => (
-      <span>
-        <strong>{row.name}</strong>{" "}
-        <code className="inline-code">{row.id}</code>
-      </span>
+      <Link href={`/tasks/${row.id}`}>
+        <CopyableId label="task" value={row.id} truncateLength={10} />
+      </Link>
     ),
   },
   {
-    key: "price",
-    header: "Monthly Price",
-    render: (row) => row.monthlyPrice,
-  },
-  {
-    key: "seats",
-    header: "Included Seats",
-    render: (row) => String(row.seats),
-  },
-  {
-    key: "sso",
-    header: "SSO",
+    key: "request",
+    header: "Submitted Financial / Platform Goal",
     render: (row) => (
-      <Badge variant={row.sso ? "allow" : "neutral"}>
-        {row.sso ? "Supported" : "No"}
+      <div>
+        <strong>{row.original_request}</strong>
+        {row.objective ? (
+          <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>
+            Objective: {row.objective}
+          </div>
+        ) : null}
+      </div>
+    ),
+  },
+  {
+    key: "state",
+    header: "Workflow State",
+    render: (row) => (
+      <Badge variant={row.state === "completed" ? "allow" : "info"}>
+        {row.state.toUpperCase()}
       </Badge>
     ),
   },
   {
-    key: "export",
-    header: "Data Export",
-    render: (row) => (
-      <Badge variant={row.exportSupported ? "allow" : "neutral"}>
-        {row.exportSupported ? "Supported" : "No"}
-      </Badge>
-    ),
+    key: "trace",
+    header: "Trace Correlation",
+    render: (row) =>
+      row.trace_id ? (
+        <CopyableId label="trace" value={row.trace_id} truncateLength={12} />
+      ) : (
+        "—"
+      ),
   },
   {
-    key: "risk",
-    header: "Base Risk Tier",
-    render: (row) => <RiskTierBadge tier={row.riskTier} />,
+    key: "detail",
+    header: "Inspect",
+    render: (row) => (
+      <Link
+        href={`/tasks/${row.id}`}
+        className="ui-btn ui-btn-outline ui-btn-sm"
+      >
+        Open Task
+      </Link>
+    ),
   },
 ];
 
-export default function TasksPage() {
+export default async function TasksPage() {
+  const tasksRes = await fetchApiWithFallback<readonly TaskRecordDto[]>(
+    "/tasks",
+    FALLBACK_TASKS
+  );
+  const tasks = tasksRes.data;
+
   return (
     <div>
       <Card>
-        <Badge variant="info">Requester View</Badge>
-        <h1 className="page-title">Task Workspace</h1>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "0.5rem",
+          }}
+        >
+          <Badge variant="info">Requester &amp; Treasury Task Workspace</Badge>
+          <Badge variant={tasksRes.live ? "allow" : "review"}>
+            {tasksRes.live ? "Live Task Registry" : "Seed Task Snapshot"}
+          </Badge>
+        </div>
+        <h1 className="page-title">Task Registry &amp; Intake</h1>
         <p className="page-lead">
-          Structured workspace for enterprise goal intake, grounded vendor
-          research, plan inspection, and governed execution status tracking.
+          Structured workspace for submitting financial and enterprise tasks,
+          tracking planning state, and inspecting trace correlation IDs before
+          Runtime Gateway evaluation.
         </p>
       </Card>
 
-      <Card>
-        <CardHeader
-          title="Active Tasks"
-          subtitle="Tasks persisted in PostgreSQL will appear here once Phase 1 task registry endpoints are connected."
-        />
-        <EmptyState
-          title="No Active Tasks Submitted"
-          description="Task creation and LangGraph procurement planning connect to POST /api/v1/tasks in Phase 1 and Phase 2."
-        />
-      </Card>
+      <AgentTaskConsole />
 
       <Card>
         <CardHeader
-          title="Approved Synthetic Vendor Catalogue Fixture (data/fixtures/vendors.json)"
-          subtitle="Deterministic vendor dataset used for grounded procurement comparison."
+          title={`Registered Tasks (${tasks.length})`}
+          subtitle="Tasks persisted in PostgreSQL via GET /api/v1/tasks and POST /api/v1/tasks."
         />
-        <DataTable
-          columns={VENDOR_COLUMNS}
-          rows={CATALOGUE_PREVIEW}
-          getRowKey={(row) => row.id}
-        />
+        {tasks.length === 0 ? (
+          <EmptyState
+            title="No Tasks Submitted Yet"
+            description="Use the form above to submit a financial task to the control plane."
+          />
+        ) : (
+          <DataTable
+            columns={TASK_COLUMNS}
+            rows={tasks}
+            getRowKey={(row) => row.id}
+          />
+        )}
       </Card>
     </div>
   );

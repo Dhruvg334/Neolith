@@ -51,9 +51,13 @@ CREATE TABLE agent_versions (
 CREATE TABLE tools (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text UNIQUE NOT NULL,
+  description text NOT NULL DEFAULT '',
   protocol text NOT NULL CHECK (protocol IN ('mcp','rest','a2a')),
   risk_tier text NOT NULL CHECK (risk_tier IN ('R0','R1','R2','R3','R4')),
   reversibility text NOT NULL CHECK (reversibility IN ('reversible','compensatable','irreversible')),
+  read_only boolean NOT NULL DEFAULT true,
+  protected boolean NOT NULL DEFAULT false,
+  required_capability text NOT NULL DEFAULT '',
   status entity_status NOT NULL DEFAULT 'active',
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -63,6 +67,8 @@ CREATE TABLE tool_versions (
   tool_id uuid NOT NULL REFERENCES tools(id),
   version text NOT NULL,
   description_hash text NOT NULL,
+  input_schema jsonb NOT NULL DEFAULT '{}'::jsonb,
+  output_schema jsonb NOT NULL DEFAULT '{}'::jsonb,
   input_schema_hash text NOT NULL,
   output_schema_hash text NOT NULL,
   endpoint_ref text NOT NULL,
@@ -321,3 +327,60 @@ CREATE INDEX idx_decision_action ON governance_decisions(action_id);
 CREATE INDEX idx_reservations_state ON budget_reservations(state, expires_at);
 CREATE INDEX idx_permits_state ON execution_permits(state, expires_at);
 CREATE INDEX idx_receipts_action ON decision_receipts(action_id, chain_index);
+
+-- Financial Reference Application Sandbox Tables (Isolated Demo Domain)
+
+CREATE TABLE financial_accounts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  organisation_name text NOT NULL,
+  name text NOT NULL,
+  account_type text NOT NULL DEFAULT 'operating',
+  currency char(3) NOT NULL DEFAULT 'INR',
+  available_balance numeric(18,2) NOT NULL CHECK (available_balance >= 0),
+  status text NOT NULL DEFAULT 'active' CHECK (status IN ('active','frozen','closed')),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(organisation_name, name)
+);
+
+CREATE TABLE financial_beneficiaries (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text UNIQUE NOT NULL,
+  reference text NOT NULL,
+  status text NOT NULL DEFAULT 'active' CHECK (status IN ('active','pending','blocked')),
+  verified boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE financial_invoices (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_number text UNIQUE NOT NULL,
+  vendor_name text NOT NULL,
+  vendor_id uuid REFERENCES financial_beneficiaries(id),
+  category text NOT NULL,
+  amount numeric(18,2) NOT NULL CHECK (amount >= 0),
+  currency char(3) NOT NULL DEFAULT 'INR',
+  due_date date NOT NULL,
+  status text NOT NULL DEFAULT 'unpaid' CHECK (status IN ('unpaid','pending_approval','paid','cancelled','overdue')),
+  is_verified_vendor boolean NOT NULL DEFAULT false,
+  description text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE financial_transactions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  transaction_type text NOT NULL,
+  account_id uuid NOT NULL REFERENCES financial_accounts(id),
+  invoice_id uuid REFERENCES financial_invoices(id),
+  beneficiary_id uuid REFERENCES financial_beneficiaries(id),
+  category text,
+  amount numeric(18,2) NOT NULL CHECK (amount >= 0),
+  currency char(3) NOT NULL DEFAULT 'INR',
+  status text NOT NULL DEFAULT 'completed' CHECK (status IN ('pending','completed','cancelled','failed')),
+  reference text NOT NULL,
+  idempotency_key text UNIQUE NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  completed_at timestamptz
+);
+

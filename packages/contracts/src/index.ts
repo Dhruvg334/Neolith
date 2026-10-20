@@ -34,6 +34,12 @@ export type DecisionOutcome =
   | "review"
   | "allow_with_constraints";
 
+export type FinancialActionType =
+  | "pay_invoice"
+  | "transfer_funds"
+  | "add_beneficiary"
+  | "cancel_payment";
+
 export interface HealthResponse {
   readonly status: "ok";
   readonly service: string;
@@ -98,4 +104,35 @@ export interface ExecutionRequestEnvelope {
   readonly context_hash: string;
   readonly requested_at: string;
   readonly nonce: string;
+}
+
+export interface InvoiceSummary {
+  readonly invoice_id: string;
+  readonly invoice_number: string;
+  readonly vendor_name: string;
+  readonly category: string;
+  readonly amount: string;
+  readonly currency: string;
+  readonly due_date: string;
+  readonly status: "unpaid" | "pending_approval" | "paid" | "cancelled" | "overdue";
+  readonly is_verified_vendor: boolean;
+}
+
+export interface FinancialContext {
+  readonly account_id: string;
+  readonly available_balance: string;
+  readonly currency: string;
+  readonly category_budgets: Readonly<Record<string, string>>;
+  readonly unpaid_invoices: readonly InvoiceSummary[];
+}
+
+export interface FinancialActionProposal {
+  readonly action_type: FinancialActionType;
+  readonly target_id: string;
+  readonly amount?: string | null;
+  readonly currency: string;
+  readonly category?: string | null;
+  readonly vendor_name?: string | null;
+  readonly justification: string;
+  readonly evidence_refs: readonly string[];
 }
