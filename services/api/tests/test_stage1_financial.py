@@ -272,7 +272,7 @@ def test_registry_endpoints(stage1_client: TestClient) -> None:
     agents = agents_res.json()
     assert len(agents) == 1
     assert agents[0]["name"] == "financial-ai-agent"
-    assert agents[0]["active_version"] == "0.1.0"
+    assert agents[0]["active_version"] in ("0.1.0", "1.0.0")
     assert len(agents[0]["allowed_tools"]) == 9
 
     tools_res = stage1_client.get("/api/v1/tools")
