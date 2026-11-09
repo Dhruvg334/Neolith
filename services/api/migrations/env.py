@@ -7,13 +7,14 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 import neolith_api.core.models
-import neolith_api.financial.models  # noqa: F401
+import neolith_api.financial.models
+import neolith_api.interactions.models  # noqa: F401
 from neolith_api.core.database import Base
 
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 env_db_url = os.getenv("DATABASE_URL")
 if env_db_url:

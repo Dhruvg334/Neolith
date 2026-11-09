@@ -101,6 +101,29 @@ class Settings(BaseSettings):
     llm_model_reasoning: str = Field(default="", validation_alias="LLM_MODEL_REASONING")
     embedding_model: str = Field(default="", validation_alias="EMBEDDING_MODEL")
 
+    neolith_agent_worker_url: str = Field(
+        default="http://localhost:8010",
+        validation_alias="NEOLITH_AGENT_WORKER_URL",
+    )
+    neolith_api_base_url: str = Field(
+        default="http://localhost:8000/api/v1",
+        validation_alias="NEOLITH_API_BASE_URL",
+    )
+
+    twilio_account_sid: str = Field(default="", validation_alias="TWILIO_ACCOUNT_SID")
+    twilio_auth_token: str = Field(default="", validation_alias="TWILIO_AUTH_TOKEN")
+    twilio_whatsapp_from: str = Field(default="", validation_alias="TWILIO_WHATSAPP_FROM")
+    twilio_whatsapp_webhook_public_url: str = Field(
+        default="", validation_alias="TWILIO_WHATSAPP_WEBHOOK_PUBLIC_URL"
+    )
+
+    elevenlabs_custom_llm_bearer_token: str = Field(
+        default="", validation_alias="ELEVENLABS_CUSTOM_LLM_BEARER_TOKEN"
+    )
+    elevenlabs_custom_llm_model_id: str = Field(
+        default="neolith-financial-agent", validation_alias="ELEVENLABS_CUSTOM_LLM_MODEL_ID"
+    )
+
     @field_validator("database_url")
     @classmethod
     def validate_database_url(cls, value: str) -> str:

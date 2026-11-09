@@ -41,17 +41,23 @@ Instead of giving the AI direct authority to move money or modify company system
 
 <h2 align="center">Current Build Status</h2>
 
-The repository currently contains the **Phase 0 foundation and Phase 1 financial sandbox**: persistent platform/domain models, deterministic Neolith Demo Corp data, financial read APIs, registered financial-tool metadata, a permit-gated banking simulator boundary, initial web screens, and typed agent proposal contracts.
+The repository currently contains **Phase 0 (Foundation)**, **Phase 1 (Financial Sandbox & Domain Reference)**, and **Phase 2 (Financial AI Agent & Multi-Channel Interaction Core)** fully implemented, tested, and verified.
 
-The next implementation milestone is **Phase 2: Financial AI Agent + Multi-Channel Interaction Core**. Runtime governance decisions, atomic budget reservations, signed execution permits, approvals, Decision Receipts, and revocation remain planned later phases and are shown in architecture diagrams as the target execution path.
+- **Financial AI Agent (`services/agent-worker`)**: Stateful LangGraph agent with structured financial intent extraction, read-only context retrieval, evidence assembly, inspectable planning, and typed `FinancialActionProposal` generation.
+- **Multi-Channel Interaction Core (`services/api`)**: Unified normalisation of user turns into canonical `InteractionTurn` records across three ingress channels:
+  1. **Web Console**: `POST /api/v1/interactions/message` and upgraded interactive web console at `/agent`.
+  2. **WhatsApp Messaging**: `POST /api/v1/integrations/twilio/whatsapp/webhook` with Twilio signature validation (`X-Twilio-Signature`), MessageSid idempotency, and asynchronous dispatch.
+  3. **Voice Interface**: `POST /integrations/elevenlabs/v1/chat/completions` OpenAI-compatible streaming SSE endpoint terminating with `data: [DONE]`.
+- **Channel Parity**: All three channels resolve to the **same single Financial AI Agent**, guaranteeing consistent context retrieval, evidence analysis, and proposal production across every interface.
+- **Protected Execution Boundary**: Real-world execution (`pay_invoice`, `transfer_funds`) remains permit-gated and strictly blocked. Runtime governance evaluation, atomic Redis budget reservations, Ed25519 single-use execution permits, human-in-the-loop approvals, and tamper-evident Decision Receipts remain planned for **Phase 3**.
 
 <h3 align="center">Three User Interfaces, One Agent, One Governance Path</h3>
 
-Neolith will expose the same Financial AI Agent through three interfaces:
+Neolith exposes the same Financial AI Agent across three interfaces:
 
-- **Web** — the primary inspectable application and operator experience.
-- **WhatsApp via Twilio** — a messaging interface for natural-language financial requests.
-- **Voice via ElevenLabs** — a future voice interface using Neolith as the ElevenLabs Custom LLM backend.
+- **Web** — the primary inspectable application, chat console, and operator experience (`/agent`).
+- **WhatsApp via Twilio** — authenticated messaging webhook with phone number masking in application logs.
+- **Voice via ElevenLabs** — streaming voice interface using Neolith as an authenticated ElevenLabs Custom LLM backend.
 
 ```mermaid
 flowchart LR
@@ -309,11 +315,11 @@ Neolith/
 │           ├── components/         # AppShell, AgentTaskConsole & reusable UI primitives (Card, DataTable, BudgetMeter)
 │           └── lib/                # Typed Financial & Platform API client with offline seed snapshot fallback
 ├── services/
-│   ├── api/                        # FastAPI control plane, SQLAlchemy 2.0 ORM, Alembic migrations & seed module
-│   │   ├── migrations/             # Alembic migration environment & Stage 1 initial revision
-│   │   ├── src/neolith_api/        # Core ORM models, financial sandbox, read/registry routers; interaction/integration modules are Phase 2 targets
-│   │   └── tests/                  # Comprehensive pytest suite (health, readiness, financial sandbox, migrations)
-│   ├── agent-worker/               # LangGraph agent state and channel-neutral interaction/FinancialActionProposal contracts
+│   ├── api/                        # FastAPI control plane, Interaction Core, Twilio/ElevenLabs adapters, Alembic migrations & seed module
+│   │   ├── migrations/             # Alembic migration environment (revisions 0001_stage1_financial, 0002_stage2_interactions)
+│   │   ├── src/neolith_api/        # Core ORM models, financial sandbox, interactions, Twilio webhook, ElevenLabs SSE adapter
+│   │   └── tests/                  # 50 unit and integration tests (contracts, financial sandbox, agent, web, WhatsApp, voice, parity)
+│   ├── agent-worker/               # Stateful LangGraph Financial AI Agent, FinancialContextClient, internal HTTP service, and mock/OpenAI providers
 │   └── tool-simulator/             # SimulatedBankingService (R1 read tools + permit-gated R2-R4 write stubs)
 ├── packages/
 │   └── contracts/                  # Shared TypeScript contract interfaces & schema identifiers
@@ -386,13 +392,19 @@ cd ..\..
 .venv\Scripts\python.exe -m neolith_api.seed
 ```
 
-Start the FastAPI server on `http://localhost:8000`:
+Start the Financial Agent Worker on `http://localhost:8010` (internal service):
+
+```cmd
+.venv\Scripts\python.exe -m uvicorn neolith_agent.server:app --app-dir services\agent-worker\src --host 0.0.0.0 --port 8010 --reload
+```
+
+Start the FastAPI control-plane server on `http://localhost:8000`:
 
 ```cmd
 .venv\Scripts\python.exe -m uvicorn neolith_api.main:app --app-dir services\api\src --host 0.0.0.0 --port 8000 --reload
 ```
 
-Verify the health, readiness, and financial sandbox endpoints:
+Verify health, financial sandbox, and multi-channel interaction endpoints:
 
 ```cmd
 curl http://localhost:8000/api/v1/health
@@ -400,6 +412,11 @@ curl http://localhost:8000/api/v1/financial/summary
 curl http://localhost:8000/api/v1/financial/invoices
 curl http://localhost:8000/api/v1/financial/budgets
 curl http://localhost:8000/api/v1/financial/tools
+
+:: Test Web interaction endpoint
+curl -X POST http://localhost:8000/api/v1/interactions/message ^
+  -H "Content-Type: application/json" ^
+  -d "{\"text\": \"What is our Operations Account balance?\"}"
 ```
 
 ### 5. Frontend Setup & Verification (`apps/web`)

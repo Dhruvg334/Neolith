@@ -6,9 +6,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
+from neolith_api.api.v1.elevenlabs import router as elevenlabs_router
 from neolith_api.api.v1.financial import router as financial_router
 from neolith_api.api.v1.health import router as health_router
+from neolith_api.api.v1.interactions import router as interactions_router
 from neolith_api.api.v1.registry import router as registry_router
+from neolith_api.api.v1.twilio import router as twilio_router
 from neolith_api.core.config import Settings, get_settings
 from neolith_api.core.errors import register_exception_handlers
 from neolith_api.core.telemetry import configure_telemetry, get_request_trace_id, get_tracer
@@ -64,6 +67,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(financial_router, prefix="/api/v1")
     app.include_router(registry_router, prefix="/api/v1")
+    app.include_router(interactions_router, prefix="/api/v1")
+    app.include_router(twilio_router, prefix="/api/v1")
+    app.include_router(elevenlabs_router)
     return app
 
 

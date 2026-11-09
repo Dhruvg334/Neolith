@@ -8,12 +8,17 @@ from pydantic import BaseModel, ConfigDict, Field
 
 WorkflowNode = Literal[
     "understand_goal",
+    "understand_request",
     "clarify_constraints",
+    "clarify",
     "retrieve_candidates",
+    "retrieve_financial_context",
     "compare_candidates",
+    "analyse_evidence",
     "build_plan",
     "propose_action",
     "await_governance",
+    "completed",
 ]
 
 FinancialActionType = Literal[
@@ -107,5 +112,13 @@ class AgentWorkflowState(BaseModel):
     proposal: ActionProposal | None = None
     financial_context: FinancialContext | None = None
     financial_proposal: FinancialActionProposal | None = None
+    extracted_intent: str | None = None
+    extracted_entities: dict[str, Any] = Field(default_factory=dict)
+    evidence_refs: list[str] = Field(default_factory=list)
+    plan_summary: str | None = None
+    response_message: str | None = None
+    response_status: str | None = None
+    needs_clarification: bool = False
+    clarification_message: str | None = None
     current_node: WorkflowNode = "understand_goal"
     tainted_context_detected: bool = False

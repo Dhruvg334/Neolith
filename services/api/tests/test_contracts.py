@@ -18,7 +18,7 @@ from scripts.validate_contracts import (
 def test_all_contracts_validate_cleanly() -> None:
     """All JSON Schemas, OpenAPI spec, SQL bootstrap DDL, and evaluation fixtures validate."""
     summary = validate_all(ROOT)
-    assert summary["schemas"] == 5
+    assert summary["schemas"] == 8
     assert summary["openapi_paths"] >= 14
     assert summary["sql_tables"] == 25
     assert summary["evaluation_scenarios"] == 7
@@ -50,7 +50,7 @@ def test_execution_request_schema_enforces_required_fields_and_hashes() -> None:
     }
     jsonschema.validate(instance=valid_envelope, schema=schema)
 
-    assert len(validate_json_schemas(ROOT)) == 5
+    assert len(validate_json_schemas(ROOT)) == 8
     assert "paths" in validate_openapi(ROOT)
     assert "execution_requests" in validate_sql_schema(ROOT)
-    assert "procurement_happy_path" in validate_evaluation_scenarios(ROOT)
+    assert "financial_invoice_happy_path" in validate_evaluation_scenarios(ROOT)

@@ -110,7 +110,9 @@ async def test_deterministic_mock_llm_provider() -> None:
     provider = DeterministicMockLLMProvider()
     result = await provider.generate_structured(
         system_prompt="System prompt",
-        user_prompt="Find software",
+        user_prompt="Pay INV-001 if valid and within software budget",
         response_schema={"type": "object"},
     )
-    assert result["recommended_vendor"] == "taskforge"
+    assert result["intent"] == "pay_invoice"
+    assert result["target_id"] == "INV-001"
+    assert result["vendor_name"] == "Acme Cloud"

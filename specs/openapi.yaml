@@ -330,6 +330,42 @@ paths:
         "200":
           description: Seeded or reset deterministic financial demo data
 
+  /interactions/message:
+    post:
+      operationId: sendWebInteractionMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: {type: string, minLength: 1, maxLength: 12000}
+                task_id: {type: [string, "null"], format: uuid}
+      responses:
+        "200":
+          description: Standard interface response
+          content:
+            application/json:
+              schema:
+                $ref: "./schemas/interface-response.schema.json"
+
+  /integrations/twilio/whatsapp/webhook:
+    post:
+      operationId: handleTwilioWhatsAppWebhook
+      responses:
+        "200":
+          description: Twilio XML acknowledgement response
+
+  /integrations/elevenlabs/v1/chat/completions:
+    post:
+      operationId: elevenLabsChatCompletions
+      responses:
+        "200":
+          description: OpenAI-compatible SSE text/event-stream chunks
+
+
 components:
   parameters:
     TaskId:

@@ -384,3 +384,34 @@ CREATE TABLE financial_transactions (
   completed_at timestamptz
 );
 
+CREATE TABLE channel_sessions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  channel text NOT NULL CHECK (channel IN ('web', 'whatsapp', 'voice')),
+  provider text NOT NULL CHECK (provider IN ('neolith_web', 'twilio', 'elevenlabs')),
+  external_session_ref text,
+  external_user_ref text,
+  user_id uuid REFERENCES users(id),
+  active_task_id uuid REFERENCES tasks(id),
+  status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'closed', 'suspended')),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE interaction_turns (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  channel_session_id uuid NOT NULL REFERENCES channel_sessions(id) ON DELETE CASCADE,
+  task_id uuid REFERENCES tasks(id),
+  provider_message_id text,
+  direction text NOT NULL CHECK (direction IN ('inbound', 'outbound')),
+  content text NOT NULL,
+  status text NOT NULL DEFAULT 'received' CHECK (status IN ('received', 'processing', 'completed', 'error')),
+  trace_id text NOT NULL,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  completed_at timestamptz
+);
+
+CREATE INDEX ix_interaction_turns_provider_msg ON interaction_turns(provider_message_id);
+CREATE INDEX ix_interaction_turns_session_created ON interaction_turns(channel_session_id, created_at);
+
+

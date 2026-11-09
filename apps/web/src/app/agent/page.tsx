@@ -28,31 +28,31 @@ const AGENT_PIPELINE_PREVIEW: readonly TimelineStep[] = [
     layer: "ai",
     state: "completed",
     description:
-      "Agent inspects Operations Account balance (INR 100,000.00), category budgets, and unpaid invoices (INV-001, INV-002, INV-003).",
+      "Agent inspects Operations Account balance (INR 100,000.00), category budgets, and unpaid invoices (INV-001, INV-002, INV-003) via FinancialContextClient.",
   },
   {
     id: "step-proposal",
     title: "2. Candidate FinancialActionProposal Generation",
     layer: "ai",
-    state: "active",
+    state: "completed",
     description:
-      "Agent emits a typed FinancialActionProposal (e.g., pay_invoice) with justification and evidence_refs — never direct execution.",
+      "Agent synthesises retrieved evidence into a typed FinancialActionProposal (e.g. pay_invoice) with justification — never direct execution.",
   },
   {
     id: "step-gateway",
-    title: "3. Runtime Gateway Policy, Budget & Risk Evaluation (Stage 2)",
+    title: "3. Runtime Gateway Policy, Budget & Risk Evaluation (Phase 3)",
     layer: "governance",
     state: "pending",
     description:
-      "Neolith evaluates RBAC/ABAC capabilities, OPA Rego policies, category budget limits, and vendor verification status.",
+      "Neolith governance will evaluate RBAC/ABAC capabilities, OPA Rego policies, atomic Redis budget limits, and vendor verification status.",
   },
   {
     id: "step-settlement",
-    title: "4. Permit-Verified Settlement in Banking Simulator (Stage 2)",
+    title: "4. Permit-Verified Settlement in Banking Simulator (Phase 3)",
     layer: "enterprise",
     state: "pending",
     description:
-      "Protected write tools verify the Ed25519 ExecutionPermit before debiting Operations Account.",
+      "Protected banking write tools verify an Ed25519 ExecutionPermit before debiting the Operations Account.",
   },
 ];
 
@@ -128,64 +128,81 @@ export default async function FinancialAgentPage() {
         </h1>
         <p className="page-lead">
           Interactive console for the Financial Operations AI Agent. The agent
-          can inspect treasury balances, invoices, beneficiaries, and category
-          budgets, and formulate structured{" "}
+          inspects treasury balances, invoices, beneficiaries, and category
+          budgets via read-only APIs, and formulates structured{" "}
           <code className="inline-code">FinancialActionProposal</code>{" "}
-          envelopes. It holds zero implicit execution authority.
+          envelopes. Protected financial execution remains strictly blocked until Phase 3 governance.
         </p>
       </Card>
 
-      <AgentTaskConsole />
-
-      <Card>
-        <CardHeader
-          title="Live FinancialContext Snapshot (Exposed to Agent Planner)"
-          subtitle="Read-only state bound to FinancialContext in services/agent-worker/src/neolith_agent/state.py."
-        />
-        <div className="section-grid">
-          <div>
-            <p className="card-copy">
-              <strong>Account:</strong>{" "}
-              {summary.primary_account?.name ?? "Operations Account"}
-            </p>
-            <p className="card-copy">
-              <strong>Available Balance:</strong>{" "}
-              <code className="inline-code">
-                {summary.currency} {summary.total_available_balance}
-              </code>
-            </p>
-            <p className="card-copy">
-              <strong>Category Budgets:</strong>
-            </p>
-            <ul style={{ margin: "0.35rem 0 0 1.2rem", fontSize: "0.9rem" }}>
-              {summary.monthly_budgets.map((b) => (
-                <li key={b.id}>
-                  <code className="inline-code">{b.category}</code>:{" "}
-                  {b.currency} {b.available_amount} available / {b.limit_amount}{" "}
-                  limit
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="card-copy">
-              <strong>Unpaid Invoices in Context ({unpaidInvoices.length}):</strong>
-            </p>
-            <ul style={{ margin: "0.35rem 0 0 1.2rem", fontSize: "0.9rem" }}>
-              {unpaidInvoices.map((inv) => (
-                <li key={inv.id} style={{ marginBottom: "0.35rem" }}>
-                  <strong>{inv.invoice_number}</strong> — {inv.vendor_name} (
-                  <code className="inline-code">
-                    {inv.currency} {inv.amount}
-                  </code>
-                  , {inv.category},{" "}
-                  {inv.is_verified_vendor ? "verified" : "unverified vendor"})
-                </li>
-              ))}
-            </ul>
-          </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(360px, 1fr))",
+          gap: "1.25rem",
+          alignItems: "start",
+          marginBottom: "1.25rem",
+        }}
+      >
+        <div>
+          <AgentTaskConsole />
         </div>
-      </Card>
+
+        <div>
+          <Card>
+            <CardHeader
+              title="Live FinancialContext Snapshot (Read-Only Context)"
+              subtitle="Sandbox state consumed by FinancialContextClient (services/agent-worker/src/neolith_agent/client.py)."
+            />
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
+                <p className="card-copy" style={{ marginBottom: "0.25rem" }}>
+                  <strong>Operating Account:</strong>{" "}
+                  {summary.primary_account?.name ?? "Operations Account"}
+                </p>
+                <p className="card-copy" style={{ marginBottom: "0.5rem" }}>
+                  <strong>Available Balance:</strong>{" "}
+                  <code className="inline-code" style={{ fontSize: "1rem" }}>
+                    {summary.currency} {summary.total_available_balance}
+                  </code>
+                </p>
+                <p className="card-copy" style={{ marginBottom: "0.25rem" }}>
+                  <strong>Category Budgets:</strong>
+                </p>
+                <ul style={{ margin: "0.25rem 0 0 1.2rem", fontSize: "0.88rem" }}>
+                  {summary.monthly_budgets.map((b) => (
+                    <li key={b.id} style={{ marginBottom: "0.2rem" }}>
+                      <code className="inline-code">{b.category}</code>:{" "}
+                      <strong>{b.currency} {b.available_amount}</strong> available / {b.limit_amount} limit
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div style={{ borderTop: "1px solid var(--border)", paddingTop: "0.85rem" }}>
+                <p className="card-copy" style={{ marginBottom: "0.35rem" }}>
+                  <strong>Unpaid Invoices in Context ({unpaidInvoices.length}):</strong>
+                </p>
+                <ul style={{ margin: "0.25rem 0 0 1.2rem", fontSize: "0.88rem" }}>
+                  {unpaidInvoices.map((inv) => (
+                    <li key={inv.id} style={{ marginBottom: "0.45rem" }}>
+                      <strong>{inv.invoice_number}</strong> — {inv.vendor_name} (
+                      <code className="inline-code">
+                        {inv.currency} {inv.amount}
+                      </code>
+                      , {inv.category},{" "}
+                      <span style={{ color: inv.is_verified_vendor ? "var(--allow-fg)" : "var(--deny-fg)" }}>
+                        {inv.is_verified_vendor ? "verified" : "unverified"}
+                      </span>
+                      )
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
 
       <Card>
         <CardHeader
