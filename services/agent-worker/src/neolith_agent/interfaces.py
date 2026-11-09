@@ -37,6 +37,22 @@ class InteractionTurn(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class GovernanceSummary(BaseModel):
+    """Authoritative governance policy evaluation summary attached to an interface response."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    action_id: UUID
+    outcome: Literal["allow", "review", "deny"]
+    reason_codes: list[str] = Field(default_factory=list)
+    risk_tier: str
+    profile_name: str
+    profile_style: str
+    requires_approval: bool = False
+    budget_remaining_after: str | None = None
+    summary_text: str | None = None
+
+
 class InterfaceResponse(BaseModel):
     """Transport-neutral Financial Agent response returned to any interface adapter."""
 
@@ -49,3 +65,4 @@ class InterfaceResponse(BaseModel):
     message: str
     proposed_action: FinancialActionProposal | None = None
     evidence_refs: list[str] = Field(default_factory=list)
+    governance: GovernanceSummary | None = None

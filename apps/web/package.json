@@ -12,9 +12,13 @@
   },
   "dependencies": {
     "@neolith/contracts": "workspace:*",
+    "@panzoom/panzoom": "^4.6.2",
+    "mermaid": "^12.3.0",
     "next": "15.2.4",
     "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react-dom": "19.0.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.1",

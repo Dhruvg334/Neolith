@@ -186,9 +186,85 @@ class InteractionCoreService:
                 "status": response.status,
                 "evidence_refs": response.evidence_refs,
                 "has_proposal": response.proposed_action is not None,
+                "governance": response.governance.model_dump(mode="json")
+                if response.governance
+                else None,
             },
             completed_at=datetime.now(UTC),
         )
         self.db.add(turn)
         self.db.flush()
         return turn
+
+
+def attach_governance_to_response(
+    response: InterfaceResponse,
+    db: Session,
+    *,
+    user_id: UUID | None = None,
+    task_id: UUID | None = None,
+    trace_id: str | None = None,
+) -> None:
+    """Evaluate authoritative governance on any proposed financial action and attach summary."""
+    if not response.proposed_action:
+        return
+
+    from decimal import Decimal
+
+    from neolith_agent.interfaces import GovernanceSummary
+    from neolith_api.governance.schemas import ActionEvaluationRequest
+    from neolith_api.governance.service import GovernanceRuntimeService
+
+    prop = response.proposed_action
+    active_trace = trace_id or response.trace_id
+
+    # Resolve a valid user_id if none provided
+    resolved_user_id = user_id
+    if resolved_user_id is None:
+        user = db.scalars(select(UserModel).where(UserModel.role == "user")).first()
+        resolved_user_id = user.id if user else uuid4()
+
+    eval_req = ActionEvaluationRequest(
+        trace_id=active_trace,
+        task_id=task_id or response.task_id,
+        user_id=resolved_user_id,
+        agent_name="financial-ai-agent",
+        agent_version="1.0.0",
+        tool_name=prop.action_type,
+        operation=prop.action_type,
+        resource=prop.target_id,
+        category=prop.category,
+        amount=Decimal(str(prop.amount)) if prop.amount is not None else None,
+        currency=prop.currency,
+        parameters={
+            "target_id": prop.target_id,
+            "invoice_number": prop.target_id if prop.action_type == "pay_invoice" else None,
+            "vendor_name": prop.vendor_name,
+            "amount": str(prop.amount) if prop.amount is not None else None,
+            "category": prop.category,
+            "justification": prop.justification,
+        },
+        context={
+            "evidence_refs": prop.evidence_refs,
+        },
+    )
+
+    gov_service = GovernanceRuntimeService(db)
+    decision = gov_service.evaluate_action(eval_req)
+
+    response.governance = GovernanceSummary(
+        action_id=decision.action_id,
+        outcome=decision.decision,
+        reason_codes=decision.reason_codes,
+        risk_tier=decision.risk_tier,
+        profile_name=decision.profile_name,
+        profile_style=decision.profile_style,
+        requires_approval=(decision.decision == "review"),
+        budget_remaining_after=(
+            str(decision.budget_check.remaining_after) if decision.budget_check else None
+        ),
+        summary_text=(
+            f"Authoritative governance outcome: {decision.decision.upper()} "
+            f"[{', '.join(decision.reason_codes)}]"
+        ),
+    )

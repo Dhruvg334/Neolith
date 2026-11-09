@@ -49,9 +49,17 @@ async def _process_whatsapp_turn_background(
     with session_factory() as db:
         core_service = InteractionCoreService(db)
         from neolith_api.interactions.models import ChannelSession
+        from neolith_api.interactions.service import attach_governance_to_response
 
         chan_sess = db.get(ChannelSession, session_id)
         if chan_sess is not None:
+            attach_governance_to_response(
+                response,
+                db,
+                user_id=chan_sess.user_id,
+                task_id=turn.task_id,
+                trace_id=turn.metadata.get("trace_id") if isinstance(turn.metadata, dict) else None,
+            )
             core_service.record_outbound_turn(
                 session=chan_sess,
                 task_id=turn.task_id,

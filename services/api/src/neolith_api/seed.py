@@ -25,6 +25,13 @@ from neolith_api.financial.models import (
     InvoiceModel,
 )
 from neolith_api.financial.tools import FINANCIAL_TOOL_SPECS
+from neolith_api.governance.models import (
+    ExecutionRequestModel,
+    GovernanceDecisionModel,
+    GovernanceProfileModel,
+    PermissionBindingModel,
+    RiskSignalModel,
+)
 
 SEED_NAMESPACE = uuid5(NAMESPACE_DNS, "neolith.financial.sandbox.v1")
 
@@ -50,6 +57,11 @@ def seed_demo_data(session: Session, *, reset: bool = False) -> dict[str, int]:
     When ``reset=True``, existing financial reference records are cleared and recreated cleanly.
     """
     if reset:
+        session.execute(delete(RiskSignalModel))
+        session.execute(delete(GovernanceDecisionModel))
+        session.execute(delete(ExecutionRequestModel))
+        session.execute(delete(PermissionBindingModel))
+        session.execute(delete(GovernanceProfileModel))
         session.execute(delete(FinancialTransactionModel))
         session.execute(delete(InvoiceModel))
         session.execute(delete(BeneficiaryModel))
@@ -140,6 +152,34 @@ def seed_demo_data(session: Session, *, reset: bool = False) -> dict[str, int]:
             status="active",
         )
         session.add(agent_version)
+
+    agent_version_v1 = session.scalars(
+        select(AgentVersionModel).where(
+            AgentVersionModel.agent_id == agent.id,
+            AgentVersionModel.version == "1.0.0",
+        )
+    ).first()
+    if agent_version_v1 is None:
+        agent_version_v1 = AgentVersionModel(
+            id=deterministic_uuid("agent_version:financial-ai-agent:1.0.0"),
+            agent_id=agent.id,
+            version="1.0.0",
+            framework="langgraph",
+            model_manifest=model_manifest,
+            prompt_manifest=prompt_manifest,
+            tool_manifest=tool_manifest,
+            artifact_digest=compute_sha256_prefixed(
+                {
+                    "agent": "financial-ai-agent",
+                    "version": "1.0.0",
+                    "model_manifest": model_manifest,
+                    "prompt_manifest": prompt_manifest,
+                    "tool_manifest": tool_manifest,
+                }
+            ),
+            status="active",
+        )
+        session.add(agent_version_v1)
 
     # 4. Financial Agent Tools & Pinned Tool Versions
     tools_seeded = 0
@@ -415,6 +455,117 @@ def seed_demo_data(session: Session, *, reset: bool = False) -> dict[str, int]:
         )
         session.add(sample_task)
 
+    # 11. Governance Profiles
+    profiles_data = [
+        {
+            "key": "strict",
+            "name": "Strict Control",
+            "style": "strict",
+            "description": (
+                "Zero autonomous execution on protected operations; all financial write actions "
+                "require human operator review."
+            ),
+            "version": "1.0.0",
+            "active": False,
+            "config": {},
+        },
+        {
+            "key": "balanced",
+            "name": "Balanced Control",
+            "style": "balanced",
+            "description": (
+                "Enterprise balanced control: auto-allows verified payments within threshold "
+                "and budget, mandates review for large payments or high-risk tiers."
+            ),
+            "version": "1.0.0",
+            "active": True,
+            "config": {},
+        },
+        {
+            "key": "high_autonomy",
+            "name": "High Autonomy",
+            "style": "high_autonomy",
+            "description": (
+                "Automates all routine R1-R3 operations within approved budget limits; mandates "
+                "operator review only for critical R4 operations."
+            ),
+            "version": "1.0.0",
+            "active": False,
+            "config": {},
+        },
+        {
+            "key": "custom",
+            "name": "Custom Control",
+            "style": "custom",
+            "description": (
+                "Tailored organisation policy with configurable approval thresholds, "
+                "category limits, and review operations."
+            ),
+            "version": "1.0.0",
+            "active": False,
+            "config": {
+                "max_action_amount": "100000.00",
+                "review_threshold": "25000.00",
+                "require_verified_beneficiary": True,
+                "require_review_operations": ["transfer_funds"],
+            },
+        },
+    ]
+
+    profiles_seeded = 0
+    for p in profiles_data:
+        prof = session.scalars(
+            select(GovernanceProfileModel).where(GovernanceProfileModel.style == p["style"])
+        ).first()
+        if prof is None:
+            prof = GovernanceProfileModel(
+                id=deterministic_uuid(f"governance_profile:{p['key']}"),
+                name=p["name"],
+                style=p["style"],
+                description=p["description"],
+                version=p["version"],
+                active=p["active"],
+                configuration=p["config"],
+            )
+            session.add(prof)
+        profiles_seeded += 1
+
+    # 12. Agent Permission Bindings
+    capabilities = [
+        "financial:read",
+        "financial:read_account",
+        "financial:read_transactions",
+        "financial:read_invoice",
+        "financial:read_budget",
+        "financial:read_beneficiary",
+        "financial:pay_invoice",
+        "financial:transfer_funds",
+        "financial:add_beneficiary",
+        "financial:cancel_payment",
+        "financial:invoice:pay",
+        "financial:funds:transfer",
+        "financial:payment:cancel",
+        "financial:beneficiary:add",
+    ]
+    for cap in capabilities:
+        binding = session.scalars(
+            select(PermissionBindingModel).where(
+                PermissionBindingModel.subject_id == "financial-ai-agent",
+                PermissionBindingModel.capability == cap,
+            )
+        ).first()
+        if binding is None:
+            binding = PermissionBindingModel(
+                id=deterministic_uuid(f"permission_binding:financial-ai-agent:{cap}"),
+                subject_type="agent",
+                subject_id="financial-ai-agent",
+                capability=cap,
+                resource_scope={"organisation": DEMO_ORG_NAME},
+                effect="allow",
+                status="active",
+            )
+            session.add(binding)
+
     session.commit()
     return {
         "accounts": 1,
@@ -422,6 +573,7 @@ def seed_demo_data(session: Session, *, reset: bool = False) -> dict[str, int]:
         "invoices": len(invoice_specs),
         "budgets": len(budget_specs),
         "tools": tools_seeded,
+        "profiles": profiles_seeded,
     }
 
 

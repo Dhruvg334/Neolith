@@ -166,6 +166,18 @@ export interface InteractionTurn {
   readonly metadata: Readonly<Record<string, unknown>>;
 }
 
+export interface GovernanceSummary {
+  readonly action_id: string;
+  readonly outcome: "allow" | "review" | "deny";
+  readonly reason_codes: readonly string[];
+  readonly risk_tier: string;
+  readonly profile_name: string;
+  readonly profile_style: string;
+  readonly requires_approval?: boolean;
+  readonly budget_remaining_after?: string | null;
+  readonly summary_text?: string | null;
+}
+
 export interface InterfaceResponse {
   readonly interaction_id: string;
   readonly task_id: string;
@@ -174,4 +186,5 @@ export interface InterfaceResponse {
   readonly message: string;
   readonly proposed_action?: FinancialActionProposal | null;
   readonly evidence_refs: readonly string[];
+  readonly governance?: GovernanceSummary | null;
 }

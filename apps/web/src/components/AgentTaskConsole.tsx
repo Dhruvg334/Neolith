@@ -1,9 +1,15 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { ActionInspector } from "@/components/ActionInspector";
 import { Badge, Button, Card, CardHeader, CopyableId } from "@/components/ui";
 import { formatInrCurrency, getApiBaseUrl } from "@/lib/financial-api";
-import type { FinancialActionProposal, InterfaceResponse, InterfaceResponseStatus } from "@neolith/contracts";
+import type {
+  FinancialActionProposal,
+  GovernanceSummary,
+  InterfaceResponse,
+  InterfaceResponseStatus,
+} from "@neolith/contracts";
 
 interface ChatTurn {
   readonly id: string;
@@ -12,6 +18,7 @@ interface ChatTurn {
   readonly status?: InterfaceResponseStatus;
   readonly proposed_action?: FinancialActionProposal | null;
   readonly evidence_refs?: readonly string[];
+  readonly governance?: GovernanceSummary | null;
   readonly timestamp: string;
 }
 
@@ -30,6 +37,8 @@ export function AgentTaskConsole() {
   const [activeTraceId, setActiveTraceId] = useState<string | null>(null);
   const [turns, setTurns] = useState<readonly ChatTurn[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [selectedTurn, setSelectedTurn] = useState<ChatTurn | null>(null);
+  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,6 +87,7 @@ export function AgentTaskConsole() {
         status: data.status,
         proposed_action: data.proposed_action,
         evidence_refs: data.evidence_refs,
+        governance: data.governance,
         timestamp: new Date().toLocaleTimeString(),
       };
       setTurns((prev) => [...prev, agentTurn]);
@@ -368,6 +378,134 @@ export function AgentTaskConsole() {
                     <p style={{ margin: "0.6rem 0 0 0", fontSize: "0.85rem", color: "var(--muted)" }}>
                       <em>Justification: {turn.proposed_action.justification}</em>
                     </p>
+
+                    {/* Authoritative Governance Boundary */}
+                    <div
+                      style={{
+                        marginTop: "1rem",
+                        padding: "0.85rem",
+                        borderRadius: "8px",
+                        border: "2px solid #F97316",
+                        background: "#FFFBF7",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: "0.6rem",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                          <span
+                            style={{
+                              backgroundColor: "#F97316",
+                              color: "#FFFFFF",
+                              fontSize: "0.7rem",
+                              fontWeight: 800,
+                              textTransform: "uppercase",
+                              padding: "0.15rem 0.5rem",
+                              borderRadius: "4px",
+                              letterSpacing: "0.05em",
+                            }}
+                          >
+                            Governance Boundary
+                          </span>
+                          <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#9A3412" }}>
+                            Authoritative Policy Gate
+                          </span>
+                        </div>
+                        <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#78350F" }}>
+                          Tier {turn.governance?.risk_tier ?? "R2"}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                          gap: "0.5rem",
+                          fontSize: "0.8rem",
+                          color: "#78350F",
+                          marginBottom: "0.65rem",
+                        }}
+                      >
+                        <div>
+                          <span>Active Profile:</span>{" "}
+                          <strong>{turn.governance?.profile_name ?? "Balanced Control"}</strong>
+                        </div>
+                        <div>
+                          <span>Outcome:</span>{" "}
+                          <strong
+                            style={{
+                              color:
+                                turn.governance?.outcome === "allow"
+                                  ? "#0F766E"
+                                  : turn.governance?.outcome === "deny"
+                                    ? "#B91C1C"
+                                    : "#D97706",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {turn.governance?.outcome ?? "ALLOW"}
+                          </strong>
+                        </div>
+                        {turn.governance?.budget_remaining_after ? (
+                          <div>
+                            <span>Remaining After:</span>{" "}
+                            <strong>INR {turn.governance.budget_remaining_after}</strong>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          paddingTop: "0.5rem",
+                          borderTop: "1px solid #FED7AA",
+                        }}
+                      >
+                        <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap" }}>
+                          {(turn.governance?.reason_codes ?? ["BASE_POLICY_ALLOW"]).map((rc) => (
+                            <span
+                              key={rc}
+                              style={{
+                                fontSize: "0.72rem",
+                                fontFamily: "monospace",
+                                background: "#FFEDD5",
+                                color: "#9A3412",
+                                padding: "0.1rem 0.35rem",
+                                borderRadius: "3px",
+                                border: "1px solid #FDBA74",
+                              }}
+                            >
+                              {rc}
+                            </span>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedTurn(turn);
+                            setIsInspectorOpen(true);
+                          }}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            color: "#0F766E",
+                            fontSize: "0.8rem",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            textDecoration: "underline",
+                          }}
+                        >
+                          Inspect Decision &rarr;
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 ) : null}
               </div>
@@ -375,6 +513,27 @@ export function AgentTaskConsole() {
           </div>
         </Card>
       ) : null}
+
+      <ActionInspector
+        isOpen={isInspectorOpen}
+        onClose={() => setIsInspectorOpen(false)}
+        decision={
+          selectedTurn?.governance
+            ? {
+                action_id: selectedTurn.governance.action_id,
+                trace_id: activeTraceId ?? "trace-default",
+                decision: selectedTurn.governance.outcome,
+                outcome: selectedTurn.governance.outcome,
+                reason_codes: [...selectedTurn.governance.reason_codes],
+                risk_tier: selectedTurn.governance.risk_tier,
+                profile_name: selectedTurn.governance.profile_name,
+                profile_style: selectedTurn.governance.profile_style,
+                profile_version: "1.0.0",
+                created_at: new Date().toISOString(),
+              }
+            : null
+        }
+      />
     </div>
   );
 }

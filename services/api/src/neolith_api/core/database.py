@@ -38,7 +38,9 @@ def initialize_database(
 ) -> sessionmaker[Session]:
     """Ensure all ORM tables exist and optionally seed deterministic financial reference data."""
     import neolith_api.core.models
-    import neolith_api.financial.models  # noqa: F401
+    import neolith_api.financial.models
+    import neolith_api.governance.models
+    import neolith_api.interactions.models  # noqa: F401
     from neolith_api.seed import seed_demo_data
 
     Base.metadata.create_all(bind=engine)

@@ -30,6 +30,44 @@
     "evidence_refs": {
       "type": "array",
       "items": {"type": "string"}
+    },
+    "governance": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "action_id",
+            "outcome",
+            "reason_codes",
+            "risk_tier",
+            "profile_name",
+            "profile_style"
+          ],
+          "properties": {
+            "action_id": {"type": "string", "format": "uuid"},
+            "outcome": {
+              "type": "string",
+              "enum": ["allow", "review", "deny"]
+            },
+            "reason_codes": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "risk_tier": {"type": "string"},
+            "profile_name": {"type": "string"},
+            "profile_style": {"type": "string"},
+            "requires_approval": {"type": "boolean"},
+            "budget_remaining_after": {
+              "type": ["string", "null"]
+            },
+            "summary_text": {
+              "type": ["string", "null"]
+            }
+          }
+        },
+        {"type": "null"}
+      ]
     }
   }
 }

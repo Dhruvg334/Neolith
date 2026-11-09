@@ -365,6 +365,127 @@ paths:
         "200":
           description: OpenAI-compatible SSE text/event-stream chunks
 
+  /governance/profiles:
+    get:
+      operationId: listGovernanceProfiles
+      responses:
+        "200":
+          description: List governance profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GovernanceProfile"
+    post:
+      operationId: createGovernanceProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GovernanceProfileCreate"
+      responses:
+        "201":
+          description: Created governance profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GovernanceProfile"
+
+  /governance/profiles/active:
+    get:
+      operationId: getActiveGovernanceProfile
+      responses:
+        "200":
+          description: Active governance profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GovernanceProfile"
+
+  /governance/profiles/{profile_id}/activate:
+    post:
+      operationId: activateGovernanceProfile
+      parameters:
+        - name: profile_id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        "200":
+          description: Activated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GovernanceProfile"
+        "404":
+          $ref: "#/components/responses/Problem"
+
+  /governance/profiles/{profile_id}:
+    put:
+      operationId: updateGovernanceProfile
+      parameters:
+        - name: profile_id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GovernanceProfileUpdate"
+      responses:
+        "200":
+          description: Updated governance profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GovernanceProfile"
+        "404":
+          $ref: "#/components/responses/Problem"
+
+  /governance/decisions:
+    get:
+      operationId: listGovernanceDecisions
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: {type: integer, default: 50}
+        - name: outcome
+          in: query
+          required: false
+          schema: {type: string}
+      responses:
+        "200":
+          description: List governance decisions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GovernanceDecision"
+
+  /governance/decisions/{action_id}:
+    get:
+      operationId: getGovernanceDecision
+      parameters:
+        - name: action_id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        "200":
+          description: Detailed governance decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GovernanceDecision"
+        "404":
+          $ref: "#/components/responses/Problem"
+
 
 components:
   parameters:
@@ -423,9 +544,19 @@ components:
         decision:
           type: string
           enum: [allow, deny, review, allow_with_constraints]
+        outcome:
+          type: string
+          enum: [allow, deny, review, allow_with_constraints]
         reason_codes:
           type: array
           items: {type: string}
+        risk_tier: {type: string}
+        profile_id: {type: [string, "null"], format: uuid}
+        profile_name: {type: string}
+        profile_style: {type: string}
+        profile_version: {type: string}
+        budget_check: {type: [object, "null"]}
+        tool_metadata: {type: [object, "null"]}
         permit:
           oneOf:
             - $ref: "./schemas/execution-permit.schema.json"
@@ -433,6 +564,40 @@ components:
         approval:
           type: [object, "null"]
         trace_id: {type: string}
+        created_at: {type: string, format: date-time}
+
+    GovernanceProfile:
+      type: object
+      required: [id, name, style, description, version, active, configuration, created_at, updated_at]
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        style:
+          type: string
+          enum: [strict, balanced, high_autonomy, custom]
+        description: {type: string}
+        version: {type: string}
+        active: {type: boolean}
+        configuration: {type: object}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+
+    GovernanceProfileCreate:
+      type: object
+      required: [name, style, description]
+      properties:
+        name: {type: string, minLength: 3, maxLength: 128}
+        style:
+          type: string
+          enum: [strict, balanced, high_autonomy, custom]
+        description: {type: string, minLength: 10, maxLength: 1000}
+        configuration: {type: object}
+
+    GovernanceProfileUpdate:
+      type: object
+      properties:
+        description: {type: string, minLength: 10, maxLength: 1000}
+        configuration: {type: object}
 
     HealthResponse:
       type: object

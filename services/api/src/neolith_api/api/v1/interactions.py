@@ -11,7 +11,10 @@ from sqlalchemy.orm import Session
 from neolith_agent.interfaces import InteractionTurn, InterfaceResponse
 from neolith_api.core.database import get_db_session
 from neolith_api.integrations.agent_client import AgentWorkerClient
-from neolith_api.interactions.service import InteractionCoreService
+from neolith_api.interactions.service import (
+    InteractionCoreService,
+    attach_governance_to_response,
+)
 
 router = APIRouter(prefix="/interactions", tags=["interactions"])
 
@@ -77,6 +80,15 @@ async def post_web_message(
     # Invoke the Financial Agent worker
     agent_client = AgentWorkerClient()
     response = await agent_client.process_turn(turn)
+
+    # Authoritative Governance evaluation if an action was proposed
+    attach_governance_to_response(
+        response,
+        session,
+        user_id=channel_session.user_id,
+        task_id=task.id,
+        trace_id=trace_id,
+    )
 
     # Persist outbound response
     core_service.record_outbound_turn(

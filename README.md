@@ -41,14 +41,26 @@ Instead of giving the AI direct authority to move money or modify company system
 
 <h2 align="center">Current Build Status</h2>
 
-The repository currently contains **Phase 0 (Foundation)**, **Phase 1 (Financial Sandbox & Domain Reference)**, and **Phase 2 (Financial AI Agent & Multi-Channel Interaction Core)** fully implemented, tested, and verified.
+The repository contains **Phase 0 (Foundation)**, **Phase 1 (Financial Sandbox & Domain Reference)**, **Phase 2 (Financial AI Agent & Multi-Channel Interaction Core)**, and **Phase 3 (Policy-Driven Governance Runtime & Documentation Hub)** fully implemented, tested, and verified.
 
+- **Policy-Driven Governance Decision Runtime (`services/api`)**: Deterministic evaluation gateway (`POST /api/v1/actions/evaluate` and `GET /api/v1/actions/{action_id}`) executing Open Policy Agent (Rego v1) rules, category budget constraints, identity/permission bindings, and vendor verification checks. Records all evaluations in PostgreSQL (`governance_decisions`, `execution_requests`, `risk_signals`) with deterministic SHA-256 parameter hashing.
+- **Configurable Governance Profiles (`/api/v1/governance/profiles`)**: Enterprise policy postures selectable dynamically without code redeployment:
+  1. **Strict Control**: Human-in-the-loop sign-off required for all actions; zero automated execution.
+  2. **Balanced (Default)**: Routine `R1`/`R2` payments under category approval threshold auto-cleared; high-value actions routed to human review; policy violations denied.
+  3. **High Autonomy**: Low- and medium-risk operations (`R1`–`R3`) auto-approved within category budget ceilings; only critical mutations (`R4`) require review.
+  4. **Custom Profiles**: Granular per-organisation thresholds (`single_action_threshold_inr`, `max_daily_spend_inr`, auto-approved risk tiers).
+- **Canonical Evaluation Scenarios**:
+  - **`INV-001` (Acme Cloud, INR 8,000.00)**: Evaluates to **`ALLOW`** (verified vendor, within software budget).
+  - **`INV-002` (Nova Compute, INR 35,000.00)**: Evaluates to **`REVIEW`** (`APPROVAL_REQUIRED`, exceeds INR 25,000.00 threshold).
+  - **`INV-003` (Unknown Supplies, INR 85,000.00)**: Evaluates to **`DENY`** with dual reason codes (`BUDGET_EXCEEDED` and `UNVERIFIED_BENEFICIARY`).
 - **Financial AI Agent (`services/agent-worker`)**: Stateful LangGraph agent with structured financial intent extraction, read-only context retrieval, evidence assembly, inspectable planning, and typed `FinancialActionProposal` generation.
 - **Multi-Channel Interaction Core (`services/api`)**: Unified normalisation of user turns into canonical `InteractionTurn` records across three ingress channels:
   1. **Web Console**: `POST /api/v1/interactions/message` and upgraded interactive web console at `/agent`.
   2. **WhatsApp Messaging**: `POST /api/v1/integrations/twilio/whatsapp/webhook` with Twilio signature validation (`X-Twilio-Signature`), MessageSid idempotency, and asynchronous dispatch.
   3. **Voice Interface**: `POST /integrations/elevenlabs/v1/chat/completions` OpenAI-compatible streaming SSE endpoint terminating with `data: [DONE]`.
-- **Channel Parity**: All three channels resolve to the **same single Financial AI Agent**, guaranteeing consistent context retrieval, evidence analysis, and proposal production across every interface.
+- **Cross-Channel Governance Parity**: All three ingress channels resolve to the **same Financial AI Agent** and execute through the **same Governance Runtime**, returning typed `GovernanceSummary` envelopes (decision, reason codes, profile, risk tier, budget impact).
+- **Interactive Documentation Hub (`/docs`) & Adoption Guide (`/adopt`)**: Next.js 15 enterprise experience featuring 7 interactive Mermaid diagrams (HLD, LLD, Execution Sequence, Use Case, State Machine, Cross-Channel Ingress, Security Architecture) with pan, zoom, fit, reset, and fullscreen controls.
+- **Enterprise Adaptive Workspace**: Dual-mode navigation (`Essentials` for day-to-day operators; `Control` for governance administrators), sliding `ActionInspector` drawer, and prominent visual governance boundaries.
 - **Protected Execution Boundary**: Real-world execution (`pay_invoice`, `transfer_funds`, `add_beneficiary`, `cancel_payment`) remains permit-gated and strictly blocked. The Financial AI Agent produces strictly structured `FinancialActionProposal` envelopes; execution is gated by the Runtime Gateway control plane requiring cryptographic execution permits and atomic budget reservations.
 
 <h3 align="center">Three User Interfaces, One Agent, One Governance Path</h3>
@@ -311,14 +323,14 @@ Neolith/
 ├── apps/
 │   └── web/                        # Next.js 15 App Router frontend + reusable enterprise UI library
 │       └── src/
-│           ├── app/                # Routes: /, /dashboard, /accounts, /agent, /tasks, /approvals, /operator
-│           ├── components/         # AppShell, AgentTaskConsole & reusable UI primitives (Card, DataTable, BudgetMeter)
-│           └── lib/                # Typed Financial & Platform API client with offline seed snapshot fallback
+│           ├── app/                # Routes: /, /dashboard, /accounts, /agent, /tasks, /governance, /policies, /adopt, /docs, /operator
+│           ├── components/         # AppShell, ActionInspector, MermaidViewer, AgentTaskConsole & UI primitives
+│           └── lib/                # Typed Financial & Governance API client with offline seed snapshot fallback
 ├── services/
-│   ├── api/                        # FastAPI control plane, Interaction Core, Twilio/ElevenLabs adapters, Alembic migrations & seed module
-│   │   ├── migrations/             # Alembic migration environment (revisions 0001_stage1_financial, 0002_stage2_interactions)
-│   │   ├── src/neolith_api/        # Core ORM models, financial sandbox, interactions, Twilio webhook, ElevenLabs SSE adapter
-│   │   └── tests/                  # 50 unit and integration tests (contracts, financial sandbox, agent, web, WhatsApp, voice, parity)
+│   ├── api/                        # FastAPI control plane, Governance Runtime, Interaction Core, Twilio/ElevenLabs adapters, Alembic migrations & seed module
+│   │   ├── migrations/             # Alembic migration environment (revisions 0001, 0002, 0003_stage3_governance_and_profiles)
+│   │   ├── src/neolith_api/        # Core ORM models, governance runtime, financial sandbox, interactions, Twilio & ElevenLabs adapters
+│   │   └── tests/                  # 66 unit and integration tests (contracts, financial sandbox, agent, governance, web, WhatsApp, voice, parity)
 │   ├── agent-worker/               # Stateful LangGraph Financial AI Agent, FinancialContextClient, internal HTTP service, and mock/OpenAI providers
 │   └── tool-simulator/             # SimulatedBankingService (R1 read tools + permit-gated R2-R4 write stubs)
 ├── packages/
@@ -417,6 +429,15 @@ curl http://localhost:8000/api/v1/financial/tools
 curl -X POST http://localhost:8000/api/v1/interactions/message ^
   -H "Content-Type: application/json" ^
   -d "{\"text\": \"What is our Operations Account balance?\"}"
+
+:: Inspect governance profiles & active profile
+curl http://localhost:8000/api/v1/governance/profiles
+curl http://localhost:8000/api/v1/governance/profiles/active
+
+:: Evaluate action proposal against OPA governance runtime (Canonical INV-001 ALLOW)
+curl -X POST http://localhost:8000/api/v1/actions/evaluate ^
+  -H "Content-Type: application/json" ^
+  -d "{\"agent_id\": \"financial-ai-agent\", \"agent_version\": \"1.0.0\", \"action_type\": \"pay_invoice\", \"risk_tier\": \"R2\", \"category\": \"software\", \"amount_inr\": 8000.00, \"vendor_verified\": true, \"parameters\": {\"invoice_id\": \"INV-001\"}}"
 ```
 
 ### 5. Frontend Setup & Verification (`apps/web`)
@@ -427,11 +448,15 @@ pnpm dev
 ```
 
 Open `http://localhost:3000` in your browser to explore:
-- `/` — System Overview & Three-Layer Governance Architecture
+- `/` — Enterprise Landing Page & Three-Layer Governance Architecture
 - `/dashboard` — Financial Dashboard (`INR 100,000.00` balance, unpaid invoices, monthly category budgets, recent transactions)
 - `/accounts` — Accounts, Vendor Invoices (`INV-001`, `INV-002`, `INV-003`), Beneficiaries & Ledger
-- `/agent` — Financial Agent Console (`financial-ai-agent`), `FinancialContext` inspector & tool permissions
+- `/agent` — Financial Agent Console with Visual Governance Boundaries & Action Inspector Drawer
 - `/tasks` — Persisted Task Registry & Goal Intake
+- `/governance` — Governance Workspace with Active Profile Banner, Decisions Table & Drawer
+- `/policies` — Governance Profile Selector (Strict, Balanced, High Autonomy) & Custom Policy Builder
+- `/adopt` — Enterprise Adoption Guide & 10-Step Integration Journey
+- `/docs` — Documentation Hub with 7 Interactive Zoomable Mermaid Architecture Diagrams
 - `/operator` — Operator Control Plane (Registered Agents, `R1`–`R4` Tool Classifications, Budgets & Reason Codes)
 
 ### 6. Run Quality Gates, Contract Validators & Automated Tests
@@ -468,9 +493,6 @@ pnpm build
 :: Validate Docker Compose configuration
 docker compose -f infra/docker-compose.yml config
 ```
-pnpm lint
-pnpm typecheck
-pnpm build
 ```
 
 ---

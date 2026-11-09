@@ -119,6 +119,65 @@ export interface AgentRegistryDto {
   readonly created_at: string;
 }
 
+export type GovernanceStyle = "strict" | "balanced" | "high_autonomy" | "custom";
+export type DecisionOutcome = "allow" | "review" | "deny";
+
+export interface GovernanceProfileDto {
+  readonly id: string;
+  readonly name: string;
+  readonly style: GovernanceStyle;
+  readonly description: string;
+  readonly version: string;
+  readonly active: boolean;
+  readonly configuration: Record<string, unknown>;
+  readonly created_at: string;
+  readonly updated_at: string;
+}
+
+export interface BudgetCheckSummaryDto {
+  readonly category: string;
+  readonly allocated_limit: string;
+  readonly current_spent: string;
+  readonly remaining_before: string;
+  readonly remaining_after: string;
+  readonly approval_threshold?: string | null;
+  readonly is_feasible: boolean;
+  readonly exceeds_threshold: boolean;
+}
+
+export interface GovernanceDecisionDto {
+  readonly action_id: string;
+  readonly trace_id: string;
+  readonly decision: DecisionOutcome;
+  readonly outcome: DecisionOutcome;
+  readonly reason_codes: string[];
+  readonly risk_tier: string;
+  readonly profile_id?: string | null;
+  readonly profile_name: string;
+  readonly profile_style: string;
+  readonly profile_version: string;
+  readonly budget_check?: BudgetCheckSummaryDto | null;
+  readonly tool_metadata?: Record<string, unknown>;
+  readonly created_at: string;
+}
+
+export interface ExecutionRequestDto {
+  readonly action_id: string;
+  readonly trace_id: string;
+  readonly task_id: string;
+  readonly user_id: string;
+  readonly operation: string;
+  readonly resource?: string | null;
+  readonly category?: string | null;
+  readonly amount?: string | null;
+  readonly currency?: string | null;
+  readonly parameters: Record<string, unknown>;
+  readonly state: string;
+  readonly requested_at: string;
+  readonly created_at: string;
+  readonly decision?: GovernanceDecisionDto | null;
+}
+
 const DEFAULT_API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
@@ -457,6 +516,122 @@ export const FALLBACK_AGENTS: readonly AgentRegistryDto[] = [
     created_at: "2026-10-20T00:00:00Z",
   },
 ];
+
+export async function fetchApi<T>(
+  path: string,
+  options?: RequestInit
+): Promise<T> {
+  const url = `${getApiBaseUrl()}${path}`;
+  const response = await fetch(url, {
+    cache: "no-store",
+    ...options,
+    headers: {
+      Accept: "application/json",
+      ...(options?.headers ?? {}),
+    },
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    let detail = `HTTP ${response.status} ${response.statusText}`;
+    try {
+      const parsed = JSON.parse(errorText) as { detail?: unknown };
+      if (parsed.detail) {
+        detail =
+          typeof parsed.detail === "string"
+            ? parsed.detail
+            : JSON.stringify(parsed.detail);
+      }
+    } catch {
+      // ignore non-json error responses
+    }
+    throw new Error(detail);
+  }
+  return response.json() as Promise<T>;
+}
+
+export async function getGovernanceProfiles(): Promise<GovernanceProfileDto[]> {
+  return fetchApi<GovernanceProfileDto[]>("/api/v1/governance/profiles");
+}
+
+export async function getActiveGovernanceProfile(): Promise<GovernanceProfileDto> {
+  return fetchApi<GovernanceProfileDto>("/api/v1/governance/profiles/active");
+}
+
+export async function activateGovernanceProfile(
+  profileId: string
+): Promise<GovernanceProfileDto> {
+  return fetchApi<GovernanceProfileDto>(
+    `/api/v1/governance/profiles/${profileId}/activate`,
+    { method: "POST" }
+  );
+}
+
+export async function createGovernanceProfile(payload: {
+  name: string;
+  style: GovernanceStyle;
+  description: string;
+  configuration?: Record<string, unknown>;
+}): Promise<GovernanceProfileDto> {
+  return fetchApi<GovernanceProfileDto>("/api/v1/governance/profiles", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateGovernanceProfile(
+  profileId: string,
+  payload: {
+    description?: string;
+    configuration?: Record<string, unknown>;
+  }
+): Promise<GovernanceProfileDto> {
+  return fetchApi<GovernanceProfileDto>(
+    `/api/v1/governance/profiles/${profileId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+}
+
+export async function getGovernanceDecisions(
+  limit: number = 50,
+  outcome?: string
+): Promise<GovernanceDecisionDto[]> {
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (outcome) {
+    query.set("outcome", outcome);
+  }
+  return fetchApi<GovernanceDecisionDto[]>(
+    `/api/v1/governance/decisions?${query.toString()}`
+  );
+}
+
+export async function getGovernanceDecision(
+  actionId: string
+): Promise<GovernanceDecisionDto> {
+  return fetchApi<GovernanceDecisionDto>(
+    `/api/v1/governance/decisions/${actionId}`
+  );
+}
+
+export async function getActionExecutionRequest(
+  actionId: string
+): Promise<ExecutionRequestDto> {
+  return fetchApi<ExecutionRequestDto>(`/api/v1/actions/${actionId}`);
+}
+
+export async function evaluateActionProposal(
+  payload: Record<string, unknown>
+): Promise<GovernanceDecisionDto> {
+  return fetchApi<GovernanceDecisionDto>("/api/v1/actions/evaluate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
 
 export async function fetchApiWithFallback<T>(
   path: string,

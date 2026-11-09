@@ -18,7 +18,10 @@ from neolith_agent.interfaces import InteractionTurn, InterfaceResponse
 from neolith_api.core.config import get_settings
 from neolith_api.core.database import get_db_session
 from neolith_api.integrations.agent_client import AgentWorkerClient
-from neolith_api.interactions.service import InteractionCoreService
+from neolith_api.interactions.service import (
+    InteractionCoreService,
+    attach_governance_to_response,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -180,6 +183,15 @@ async def post_elevenlabs_chat_completions(
     # 7. Invoke the same Financial AI Agent worker
     agent_client = AgentWorkerClient()
     response: InterfaceResponse = await agent_client.process_turn(turn)
+
+    # Authoritative Governance evaluation if an action was proposed
+    attach_governance_to_response(
+        response,
+        session,
+        user_id=channel_session.user_id,
+        task_id=task.id,
+        trace_id=trace_id,
+    )
 
     # 8. Persist outbound turn
     core_service.record_outbound_turn(
