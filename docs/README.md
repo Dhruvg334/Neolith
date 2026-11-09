@@ -32,6 +32,7 @@ See `features/00_FEATURE_INDEX.md`.
 - `design/SECURITY_ARCHITECTURE.md`
 - `design/DEPLOYMENT_ARCHITECTURE.md`
 - `design/UI_UX_SPEC.md`
+- `design/INTERACTION_INTERFACE_ARCHITECTURE.md`
 
 ## Testing
 

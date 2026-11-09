@@ -10,7 +10,7 @@ Open Policy Agent / Rego.
 
 ## Policy examples
 
-- software procurement must use approved category;
+- invoice payment must use an allowed financial category;
 - amount above threshold requires approval;
 - blocked vendor cannot be purchased;
 - agent may use only registered tools;

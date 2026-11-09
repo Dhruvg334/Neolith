@@ -2,18 +2,19 @@
 
 ## 1. LLM non-determinism
 
-Agent recommendations may vary.
+Financial Agent outputs may vary between model versions or runs.
 
 Response:
 
 - structured outputs;
-- deterministic vendor fixture;
+- deterministic financial fixtures;
 - versioned prompts/models;
-- separate evaluation.
+- deterministic/mock provider for CI;
+- separate evaluation of agent quality and governance correctness.
 
 ## 2. Semantic-risk false positives
 
-Intent-alignment models can be wrong.
+Intent-alignment or anomaly models can be wrong.
 
 Response:
 
@@ -23,40 +24,51 @@ Response:
 
 ## 3. Scope complexity
 
-The project spans agentic AI, policy, security, backend, frontend and observability.
+The project spans agentic AI, policy, security, backend, frontend, external messaging/voice interfaces and observability.
 
 Response:
 
-- one primary procurement scenario;
+- one primary Financial AI Agent scenario set;
 - phased roadmap;
-- multi-agent and advanced RAG are P1/P2.
+- multi-agent and advanced RAG remain later extensions;
+- WhatsApp/Voice reuse the same agent rather than creating separate systems.
 
-## 4. Simulated enterprise service
+## 4. Simulated financial service
 
-The project does not connect to a production ERP/procurement platform.
+The project does not connect to a production bank, payment processor or enterprise treasury platform.
 
-This is an explicit prototype boundary, not a hidden limitation.
+This is an explicit prototype boundary. The simulator exists to prove controlled side-effect execution without moving real money.
 
-## 5. Policy completeness
+## 5. External interface dependencies
 
-Prototype policies model selected organisational rules, not every possible enterprise policy.
+WhatsApp and Voice demonstrations depend on Twilio and ElevenLabs availability/configuration.
 
-## 6. Global/distributed consistency
+Response:
+
+- Web remains the primary inspectable interface;
+- deterministic tests must run without Twilio/ElevenLabs credentials;
+- channel adapters are isolated from core agent/governance logic.
+
+## 6. Policy completeness
+
+Prototype policies model selected organisational rules, not every possible enterprise financial policy.
+
+## 7. Global/distributed consistency
 
 The prototype is single-region/local in its transactional assumptions.
 
-## 7. Security certification
+## 8. Security certification
 
-The project demonstrates security engineering patterns but is not a certified enterprise security product.
+The project demonstrates security engineering patterns but is not a certified banking, payments or enterprise security product.
 
-## 8. Live vendor data
+## 9. Synthetic financial data
 
-P0 uses synthetic catalogue data to keep evaluation reproducible. Live public research can be added separately.
+Accounts, invoices, beneficiaries and transactions are synthetic. Results demonstrate system behaviour, not real financial advice or real payment capability.
 
-## 9. Agent memory
+## 10. Agent memory
 
 Long-term semantic memory is deliberately limited because stale or poisoned memory can create unsafe reasoning.
 
-## 10. Evaluation dataset size
+## 11. Evaluation dataset size
 
 The semester project can demonstrate methodology and failure analysis but should not claim production-scale statistical validation without sufficient data.

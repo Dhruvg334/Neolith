@@ -40,9 +40,9 @@ Use a layered model:
 Examples:
 
 ```text
-requester can initiate procurement task
-procurement-agent can call vendor search
-procurement-agent can propose procure_subscription
+requester can initiate a financial task
+financial-ai-agent can call registered read-only financial tools
+financial-ai-agent can propose pay_invoice but cannot execute it directly
 student-user cannot publish policy
 auditor can read receipts but cannot approve
 ```

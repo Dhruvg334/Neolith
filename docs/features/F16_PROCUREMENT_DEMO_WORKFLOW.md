@@ -1,95 +1,108 @@
-# F16 — Procurement Demonstration Workflow
+# F16 — Financial Reference Application
+
+> The filename is retained for repository continuity. The implemented primary reference application is now the Financial AI Agent and synthetic Neolith Demo Corp financial sandbox.
 
 ## Purpose
 
-Provide one complete, memorable vertical slice proving agent intelligence plus governed execution.
+Provide one complete, high-consequence reference application that demonstrates the difference between AI reasoning and governed execution.
 
-## User request
+Neolith itself remains domain-independent.
+
+## Synthetic domain
+
+The reference application contains:
+
+- Operations Account;
+- vendor invoices;
+- beneficiaries;
+- category budgets;
+- financial transactions;
+- read-only planning tools;
+- protected write tools.
+
+## Financial AI Agent role
+
+The agent may:
+
+- understand a financial request;
+- inspect account, invoice, beneficiary and budget state;
+- ask clarification;
+- plan;
+- propose a structured financial action.
+
+The agent may not:
+
+- grant permissions;
+- override policy;
+- reserve additional authority;
+- approve itself;
+- mint a permit;
+- call a protected write directly.
+
+## Primary demo cases
+
+### Normal action — INV-001
 
 ```text
-We need project-management software for a 10-person team.
-Monthly budget is 8,000 INR.
-Prefer SSO and data export.
-Recommend the best option and procure it if policy permits.
+Acme Cloud
+INR 8,000.00
+software
+verified vendor
 ```
 
-## Synthetic catalogue
+Target mature-system outcome: `ALLOW` and governed execution.
 
-| Vendor | Monthly price | Seats | SSO | Export | Risk |
-|---|---:|---:|---|---|---|
-| TaskForge | 6,000 INR | 15 | Yes | Yes | Low |
-| PlanGridX | 9,500 INR | 20 | Yes | Yes | Medium |
-| SprintDesk | 4,500 INR | 10 | No | Yes | Medium |
+### Human review — INV-002
 
-## Happy path
+```text
+Nova Compute
+INR 35,000.00
+infrastructure
+verified vendor
+```
 
-1. agent extracts constraints;
-2. catalogue search returns candidates;
-3. agent compares;
-4. TaskForge is recommended;
-5. agent proposes `procure_subscription`;
-6. Runtime Gateway creates action;
-7. identity/permission pass;
-8. OPA policy passes;
-9. budget reserves 6,000 INR;
-10. risk tier is acceptable;
-11. permit is issued;
-12. protected procurement service validates permit;
-13. mock subscription is created;
-14. budget commits;
-15. receipt is appended;
-16. user sees completed task.
+Target mature-system outcome: `REVIEW` because it exceeds the configured approval threshold while remaining within category budget.
 
-## Denial path
+### Hard deny — INV-003
 
-PlanGridX at 9,500 INR:
+```text
+Unknown Supplies
+INR 75,000.00
+miscellaneous
+unverified vendor
+```
 
-- exceeds budget;
-- no permit issued;
-- denial displayed with reason.
+Target mature-system outcome: `DENY` because the vendor is unverified and the action exceeds the miscellaneous category budget.
 
-## Prompt-injection path
+## Interfaces
 
-Vendor description contains malicious instructions.
+The same Financial AI Agent will be reachable through:
 
-Expected:
+- Web;
+- WhatsApp via Twilio;
+- Voice via ElevenLabs.
 
-- agent treats as data;
-- governance independently rejects prohibited action;
-- no side effect.
+The interface does not alter governance behaviour.
 
-## Replay path
+## Security demonstrations
 
-Reuse TaskForge permit:
+Later phases demonstrate:
 
-- second use rejected.
-
-## Mutation path
-
-Change vendor or price after permit:
-
-- parameter hash mismatch.
-
-## Emergency path
-
-Issue permit, then operator activates stop:
-
-- old permit fails epoch check.
-
-## Demo UI
-
-Show:
-
-- user request;
-- comparison;
-- recommendation;
-- governance timeline;
-- budget reservation;
-- permit status;
-- execution;
-- receipt;
-- attack replay.
+- hostile invoice/prompt content;
+- parameter mutation;
+- permit replay;
+- concurrent budget overspend;
+- unverified beneficiary;
+- quarantine/emergency stop;
+- policy-engine failure.
 
 ## Acceptance
 
-All paths are repeatable from seed/reset without external paid services.
+The final reference application is acceptable when:
+
+1. all three interfaces can invoke the same Financial AI Agent;
+2. proposals are typed and evidence-linked;
+3. protected financial writes are impossible before governance approval;
+4. normal, review and deny paths are reproducible;
+5. replay/mutation/budget-race tests fail safely;
+6. every mature protected action is traceable through Decision Receipts.

@@ -24,6 +24,13 @@ The project should cite primary documentation where possible.
 - OWASP GenAI Security Project: https://genai.owasp.org/
 - NIST AI Risk Management Framework: https://www.nist.gov/itl/ai-risk-management-framework
 
+## Interaction interfaces
+
+- Twilio WhatsApp: https://www.twilio.com/docs/whatsapp/api
+- Twilio webhook security: https://www.twilio.com/docs/usage/webhooks/webhooks-security
+- ElevenLabs Agents custom LLM: https://elevenlabs.io/docs/eleven-agents/customization/llm/custom-llm
+- ElevenLabs webhook tools: https://elevenlabs.io/docs/eleven-agents/customization/tools/webhook-tools
+
 ## Backend / frontend
 
 - FastAPI: https://fastapi.tiangolo.com/

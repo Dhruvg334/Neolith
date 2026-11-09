@@ -9,6 +9,18 @@ Recommended:
 - feature branches — `feat/<scope>`;
 - bug branches — `fix/<scope>`.
 
+## Mandatory pre-commit documentation sync
+
+Before every feature commit and push:
+
+1. Review `README.md` and update it when setup, architecture, implemented behaviour, interfaces or project status changed.
+2. Update the local ignored `.project-private/SYSTEM_DESIGN_DECISIONS_LOG.md` for every accepted architecture/design decision.
+3. Confirm `.project-private/` is still ignored and is not staged.
+4. Run all relevant quality gates and workflows.
+5. Commit and push only after those checks pass.
+
+A code change that makes the README materially inaccurate is not ready to commit.
+
 ## Pull request requirements
 
 - scope description;

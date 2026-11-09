@@ -25,10 +25,10 @@ Optional model/classifier can evaluate whether proposed action matches the user'
 Example:
 
 Goal:
-procure project-management software.
+pay verified invoice INV-001 within the software budget.
 
 Proposed action:
-purchase gift card.
+transfer INR 75,000 to an unrelated beneficiary.
 
 Semantic result:
 objective mismatch.

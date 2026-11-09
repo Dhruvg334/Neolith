@@ -64,10 +64,10 @@ The seed module (`services/api/src/neolith_api/seed.py`) populates a determinist
 | :--- | ---: | ---: | ---: | ---: |
 | `software` | `25000.00` | `15000.00` | `0.00` | `25000.00` |
 | `infrastructure` | `50000.00` | `25000.00` | `0.00` | `50000.00` |
-| `miscellaneous` | `10000.00` | `50000.00` / `5000.00` | `0.00` | `10000.00` |
+| `miscellaneous` | `10000.00` | `5000.00` | `0.00` | `10000.00` |
 
 ### 4.3 Synthetic Vendor Invoices & Expected Governance Outcomes
-| Invoice ID | Vendor | Amount (`INR`) | Category | Vendor Status | Invoice Status | Expected Runtime Gateway Outcome (Stage 2) |
+| Invoice ID | Vendor | Amount (`INR`) | Category | Vendor Status | Invoice Status | Expected Runtime Gateway Outcome (Phase 3 target) |
 | :--- | :--- | ---: | :--- | :--- | :--- | :--- |
 | `INV-001` | `Acme Cloud` | `8000.00` | `software` | `verified` | `unpaid` | **`ALLOW`** — Verified vendor, within `25000.00 INR` software budget and below `15000.00 INR` approval threshold. |
 | `INV-002` | `Nova Compute` | `35000.00` | `infrastructure` | `verified` | `unpaid` | **`REVIEW`** — Verified vendor and within `50000.00 INR` infrastructure budget, but exceeds the `25000.00 INR` single-payment approval threshold. |
@@ -83,10 +83,48 @@ The seed module (`services/api/src/neolith_api/seed.py`) populates a determinist
 
 ---
 
-## 6. How Stage 2 Connects Governance and Execution Permits
+## 6. Implementation Sequence from Agent to Governed Execution
 
-In Stage 2, when `financial-ai-agent` emits a `FinancialActionProposal`:
-1. The proposal is wrapped into a canonical `ExecutionRequest` action envelope and submitted to `POST /api/v1/actions/evaluate`.
-2. The Runtime Gateway evaluates RBAC/ABAC permissions, OPA/Rego policies (`policies/neolith/`), and atomic Redis budget reservations.
-3. For `ALLOW` decisions (or after human approval on `REVIEW` decisions), the Runtime Gateway signs a short-lived Ed25519 `ExecutionPermit` bound to the canonical `parameters_hash` and current `revocation_epoch`.
-4. `SimulatedBankingService` verifies and consumes the single-use permit, settles the invoice in PostgreSQL, commits the budget reservation, and appends a hash-linked `DecisionReceipt`.
+The reference application is built in explicit stages:
+
+### Phase 2 — Financial AI Agent and Interfaces
+
+The Financial AI Agent reads the existing account, invoice, beneficiary and budget context and emits a typed `FinancialActionProposal`. It does not execute the action.
+
+The same Financial Agent is reachable through:
+
+- Neolith Web;
+- WhatsApp through Twilio;
+- ElevenLabs Voice through a Neolith custom-LLM adapter.
+
+All channels normalise into `InteractionTurn` and receive `InterfaceResponse`.
+
+### Phase 3 — Governance Decision
+
+A `FinancialActionProposal` is converted to a canonical `ExecutionRequest` and submitted to the Runtime Gateway. Neolith independently evaluates identity, permission, OPA policy, risk and current budget state to return `ALLOW`, `REVIEW` or `DENY`.
+
+### Phase 4 — Governed Execution
+
+For actions that may proceed, Neolith atomically reserves budget and issues a short-lived Ed25519 `ExecutionPermit` bound to exact parameters and current revocation epoch. The `SimulatedBankingService` accepts protected writes only through that permit.
+
+### Phase 5+ — Approval, Receipts and Revocation
+
+Human approval, hash-linked Decision Receipts and runtime revocation complete the reference execution chain.
+
+## 7. Interaction Interfaces
+
+The Web interface remains the primary inspectable demo surface. WhatsApp and Voice are additional ingress methods, not alternate agents.
+
+```text
+Web / Twilio WhatsApp / ElevenLabs Voice
+                ↓
+        Interaction Adapter
+                ↓
+          Financial AI Agent
+                ↓
+     FinancialActionProposal
+                ↓
+         Neolith Governance
+```
+
+A provider session or phone number does not create financial authority. Financial permissions and execution decisions remain inside Neolith.

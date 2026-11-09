@@ -6,7 +6,7 @@ Use specialist agents only where specialization improves the workflow.
 
 ## Default design
 
-The procurement MVP should work with one primary LangGraph agent.
+The Financial AI Agent MVP should work with one primary LangGraph agent.
 
 A specialist research/comparison agent may be added after the single-agent flow is stable.
 

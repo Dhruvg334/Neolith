@@ -64,3 +64,14 @@ Targets must be clearly labelled as targets until measured.
 ## P12 — Modular before distributed
 
 Use a modular monolith for the backend MVP. Split services only when runtime or ownership boundaries justify it.
+
+
+## P13 — Interfaces do not create alternate authority paths
+
+Web, WhatsApp and Voice are transport surfaces into the same agent and governance system.
+
+A channel provider may authenticate its own webhook/request, but provider identity does not create financial permission, policy authority, approval or execution rights.
+
+## P14 — External webhooks are authenticated and idempotent
+
+Provider webhooks must be validated using provider-supported authentication/signature mechanisms and must be safe against duplicate delivery before they create task or action state.

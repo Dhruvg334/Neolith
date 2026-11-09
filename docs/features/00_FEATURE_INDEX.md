@@ -17,6 +17,7 @@
 | F13 | Audit, Decision Receipts and Incident History | P0/P1 | Backend |
 | F14 | Observability, Logging and Debugging | P0/P1 | Platform |
 | F15 | Evaluation and Assurance Lab | P1 | Agent / QA |
-| F16 | Procurement Demonstration Workflow | P0 | Full team |
+| F16 | Financial Reference Application | P0 | Full team |
+| F17 | Multi-Channel Interaction Interfaces | P1 | Integration |
 
 Each feature document defines purpose, user value, functional behaviour, states, data, APIs, security, failure handling and acceptance criteria.

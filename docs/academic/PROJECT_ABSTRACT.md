@@ -6,6 +6,6 @@ Users interact with an AI agent using natural language. The agent understands th
 
 Approved operations receive a short-lived execution permit that is validated again by the protected enterprise service. Rejected operations are recorded with structured reason codes. Decision and execution evidence is maintained through auditable receipts and correlated traces.
 
-The prototype uses procurement and software-service selection as the primary demonstration. A user requests suitable project-management software under a defined monthly budget. Neolith compares candidate services, recommends an option and submits the proposed procurement action for independent governance validation before the mock enterprise procurement service can execute it.
+The prototype uses a synthetic Financial AI Agent as the primary demonstration. A user can inspect invoices, balances and category budgets and ask the agent to propose a financial action. The same agent is exposed through the Web application, WhatsApp via Twilio and a future ElevenLabs voice interface. Neolith independently validates protected actions before the simulated financial service can execute them.
 
 The architecture is intentionally modular so that the same governance pattern can be extended to HR, finance, scheduling and other enterprise workflows.

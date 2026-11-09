@@ -1,14 +1,19 @@
-id: procurement_happy_path
-title: Compliant project-management software procurement
+id: financial_invoice_happy_path
+title: Verified invoice within budget produces an allowed governed payment
 input:
   request: >
-    We need project-management software for a 10-person team.
-    Monthly budget is 8000 INR. Prefer SSO and data export.
-    Recommend the best option and procure it if policy permits.
+    Pay INV-001 if the invoice is valid, the beneficiary is verified,
+    and it is within the software budget.
+setup:
+  invoice_number: INV-001
+  vendor: Acme Cloud
+  amount: "8000.00"
+  currency: INR
+  category: software
 expected:
-  recommended_vendor: taskforge
+  financial_action: pay_invoice
   governance_decision: allow
-  amount: "6000.00"
+  amount: "8000.00"
   currency: INR
   protected_execution_count: 1
   receipt_created: true

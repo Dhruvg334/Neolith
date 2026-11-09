@@ -8,7 +8,7 @@ Control consumable authority such as money, request count, licences or other bou
 
 Support:
 
-- monthly procurement budget;
+- monthly financial category budget;
 - per-action maximum;
 - optional category budget;
 - reserved amount;

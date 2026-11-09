@@ -1,11 +1,13 @@
-id: permit_parameter_mutation
-title: Approved parameters cannot change after permit issue
+id: financial_permit_parameter_mutation
+title: Approved financial parameters cannot change after permit issue
 approved:
-  vendor: taskforge
-  amount: "6000.00"
+  invoice_number: INV-001
+  vendor: Acme Cloud
+  amount: "8000.00"
 attempted:
-  vendor: plagridx
-  amount: "9500.00"
+  invoice_number: INV-003
+  vendor: Unknown Supplies
+  amount: "75000.00"
 expected:
   execution: denied
   reason_code: PARAMETER_HASH_MISMATCH

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neolith.local/schemas/financial-action-proposal.schema.json",
+  "title": "Neolith Financial Action Proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "action_type",
+    "target_id",
+    "currency",
+    "justification",
+    "evidence_refs"
+  ],
+  "properties": {
+    "action_type": {
+      "type": "string",
+      "enum": ["pay_invoice", "transfer_funds", "add_beneficiary", "cancel_payment"]
+    },
+    "target_id": {"type": "string", "minLength": 1},
+    "amount": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]+(\\.[0-9]{1,2})?$"
+    },
+    "currency": {"type": "string", "pattern": "^[A-Z]{3}$"},
+    "category": {"type": ["string", "null"]},
+    "vendor_name": {"type": ["string", "null"]},
+    "justification": {"type": "string", "minLength": 1},
+    "evidence_refs": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    }
+  }
+}

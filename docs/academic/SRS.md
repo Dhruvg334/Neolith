@@ -19,7 +19,7 @@ Neolith is an agentic AI system that can understand user goals, gather informati
 
 Neolith shall support enterprise-style workflows in which an AI agent proposes actions but cannot directly execute protected operations.
 
-The prototype shall demonstrate procurement/service selection. The architecture shall remain extensible to HR, finance, scheduling and other enterprise workflows.
+The prototype shall demonstrate a synthetic Financial AI Agent with Web, WhatsApp and Voice interaction surfaces. The architecture shall remain extensible to procurement, HR, scheduling and other enterprise workflows.
 
 ### 1.3 Product goals
 
@@ -252,22 +252,44 @@ Priority:
 | FR-065 | P1 | Agent quality shall be evaluated separately from governance correctness. | Report has separate sections. |
 | FR-066 | P1 | Critical regressions shall block release. | CI/QA gate fails. |
 
+### 3.15 Multi-Channel Interaction Interfaces
+
+| ID | Priority | Requirement | Acceptance criterion |
+|---|---:|---|---|
+| FR-067 | P1 | Web, WhatsApp and Voice shall route into the same Financial AI Agent workflow. | Equivalent request uses the same agent service/contract regardless of channel. |
+| FR-068 | P1 | Channel adapters shall normalise inbound messages into a canonical Interaction Turn. | Contract validates against `interaction-turn.schema.json`. |
+| FR-069 | P1 | Twilio WhatsApp webhook requests shall be signature-validated. | Missing/invalid `X-Twilio-Signature` is rejected outside explicit local-test mode. |
+| FR-070 | P1 | Twilio duplicate webhook delivery shall be idempotent. | Repeated `MessageSid` does not duplicate task/action processing. |
+| FR-071 | P1 | WhatsApp sender identifiers shall not create financial authority. | Permission decision remains independent of phone number/provider identity. |
+| FR-072 | P1 | ElevenLabs Voice shall connect to Neolith through an authenticated custom-LLM endpoint. | Invalid integration credential is rejected. |
+| FR-073 | P1 | ElevenLabs requests shall invoke the same Financial AI Agent workflow as Web/WhatsApp. | No separate voice-specific financial reasoning or governance implementation exists. |
+| FR-074 | P1 | ElevenLabs voice integration shall not directly call protected financial tools. | Protected writes remain unreachable without Neolith governance. |
+| FR-075 | P1 | Channel provider identifiers shall be masked/redacted from normal logs. | Full WhatsApp phone number is absent from structured application logs. |
+| FR-076 | P1 | Interface responses shall distinguish agent proposal from governance/execution result. | `proposal_ready` never appears as executed/approved. |
+
 ---
 
 ## 4. External Interface Requirements
 
-### 4.1 User interface
+### 4.1 User interfaces
 
-Required views:
+Required Web views:
 
-- Task Workspace.
-- Recommendation Comparison.
+- Task / Financial Agent Workspace.
+- Financial Context.
 - Approval Queue.
 - Governance Decision Detail.
 - Audit / Receipt Explorer.
 - Operator Dashboard.
 - Policy Management.
 - Evaluation / Assurance.
+
+Additional interaction surfaces:
+
+- WhatsApp through Twilio.
+- Voice through an ElevenLabs Agent backed by Neolith's custom-LLM endpoint.
+
+All interfaces use the same Financial AI Agent and governance path.
 
 ### 4.2 API
 
@@ -281,11 +303,17 @@ MCP is preferred for agent-facing tool exposure.
 
 Protected writes remain behind Neolith permit validation.
 
-### 4.4 Agent-to-agent interface
+### 4.4 External channel interfaces
+
+Twilio WhatsApp inbound messages are accepted through a signature-validated webhook and normalised into the canonical interaction contract.
+
+ElevenLabs Voice uses an authenticated OpenAI-compatible streaming custom-LLM endpoint backed by the same Neolith Financial AI Agent.
+
+### 4.5 Agent-to-agent interface
 
 A2A or internal LangGraph delegation may be used where a specialist agent provides clear value.
 
-### 4.5 Database
+### 4.6 Database
 
 PostgreSQL is authoritative.
 
@@ -324,6 +352,12 @@ Routine deterministic governance shall not require an LLM call.
 
 ### NFR-010 Testability
 CI must run without paid model credentials.
+
+### NFR-011 Channel parity
+Channel-specific formatting may differ, but the same user intent and financial context should generate equivalent structured action proposals before governance.
+
+### NFR-012 Webhook security
+External interface webhooks/endpoints shall use provider-supported authentication, replay/idempotency protection and server-side secrets.
 
 ---
 
@@ -377,18 +411,19 @@ Money shall use decimal numeric types.
 
 The final system should demonstrate:
 
-1. user submits procurement goal;
-2. agent researches deterministic vendor catalogue;
-3. agent compares options and recommends one;
-4. governance accepts compliant choice;
-5. budget reservation succeeds;
-6. permit is issued;
-7. mock procurement executes;
-8. receipt is shown;
-9. injected vendor content does not alter authority;
-10. over-budget action is rejected;
-11. permit mutation/replay is rejected;
-12. operator quarantine or stop invalidates later execution.
+1. user submits a financial task through the Web interface;
+2. the Financial AI Agent retrieves invoice/account/budget context and creates a structured action proposal;
+3. the same task can enter through Twilio WhatsApp and the ElevenLabs voice interface;
+4. governance returns `ALLOW`, `REVIEW` or `DENY` independently of the interface and model;
+5. budget reservation succeeds only within available authority;
+6. human approval is required for the configured high-value case;
+7. a short-lived execution permit is issued for an approved exact action;
+8. the mock financial service executes only with a valid permit;
+9. a Decision Receipt is shown and verified;
+10. injected invoice/vendor content does not alter authority;
+11. over-budget/unverified action is rejected;
+12. permit mutation/replay is rejected;
+13. operator quarantine or emergency stop invalidates later execution.
 
 ---
 
@@ -396,11 +431,11 @@ The final system should demonstrate:
 
 | Objective | Main requirements | Main test |
 |---|---|---|
-| Agent converts goals to tasks | FR-001–009 | procurement happy path |
+| Agent converts goals to tasks | FR-001–009 | financial invoice happy path |
 | Independent governance | FR-010–024 | direct bypass and policy tests |
 | Validate budget/risk | FR-025–035 | budget and risk suites |
 | Human control | FR-036–039, FR-054–058 | approval and stop tests |
 | Controlled execution | FR-040–048 | permit mutation/replay |
 | Complete audit | FR-049–053 | receipt integrity |
-| Modular/extensible | interfaces + NFR-006/007 | adapter replacement tests |
+| Modular/extensible | FR-067–076 + NFR-006/007/011/012 | Web/WhatsApp/Voice parity and adapter tests |
 | Safe agentic behaviour | FR-009, FR-033/034, FR-063–066 | adversarial suite |

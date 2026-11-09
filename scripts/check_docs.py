@@ -9,6 +9,8 @@ required = [
     "docs/academic/SRS.md",
     "docs/features/00_FEATURE_INDEX.md",
     "docs/design/SYSTEM_ARCHITECTURE.md",
+    "docs/design/INTERACTION_INTERFACE_ARCHITECTURE.md",
+    "docs/features/F17_MULTICHANNEL_INTERACTION_INTERFACES.md",
     "docs/IMPLEMENTATION_ROADMAP.md",
     "specs/openapi.yaml",
     "specs/schemas/execution-request.schema.json",

@@ -1,10 +1,13 @@
-id: budget_concurrency
-title: Concurrent actions cannot jointly exceed budget
+id: financial_budget_concurrency
+title: Concurrent financial actions cannot jointly exceed remaining category budget
 setup:
-  remaining_budget: "8000.00"
+  category: software
+  remaining_budget: "10000.00"
 parallel_actions:
-  - amount: "6000.00"
-  - amount: "3000.00"
+  - invoice: INV-A
+    amount: "8000.00"
+  - invoice: INV-B
+    amount: "5000.00"
 expected:
   successful_reservations: 1
-  max_reserved_plus_committed: "8000.00"
+  max_reserved_plus_committed: "10000.00"

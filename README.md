@@ -39,6 +39,35 @@ Instead of giving the AI direct authority to move money or modify company system
 
 ---
 
+<h2 align="center">Current Build Status</h2>
+
+The repository currently contains the **Phase 0 foundation and Phase 1 financial sandbox**: persistent platform/domain models, deterministic Neolith Demo Corp data, financial read APIs, registered financial-tool metadata, a permit-gated banking simulator boundary, initial web screens, and typed agent proposal contracts.
+
+The next implementation milestone is **Phase 2: Financial AI Agent + Multi-Channel Interaction Core**. Runtime governance decisions, atomic budget reservations, signed execution permits, approvals, Decision Receipts, and revocation remain planned later phases and are shown in architecture diagrams as the target execution path.
+
+<h3 align="center">Three User Interfaces, One Agent, One Governance Path</h3>
+
+Neolith will expose the same Financial AI Agent through three interfaces:
+
+- **Web** — the primary inspectable application and operator experience.
+- **WhatsApp via Twilio** — a messaging interface for natural-language financial requests.
+- **Voice via ElevenLabs** — a future voice interface using Neolith as the ElevenLabs Custom LLM backend.
+
+```mermaid
+flowchart LR
+    Web[Neolith Web] --> Core[Interaction Core]
+    WA[WhatsApp / Twilio] --> Core
+    Voice[ElevenLabs Voice] --> Core
+    Core --> Agent[Financial AI Agent]
+    Agent --> Proposal[FinancialActionProposal]
+    Proposal --> Gov[Neolith Governance]
+    Gov --> Bank[Protected Financial Sandbox]
+```
+
+The interface provider never becomes an authority boundary. Twilio and ElevenLabs only transport user intent; financial permission, policy, budget, approval and execution remain controlled by Neolith.
+
+---
+
 <h2 align="center">System Architecture (HLD & LLD)</h2>
 
 <h3 align="center">1. High-Level Design (HLD) — Three-Layer Governance Topology</h3>
@@ -213,7 +242,7 @@ flowchart LR
 
 <h2 align="center">Financial Reference Application (Neolith Demo Corp)</h2>
 
-While Neolith's governance control plane is general-purpose, the repository includes a complete **Financial Reference Application** (`services/api/src/neolith_api/financial/` and `services/tool-simulator/src/neolith_simulator/banking.py`) pre-seeded with deterministic enterprise treasury data for **Neolith Demo Corp**:
+While Neolith's governance control plane is general-purpose, the repository includes an implemented **Financial Reference Sandbox foundation** (`services/api/src/neolith_api/financial/` and `services/tool-simulator/src/neolith_simulator/banking.py`) pre-seeded with deterministic enterprise treasury data for **Neolith Demo Corp**:
 
 - **Primary Operating Account**: `Operations Account` — Available Balance: **`INR 100,000.00`** (`active`)
 - **Monthly Category Budgets**:
@@ -245,7 +274,7 @@ While Neolith's governance control plane is general-purpose, the repository incl
 
 ---
 
-<h2 align="center">Core Platform Features (F01–F16)</h2>
+<h2 align="center">Core Platform Features (F01–F17)</h2>
 
 | ID | Feature Module | Description |
 |:---:|---|---|
@@ -264,7 +293,8 @@ While Neolith's governance control plane is general-purpose, the repository incl
 | **F13** | **Decision Receipts & Incidents** | Append-only SHA-256 hash-linked evidence chain (`previous_receipt_hash -> receipt_hash`) and incident timelines. |
 | **F14** | **OpenTelemetry Observability** | End-to-end `X-Trace-Id` propagation, structured JSON logging, and Jaeger distributed tracing. |
 | **F15** | **Evaluation & Assurance Lab** | Reproducible scenario harness testing happy paths, over-budget denials, prompt injection, permit replay, and emergency stops. |
-| **F16** | **Financial & Procurement Reference Workflows** | Deterministic enterprise financial sandbox (`Neolith Demo Corp`) and procurement catalogue slice. |
+| **F16** | **Financial Reference Application** | Deterministic enterprise financial sandbox (`Neolith Demo Corp`) used as the primary governed-agent test application. |
+| **F17** | **Multi-Channel Interaction Interfaces** | One channel-neutral interaction core serving Web, Twilio WhatsApp, and ElevenLabs Voice without creating alternate authority paths. |
 
 ---
 
@@ -281,9 +311,9 @@ Neolith/
 ├── services/
 │   ├── api/                        # FastAPI control plane, SQLAlchemy 2.0 ORM, Alembic migrations & seed module
 │   │   ├── migrations/             # Alembic migration environment & Stage 1 initial revision
-│   │   ├── src/neolith_api/        # Core ORM models, isolated financial sandbox, read/registry routers
+│   │   ├── src/neolith_api/        # Core ORM models, financial sandbox, read/registry routers; interaction/integration modules are Phase 2 targets
 │   │   └── tests/                  # Comprehensive pytest suite (health, readiness, financial sandbox, migrations)
-│   ├── agent-worker/               # LangGraph agent state machine, FinancialContext & FinancialActionProposal contracts
+│   ├── agent-worker/               # LangGraph agent state and channel-neutral interaction/FinancialActionProposal contracts
 │   └── tool-simulator/             # SimulatedBankingService (R1 read tools + permit-gated R2-R4 write stubs)
 ├── packages/
 │   └── contracts/                  # Shared TypeScript contract interfaces & schema identifiers
@@ -302,7 +332,7 @@ Neolith/
 ├── scripts/
 │   ├── check_docs.py               # Documentation & schema presence verifier
 │   └── validate_contracts.py       # Comprehensive OpenAPI, JSON Schema, SQL & YAML validator
-└── docs/                           # SRS, architecture, feature specs (F01-F16), Financial Reference App docs & rulebook
+└── docs/                           # SRS, architecture, feature specs (F01-F17), Financial Reference App docs & rulebook
 ```
 
 ---
@@ -324,6 +354,13 @@ cd Neolith
 if not exist .secrets mkdir .secrets
 if not exist .env copy .env.example .env
 ```
+
+Optional Phase 2 interface credentials are declared in `.env.example` and must remain server-side:
+
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`
+- `ELEVENLABS_CUSTOM_LLM_BEARER_TOKEN`
+
+The web application and deterministic test suite must continue to work without those external credentials.
 
 ### 3. Start Local Infrastructure (PostgreSQL, Redis, OPA, Jaeger)
 

@@ -16,6 +16,9 @@ REQUIRED_SCHEMAS = (
     "decision-receipt.schema.json",
     "execution-permit.schema.json",
     "execution-request.schema.json",
+    "financial-action-proposal.schema.json",
+    "interaction-turn.schema.json",
+    "interface-response.schema.json",
     "policy-input.schema.json",
     "task.schema.json",
 )

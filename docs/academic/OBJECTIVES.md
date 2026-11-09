@@ -7,6 +7,6 @@
 5. Issue short-lived execution permits for approved actions.
 6. Detect and reject action mutation and permit replay.
 7. Maintain complete decision and execution audit evidence.
-8. Demonstrate the system through procurement/service selection.
+8. Demonstrate the system through a synthetic Financial AI Agent while keeping the governance platform domain-independent.
 9. Evaluate agent quality and governance correctness independently.
 10. Build the architecture so additional enterprise workflows can be added through adapters.

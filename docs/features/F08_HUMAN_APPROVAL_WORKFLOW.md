@@ -6,7 +6,7 @@ Introduce explicit human control when policy or risk requires it.
 
 ## Trigger examples
 
-- amount above automatic procurement threshold;
+- amount above automatic financial approval threshold;
 - medium-confidence semantic mismatch;
 - new high-risk vendor;
 - irreversible operation;

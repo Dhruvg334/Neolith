@@ -31,20 +31,19 @@ The agent does not:
 
 ```json
 {
-  "objective": "Select project-management software",
+  "objective": "Pay a valid invoice within the authorised category budget",
   "constraints": {
-    "monthly_budget": "8000.00",
+    "invoice_number": "INV-001",
     "currency": "INR",
-    "team_size": 10,
-    "preferences": ["SSO", "data_export"]
+    "require_verified_beneficiary": true
   },
   "steps": [
-    {"id": "s1", "type": "retrieve_candidates"},
-    {"id": "s2", "type": "compare_candidates"},
-    {"id": "s3", "type": "recommend"},
-    {"id": "s4", "type": "request_procurement"}
+    {"id": "s1", "type": "retrieve_invoice"},
+    {"id": "s2", "type": "retrieve_financial_context"},
+    {"id": "s3", "type": "validate_evidence"},
+    {"id": "s4", "type": "propose_financial_action"}
   ],
-  "expected_protected_actions": ["procure_subscription"]
+  "expected_protected_actions": ["pay_invoice"]
 }
 ```
 
@@ -52,11 +51,11 @@ The agent does not:
 
 MVP order:
 
-1. deterministic local vendor catalogue;
-2. approved project knowledge / policy source;
-3. optional live public research extension.
+1. deterministic invoice/account/beneficiary/budget APIs;
+2. approved financial tool metadata and task history;
+3. optional approved enterprise knowledge sources in later phases.
 
-Source provenance must be retained.
+Source/evidence provenance must be retained.
 
 ## Reasoning design
 
@@ -91,8 +90,8 @@ Initial implementation may use OpenAI. CI must use mocked/deterministic agent fi
 
 - task completion;
 - constraint extraction;
-- correct candidate ranking;
-- unsupported recommendation rate;
+- correct invoice/context resolution;
+- unsupported financial-action proposal rate;
 - unnecessary tool calls;
 - plan adherence;
 - prompt-injection resistance.
@@ -100,6 +99,6 @@ Initial implementation may use OpenAI. CI must use mocked/deterministic agent fi
 ## Acceptance
 
 - agent creates valid structured plan;
-- agent cites/references candidate source records;
-- agent does not directly execute procurement;
-- hostile vendor text does not alter protected action scope.
+- agent cites/references invoice/account/budget evidence records;
+- agent does not directly execute protected financial actions;
+- hostile invoice/vendor text does not alter protected action scope.

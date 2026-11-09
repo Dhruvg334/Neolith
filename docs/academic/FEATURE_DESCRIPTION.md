@@ -62,6 +62,10 @@ Correlates user task, agent run, governance decision and enterprise execution wi
 
 Provides reproducible scenarios for agent quality, governance correctness, security and operational metrics.
 
-## 16. Procurement Demo
+## 16. Financial Reference Application
 
-Demonstrates service selection, comparison, budget validation, controlled procurement, adversarial vendor content, replay protection and emergency revocation.
+Demonstrates a stateful synthetic treasury environment with accounts, invoices, beneficiaries, budgets and protected financial actions. The Financial AI Agent is the primary reference application used to exercise Neolith without limiting the platform to financial use cases.
+
+## 17. Multi-Channel Interaction Interfaces
+
+Provides Web, Twilio WhatsApp and ElevenLabs Voice interfaces that all route into the same Financial AI Agent workflow through a canonical interaction contract. Channel adapters perform transport authentication and normalisation but do not contain financial authority or bypass Neolith governance.

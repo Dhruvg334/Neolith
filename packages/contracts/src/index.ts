@@ -8,6 +8,9 @@ export const CONTRACT_SCHEMA_IDS = {
   decisionReceipt: "https://neolith.local/schemas/decision-receipt.schema.json",
   executionPermit: "https://neolith.local/schemas/execution-permit.schema.json",
   executionRequest: "https://neolith.local/schemas/execution-request.schema.json",
+  financialActionProposal: "https://neolith.local/schemas/financial-action-proposal.schema.json",
+  interactionTurn: "https://neolith.local/schemas/interaction-turn.schema.json",
+  interfaceResponse: "https://neolith.local/schemas/interface-response.schema.json",
   policyInput: "https://neolith.local/schemas/policy-input.schema.json",
   task: "https://neolith.local/schemas/task.schema.json",
 } as const;
@@ -134,5 +137,41 @@ export interface FinancialActionProposal {
   readonly category?: string | null;
   readonly vendor_name?: string | null;
   readonly justification: string;
+  readonly evidence_refs: readonly string[];
+}
+
+
+export type InteractionChannel = "web" | "whatsapp" | "voice";
+
+export type InteractionProvider = "neolith_web" | "twilio" | "elevenlabs";
+
+export type InterfaceResponseStatus =
+  | "accepted"
+  | "needs_clarification"
+  | "proposal_ready"
+  | "completed"
+  | "error";
+
+export interface InteractionTurn {
+  readonly interaction_id: string;
+  readonly channel: InteractionChannel;
+  readonly provider: InteractionProvider;
+  readonly external_session_ref?: string | null;
+  readonly external_user_ref?: string | null;
+  readonly user_id?: string | null;
+  readonly task_id?: string | null;
+  readonly text: string;
+  readonly provider_message_id?: string | null;
+  readonly received_at: string;
+  readonly metadata: Readonly<Record<string, unknown>>;
+}
+
+export interface InterfaceResponse {
+  readonly interaction_id: string;
+  readonly task_id: string;
+  readonly trace_id: string;
+  readonly status: InterfaceResponseStatus;
+  readonly message: string;
+  readonly proposed_action?: FinancialActionProposal | null;
   readonly evidence_refs: readonly string[];
 }

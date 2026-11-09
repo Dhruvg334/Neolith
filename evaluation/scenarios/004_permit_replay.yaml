@@ -1,8 +1,9 @@
-id: permit_replay
-title: Execution permit cannot be used twice
+id: financial_permit_replay
+title: Financial execution permit cannot be consumed twice
 setup:
-  vendor: taskforge
-  amount: "6000.00"
+  invoice_number: INV-001
+  vendor: Acme Cloud
+  amount: "8000.00"
 steps:
   - use_valid_permit
   - reuse_same_permit

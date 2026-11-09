@@ -88,8 +88,20 @@ Based on practitioner feedback from enterprise FinOps deployments, OWASP Agentic
 | **Phase 0 (Done)** | Monorepo, FastAPI `/health` & `/ready`, Next.js shell, reusable UI library, full project skeleton, contract validator, CI. | `pytest`, `ruff`, `mypy`, `pnpm lint/typecheck/build`, `validate_contracts.py` all pass. |
 | **Phase 1** | SQLAlchemy 2 ORM models + migrations for `specs/sql/schema.sql`, deterministic seed script, CRUD registries for `users`, `agents`, `tools`, `tasks`. | Inactive or unknown `agent_version` is deterministically rejected. |
 | **Phase 2** | LangGraph Primary Agent (`services/agent-worker`), constraint extraction, grounded comparison against `data/fixtures/vendors.json`, structured plan & proposal. | Recommends `TaskForge` (`INR 6,000.00`) for 10-seat / `8,000 INR` goal without executing protected writes. |
-| **Phase 3** | Permission Validator + live OPA evaluation (`POST /api/v1/actions/evaluate`), policy versioning, structured `reason_codes`. | `001_procurement_happy_path` allows; `002_over_budget` and `003_prompt_injection` deny. |
-| **Phase 4** | Redis atomic budget reservation script, Ed25519 JWS permit issuance/verification (`F09`), and protected procurement simulator (`F10`). | `004_permit_replay`, `005_parameter_mutation`, and `006_budget_concurrency` pass with zero overspend. |
+| **Phase 3** | Permission Validator + live OPA evaluation (`POST /api/v1/actions/evaluate`), policy versioning, structured `reason_codes`. | `financial_invoice_happy_path` allows; over-budget/unverified and prompt-injection scenarios fail safely. |
+| **Phase 4** | Redis atomic budget reservation script, Ed25519 JWS permit issuance/verification (`F09`), and protected financial simulator (`F10`). | `004_permit_replay`, `005_parameter_mutation`, and `006_budget_concurrency` pass with zero overspend. |
 | **Phase 5** | Human approval workflow (`F08`), hash-bound approval verification, and SHA-256 hash-linked Decision Receipts (`F13`). | Tampered receipt fails `POST /api/v1/receipts/{id}/verify`. |
 | **Phase 6** | Deterministic + semantic risk signals (`F07`), agent quarantine, and `revocation_epoch` emergency stop (`007_emergency_stop.yaml`). | Old permit fails immediately after emergency stop increments `revocation_epoch`. |
 | **Phase 7 & 8** | End-to-end OpenTelemetry traces, Assurance Lab runner (`F15`), and full interactive demo UI wiring. | All 7 evaluation scenarios pass reproducibly from clean seed. |
+
+
+## README and decision-log synchronisation
+
+Before every commit/push that changes implementation, interfaces, setup, architecture or externally visible behaviour:
+
+- update `README.md` so it reflects the repository that is about to be committed;
+- update the ignored `.project-private/SYSTEM_DESIGN_DECISIONS_LOG.md` for any design decision accepted during the change;
+- verify private material remains ignored and unstaged;
+- run the complete relevant test/workflow set before committing.
+
+Do not postpone this documentation reconciliation to the end of a milestone.

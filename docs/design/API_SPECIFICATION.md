@@ -115,3 +115,47 @@ Permit:
 
 System:
 `EMERGENCY_STOP_ACTIVE`, `RECONCILIATION_REQUIRED`, `TOOL_UNAVAILABLE`.
+
+## Planned interaction and external-interface APIs
+
+These endpoints are introduced in Phase 2 and all terminate at the same Financial AI Agent service boundary.
+
+### Web / canonical interaction
+
+- `POST /api/v1/interactions/message`
+
+Accepts a web-originated user turn, creates or resolves a task/session and returns a typed interface response.
+
+### Twilio WhatsApp
+
+- `POST /api/v1/integrations/twilio/whatsapp/webhook`
+
+Provider requirements:
+
+- form payload support;
+- `X-Twilio-Signature` validation using the official Twilio SDK;
+- `MessageSid` idempotency;
+- prompt acknowledgement;
+- masked sender identifiers in logs;
+- outbound delivery through Twilio Messaging API.
+
+### ElevenLabs Custom LLM
+
+- `POST /integrations/elevenlabs/v1/chat/completions`
+
+Requirements:
+
+- dedicated integration bearer token;
+- OpenAI-compatible Chat Completions request shape;
+- Server-Sent Events streaming response;
+- final `[DONE]` event;
+- request routed into the same Financial AI Agent workflow;
+- no direct protected financial tool execution from ElevenLabs.
+
+### Interface-neutral contracts
+
+- `specs/schemas/interaction-turn.schema.json`
+- `specs/schemas/interface-response.schema.json`
+- `specs/schemas/financial-action-proposal.schema.json`
+
+Channel/provider identity is never treated as financial execution authority.

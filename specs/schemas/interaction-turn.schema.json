@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neolith.local/schemas/interaction-turn.schema.json",
+  "title": "Neolith Interaction Turn",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "interaction_id",
+    "channel",
+    "provider",
+    "text",
+    "received_at",
+    "metadata"
+  ],
+  "properties": {
+    "interaction_id": {"type": "string", "format": "uuid"},
+    "channel": {"type": "string", "enum": ["web", "whatsapp", "voice"]},
+    "provider": {
+      "type": "string",
+      "enum": ["neolith_web", "twilio", "elevenlabs"]
+    },
+    "external_session_ref": {"type": ["string", "null"]},
+    "external_user_ref": {"type": ["string", "null"]},
+    "user_id": {"type": ["string", "null"], "format": "uuid"},
+    "task_id": {"type": ["string", "null"], "format": "uuid"},
+    "text": {"type": "string", "minLength": 1, "maxLength": 12000},
+    "provider_message_id": {"type": ["string", "null"]},
+    "received_at": {"type": "string", "format": "date-time"},
+    "metadata": {"type": "object"}
+  }
+}

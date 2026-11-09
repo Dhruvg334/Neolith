@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://neolith.local/schemas/interface-response.schema.json",
+  "title": "Neolith Interface Response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "interaction_id",
+    "task_id",
+    "trace_id",
+    "status",
+    "message",
+    "evidence_refs"
+  ],
+  "properties": {
+    "interaction_id": {"type": "string", "format": "uuid"},
+    "task_id": {"type": "string", "format": "uuid"},
+    "trace_id": {"type": "string", "minLength": 8},
+    "status": {
+      "type": "string",
+      "enum": ["accepted", "needs_clarification", "proposal_ready", "completed", "error"]
+    },
+    "message": {"type": "string"},
+    "proposed_action": {
+      "oneOf": [
+        {"$ref": "./financial-action-proposal.schema.json"},
+        {"type": "null"}
+      ]
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+}

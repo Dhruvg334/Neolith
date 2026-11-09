@@ -26,7 +26,7 @@ Frontend:
 
 OPA/Rego fixtures:
 
-- allowed procurement;
+- allowed verified invoice proposal/payment;
 - blocked category;
 - over-budget request;
 - approval threshold;
@@ -55,13 +55,16 @@ OPA/Rego fixtures:
 
 - user task to recommendation;
 - governance allow;
-- procurement execution;
+- governed financial execution;
 - denied path;
 - approval path;
 - receipt verification.
 
 ## Mandatory adversarial tests
 
+- Twilio valid/invalid signature and duplicate delivery;
+- ElevenLabs authentication and malformed streaming requests;
+- cross-channel request parity;
 - prompt injection in vendor description;
 - tool-description injection;
 - unsupported tool;

@@ -15,8 +15,8 @@ The system is designed around these ideas:
 - an AI agent understands user requests, gathers information, prepares execution plans and recommends actions;
 - sensitive operations cannot be executed directly by the AI agent;
 - every important action is independently checked against identity, permissions, organisational policy, budgets or quotas, risk and approval requirements;
-- procurement and shopping are demonstration scenarios rather than the entire product;
-- the architecture should extend to HR, finance, scheduling and other enterprise workflows;
+- the Financial AI Agent is the primary reference application rather than the entire product;
+- the architecture should extend to procurement, HR, scheduling and other enterprise workflows;
 - the system should remain transparent, accountable, modular and extensible.
 
 ## Three-layer model
@@ -50,16 +50,21 @@ The system is designed around these ideas:
 
 ## Primary demonstration
 
-The first complete demonstration is procurement and service selection.
+The first complete demonstration is a synthetic Financial AI Agent operating against Neolith Demo Corp.
 
-Example goal:
+Example goals include:
 
-> Select project-management software for a team within a defined monthly budget and submit the approved procurement action.
+> Pay INV-001 if the invoice is valid and within the software budget.
+
+> Check whether INV-002 can be paid and request approval if required.
+
+The same Financial AI Agent is exposed through the Web application, WhatsApp via Twilio, and a future ElevenLabs voice interface. These channels only transport user intent; all reasoning uses the same agent workflow and all protected execution uses the same Neolith governance path.
 
 The demo proves:
 
-- agentic understanding and research;
-- plan generation;
+- agentic understanding and financial-context retrieval;
+- plan and action-proposal generation;
+- channel-independent behaviour;
 - governed tool usage;
 - permission validation;
 - policy enforcement;
@@ -67,15 +72,15 @@ The demo proves:
 - risk classification;
 - optional human approval;
 - execution permit issuance;
-- protected service execution;
+- protected financial execution;
 - auditability.
 
 ## Secondary extension scenarios
 
 Architecture extensions may include:
 
+- procurement and service selection;
 - HR operations;
-- controlled finance workflows;
 - scheduling and resource booking;
 - IT access/software requests;
 - governed CRM updates.

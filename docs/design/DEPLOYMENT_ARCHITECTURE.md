@@ -62,3 +62,26 @@ No paid model API key is required for CI.
 - no secret exposed;
 - current policy bundle identified;
 - demo can be reset reproducibly.
+
+## Public interaction endpoints
+
+Twilio and ElevenLabs require externally reachable HTTPS endpoints in the deployed demo environment.
+
+Expose only the required ingress routes through the public API service:
+
+```text
+POST /api/v1/integrations/twilio/whatsapp/webhook
+POST /integrations/elevenlabs/v1/chat/completions
+```
+
+Deployment requirements:
+
+- valid TLS certificate;
+- provider secrets in the platform secret store;
+- no integration secret in Next.js public environment variables;
+- request-size and rate limits;
+- structured redaction for phone/provider identifiers;
+- provider authentication before task processing;
+- webhooks remain separate from protected financial service endpoints.
+
+Local tunnels such as ngrok may be used for development only. The final demo should use stable hosted HTTPS URLs where possible.

@@ -50,3 +50,27 @@ Trusted only after verification:
 ## Security rule
 
 No security-critical fallback may convert a failed deterministic dependency into model-based approval.
+
+## External interface security
+
+### Twilio WhatsApp
+
+- validate `X-Twilio-Signature` using Twilio's supported SDK validator;
+- validate required account/message fields after signature validation;
+- use `MessageSid` for duplicate suppression;
+- do not trust `From` as a Neolith permission grant;
+- mask phone numbers in logs and receipts;
+- keep Account SID/Auth Token server-side;
+- acknowledge inbound webhooks promptly and process long-running agent work outside the provider request lifetime.
+
+### ElevenLabs Voice
+
+- authenticate the Custom LLM endpoint with a dedicated server-side bearer secret;
+- validate OpenAI-compatible request structure and bound payload sizes;
+- map conversation/user references to Neolith channel sessions without treating them as finance permissions;
+- do not expose protected financial service credentials or direct write tools to ElevenLabs;
+- ensure voice-generated proposals pass through the same Runtime Gateway as Web/WhatsApp.
+
+### Channel-independent rule
+
+A valid provider request proves only that the configured provider delivered the request. Financial authority still requires Neolith identity, permission, policy, budget, approval and permit checks.

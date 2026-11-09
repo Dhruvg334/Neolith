@@ -1,14 +1,19 @@
-id: procurement_over_budget
-title: Over-budget procurement is denied
+id: financial_over_budget_and_unverified
+title: Unverified invoice above category budget is denied
+input:
+  request: Pay INV-003.
 setup:
-  candidate_vendor: plagridx
-action:
-  operation: procure_subscription
-  amount: "9500.00"
+  invoice_number: INV-003
+  vendor: Unknown Supplies
+  verified_beneficiary: false
+  amount: "75000.00"
   currency: INR
+  category: miscellaneous
+  category_budget_remaining: "10000.00"
 expected:
   governance_decision: deny
   reason_codes:
     - BUDGET_EXCEEDED
+    - UNVERIFIED_BENEFICIARY
   protected_execution_count: 0
   receipt_created: true

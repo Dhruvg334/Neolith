@@ -4,102 +4,121 @@
 
 Neolith uses a modular backend with separate agent and policy runtimes.
 
-For the semester prototype:
+For the semester implementation:
 
-- one FastAPI application contains core control-plane and governance modules;
-- one LangGraph worker executes long-running agent workflows;
+- one FastAPI application contains the core control-plane, interaction and governance modules;
+- one LangGraph worker executes stateful Financial AI Agent workflows;
 - OPA runs separately as deterministic policy engine;
 - PostgreSQL is authoritative state;
-- Redis handles low-latency reservations, idempotency and revocation state;
-- protected enterprise services run as a mock service;
-- Next.js provides user and operator interfaces.
+- Redis handles low-latency reservations, idempotency, channel work coordination and revocation state;
+- protected enterprise services run as simulators;
+- Next.js provides the inspectable Web interface;
+- Twilio WhatsApp and ElevenLabs Voice are additional channel adapters into the same Financial AI Agent.
 
-This avoids premature microservices while keeping clear boundaries.
+This avoids premature microservices while preserving clear security and integration boundaries.
 
-## 2. Three-layer academic view
+## 2. High-level architecture
 
 ```mermaid
 flowchart TB
-    U[User / Requester]
+    subgraph I[Interaction Surfaces]
+      Web[Neolith Web App]
+      WA[WhatsApp via Twilio]
+      Voice[ElevenLabs Voice Agent]
+    end
+
+    subgraph C[Channel Adapter Layer]
+      WebA[Web Interaction Adapter]
+      TwA[Twilio Signature + Session Adapter]
+      ElA[ElevenLabs Custom LLM Adapter]
+      IC[Interaction Core]
+    end
 
     subgraph A[AI Agent Layer]
-      A1[Goal Understanding]
-      A2[Research / Retrieval]
-      A3[Comparison]
-      A4[Planning]
-      A5[Action Proposal]
+      A1[Financial AI Agent / LangGraph]
+      A2[Read-Only Financial Tools]
+      A3[FinancialActionProposal]
     end
 
     subgraph G[Governance and Execution Control Layer]
       G1[Runtime Gateway]
-      G2[Identity Service]
-      G3[Permission Validator]
-      G4[Policy Engine]
-      G5[Budget / Quota Manager]
-      G6[Risk Analyzer]
-      G7[Approval Manager]
-      G8[Permit Service]
-      G9[Audit / Receipt Service]
+      G2[Identity + Permissions]
+      G3[OPA Policy]
+      G4[Risk]
+      G5[Budget Reservation]
+      G6[Human Approval]
+      G7[Execution Permit]
+      G8[Decision Receipts + Revocation]
     end
 
-    subgraph E[Enterprise Services Layer]
-      E1[Procurement]
-      E2[ERP / CRM]
-      E3[HR]
-      E4[Scheduling]
-      E5[External APIs]
+    subgraph E[Protected Enterprise Services]
+      Bank[Financial Sandbox]
+      Future[Future ERP / HR / Procurement Adapters]
     end
 
-    U --> A1 --> A2 --> A3 --> A4 --> A5
-    A5 --> G1
-    G1 --> G2 --> G3 --> G4 --> G5 --> G6 --> G7 --> G8
-    G8 --> E1
-    G8 --> E2
-    G8 --> E3
-    G8 --> E4
-    G8 --> E5
-    G1 --> G9
-    E1 --> G9
+    Web --> WebA --> IC
+    WA --> TwA --> IC
+    Voice --> ElA --> IC
+    IC --> A1
+    A1 --> A2
+    A1 --> A3
+    A3 --> G1
+    G1 --> G2 --> G3 --> G4 --> G5 --> G6 --> G7
+    G7 --> Bank
+    G7 --> Future
+    G1 --> G8
+    Bank --> G8
 ```
 
-## 3. Implementation view
+## 3. Interface invariants
+
+1. Web, WhatsApp and Voice use one Financial AI Agent workflow.
+2. Channel adapters authenticate/normalise transport but do not decide financial authority.
+3. WhatsApp sender identity is not automatically a Neolith finance permission.
+4. ElevenLabs is a voice client of Neolith, not a direct protected-tool authority.
+5. Protected financial writes still require the Runtime Gateway and later execution permit.
+6. Equivalent requests across interfaces should generate equivalent structured proposals before governance.
+
+See `docs/design/INTERACTION_INTERFACE_ARCHITECTURE.md`.
+
+## 4. Implementation view
 
 ```mermaid
 flowchart LR
-    Browser[Next.js Web App] --> API[FastAPI API]
-    AgentClient[LangGraph Primary Agent] --> API
+    Browser[Next.js Web] --> API[FastAPI API]
+    Twilio[Twilio WhatsApp] --> API
+    Eleven[ElevenLabs Custom LLM] --> API
+
+    API --> Interaction[Interaction Core]
+    Interaction --> Worker[LangGraph Agent Worker]
+    Worker --> LLM[LLM Provider Adapter]
+    Worker --> ReadTools[Financial Read Tools]
 
     API --> DB[(PostgreSQL)]
     API --> Redis[(Redis)]
     API --> OPA[Open Policy Agent]
-    API --> Worker[Agent Worker]
     API --> Adapter[Protected Service Adapter]
-
-    Worker --> LLM[LLM Provider Adapter]
-    Worker --> MCP[MCP Read Tools]
-    Worker --> DB
-
-    Adapter --> Procurement[Mock Procurement Service]
+    Adapter --> Bank[Financial Sandbox]
 
     API --> OTel[OpenTelemetry]
     Worker --> OTel
     Adapter --> OTel
 ```
 
-## 4. Backend modules
+## 5. FastAPI modules
 
 ```text
-neolith/
+neolith_api/
 ├─ core/
-│  ├─ config
-│  ├─ security
-│  ├─ errors
-│  ├─ idempotency
-│  └─ telemetry
 ├─ users/
 ├─ agents/
 ├─ tools/
 ├─ tasks/
+├─ interactions/          # channel-neutral sessions and turns
+├─ integrations/
+│  ├─ twilio/             # WhatsApp adapter
+│  └─ elevenlabs/         # voice/custom-LLM adapter
+├─ financial/             # reference-application read APIs/domain
 ├─ permissions/
 ├─ policies/
 ├─ budgets/
@@ -111,64 +130,37 @@ neolith/
 ├─ receipts/
 ├─ revocations/
 ├─ incidents/
-├─ evaluations/
-└─ integrations/
+└─ evaluations/
 ```
 
-## 5. Protected action sequence
+## 6. Protected action sequence
 
 ```text
-Agent proposes action
+Financial AI Agent proposes action
 → Runtime Gateway validates envelope
 → Agent/workload identity verified
-→ Permission checked
-→ Policy evaluated by OPA
+→ User/agent permissions checked
+→ OPA policy evaluated
 → Risk classified
-→ Budget/quota reserved if required
+→ Budget reserved if required
 → Human approval if required
 → Decision persisted
 → Signed permit issued
-→ Protected service verifies permit
+→ Protected financial service verifies permit
 → Action executes
 → Reservation commits/releases
-→ Decision receipt appended
+→ Decision Receipt appended
 ```
 
-## 6. Design boundaries
-
-### AI Agent Layer owns
-
-- language interpretation;
-- retrieval;
-- comparison;
-- plan;
-- recommendation;
-- proposal.
-
-### Governance Layer owns
-
-- identity;
-- permissions;
-- policy;
-- budget/quota;
-- risk thresholding;
-- approvals;
-- permits;
-- revocation;
-- evidence.
-
-### Enterprise Service owns
-
-- actual business side effect;
-- business-level idempotency;
-- result reporting;
-- compensation where supported.
+The user interface that originated the request does not change this sequence.
 
 ## 7. Extension model
 
-A new enterprise workflow should add:
+A new interface adds a channel adapter that produces `InteractionTurn` and consumes `InterfaceResponse`.
 
-1. new tool/service adapter;
+A new enterprise workflow adds:
+
+1. tool/service adapter;
 2. permissions;
 3. policy rules;
 4. action schema;

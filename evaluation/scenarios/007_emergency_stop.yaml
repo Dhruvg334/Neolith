@@ -1,5 +1,7 @@
-id: emergency_stop
-title: Old permit fails after system stop
+id: financial_emergency_stop
+title: Existing financial execution permit fails after emergency stop
+setup:
+  invoice_number: INV-001
 steps:
   - issue_valid_permit
   - activate_emergency_stop
