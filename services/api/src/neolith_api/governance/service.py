@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from neolith_api.core.config import get_settings
 from neolith_api.core.models import (
     AgentModel,
     AgentVersionModel,
@@ -26,6 +27,10 @@ from neolith_api.financial.models import (
     BeneficiaryModel,
     FinancialTransactionModel,
     InvoiceModel,
+)
+from neolith_api.governance.evaluator import (
+    OpaPolicyEvaluator,
+    PolicyEvaluator,
 )
 from neolith_api.governance.models import (
     ExecutionRequestModel,
@@ -54,10 +59,21 @@ class GovernanceRuntimeService:
     """Orchestrates authoritative evaluation of financial and system action proposals."""
 
     def __init__(
-        self, db: Session, opa_url: str = "http://localhost:8181/v1/data/neolith/decision/result"
+        self,
+        db: Session,
+        opa_url: str | None = None,
+        evaluator: PolicyEvaluator | None = None,
     ) -> None:
         self.db = db
-        self.opa_url = opa_url
+        if evaluator is not None:
+            self.evaluator = evaluator
+        else:
+            settings = get_settings()
+            resolved_opa_url = opa_url or settings.opa_url
+            self.evaluator = OpaPolicyEvaluator(
+                opa_url=resolved_opa_url,
+                decision_path=settings.opa_decision_path,
+            )
 
     # -------------------------------------------------------------------------
     # Governance Profile Management
@@ -311,26 +327,56 @@ class GovernanceRuntimeService:
         sys_state = self.db.scalars(select(SystemStateModel)).first()
         emergency_stop = sys_state.emergency_stop_active if sys_state else False
 
-        # 9. Evaluate OPA / Policy Engine
-        decision, reason_codes = self._evaluate_policy(
-            emergency_stop=emergency_stop,
-            agent_status=agent_status,
-            agent_version_valid=agent_version_valid,
-            permission_allowed=permission_allowed,
-            tool_registered=tool_registered,
-            tool_status=tool_status,
-            tool_risk_tier=tool_risk_tier,
-            tool_protected=tool_protected,
-            tool_read_only=tool_read_only,
-            operation=req.operation,
-            category=req.category,
-            amount=req.amount,
-            beneficiary_verified=beneficiary_verified,
-            budget_remaining=budget_remaining,
-            budget_threshold=budget_threshold,
-            profile_style=active_profile.style,
-            profile_config=active_profile.configuration,
-        )
+        # 9. Evaluate OPA / Policy Engine Authoritatively (Single Policy Authority)
+        opa_input: dict[str, Any] = {
+            "user": {"id": str(user_id)},
+            "agent": {
+                "status": agent_status,
+                "version_registered": agent_version_valid,
+            },
+            "task": {
+                "blocked_categories": [],
+            },
+            "permission": {
+                "allowed": permission_allowed,
+            },
+            "action": {
+                "operation": req.operation,
+                "category": req.category,
+                "amount": str(req.amount) if req.amount is not None else None,
+            },
+            "tool": {
+                "allowed": tool_registered and tool_status == "active",
+                "registered": tool_registered,
+                "status": tool_status,
+                "risk_tier": tool_risk_tier,
+                "protected": tool_protected,
+                "read_only": tool_read_only,
+            },
+            "beneficiary": {
+                "verified": beneficiary_verified,
+            },
+            "budget": {
+                "remaining": str(budget_remaining) if budget_remaining is not None else None,
+                "approval_threshold": str(budget_threshold)
+                if budget_threshold is not None
+                else None,
+            },
+            "profile": {
+                "style": active_profile.style,
+                "configuration": active_profile.configuration,
+            },
+            "risk": {
+                "objective_alignment_confidence": 0.95,
+            },
+            "revocation": {
+                "emergency_stop_active": emergency_stop,
+            },
+        }
+
+        eval_res = self.evaluator.evaluate(opa_input)
+        decision: DecisionOutcome = eval_res.decision
+        reason_codes = eval_res.reason_codes
 
         # 10. Persist ExecutionRequest and GovernanceDecision
         action_id = req.action_id or uuid4()
@@ -431,99 +477,6 @@ class GovernanceRuntimeService:
             },
             created_at=now,
         )
-
-    def _evaluate_policy(
-        self,
-        *,
-        emergency_stop: bool,
-        agent_status: str,
-        agent_version_valid: bool,
-        permission_allowed: bool,
-        tool_registered: bool,
-        tool_status: str,
-        tool_risk_tier: str,
-        tool_protected: bool,
-        tool_read_only: bool,
-        operation: str,
-        category: str | None,
-        amount: Decimal | None,
-        beneficiary_verified: bool,
-        budget_remaining: Decimal | None,
-        budget_threshold: Decimal | None,
-        profile_style: str,
-        profile_config: dict[str, Any],
-    ) -> tuple[DecisionOutcome, list[str]]:
-        """Evaluate policy rules deterministically in accordance with OPA Rego specification."""
-        deny_reasons: list[str] = []
-        review_reasons: list[str] = []
-
-        # ---------------------------------------------------------------------
-        # HARD INVARIANTS: Cannot be relaxed by any profile
-        # ---------------------------------------------------------------------
-        if emergency_stop:
-            deny_reasons.append("EMERGENCY_STOP_ACTIVE")
-        if agent_status != "active":
-            deny_reasons.append("AGENT_INACTIVE")
-        if not agent_version_valid:
-            deny_reasons.append("AGENT_VERSION_UNKNOWN")
-        if not permission_allowed:
-            deny_reasons.append("PERMISSION_MISSING")
-        if not tool_registered:
-            deny_reasons.append("TOOL_UNREGISTERED")
-        if tool_status != "active":
-            deny_reasons.append("TOOL_INACTIVE")
-
-        # Unverified beneficiary check for payments and transfers
-        if operation in ("pay_invoice", "transfer_funds") and not beneficiary_verified:
-            deny_reasons.append("UNVERIFIED_BENEFICIARY")
-
-        # Hard budget exhaustion check
-        if amount is not None and budget_remaining is not None and amount > budget_remaining:
-            deny_reasons.append("BUDGET_EXCEEDED")
-
-        # Custom profile maximum action limit breach
-        if profile_style == "custom":
-            max_limit_str = profile_config.get("max_action_amount")
-            if max_limit_str and amount is not None:
-                max_limit = Decimal(str(max_limit_str))
-                if amount > max_limit:
-                    deny_reasons.append("MAX_AMOUNT_EXCEEDED")
-
-        # If any hard deny invariant triggered, return DENY immediately with all reasons
-        if deny_reasons:
-            return "deny", sorted(deny_reasons)
-
-        # ---------------------------------------------------------------------
-        # PROFILE-SPECIFIC REVIEW RULES
-        # ---------------------------------------------------------------------
-        if profile_style == "strict":
-            if tool_protected and not tool_read_only:
-                review_reasons.append("STRICT_CONTROL_REVIEW_REQUIRED")
-
-        elif profile_style == "high_autonomy":
-            if tool_risk_tier == "R4":
-                review_reasons.append("CRITICAL_ACTION_REVIEW_REQUIRED")
-
-        elif profile_style == "custom":
-            rev_thresh_str = profile_config.get("review_threshold")
-            if rev_thresh_str and amount is not None:
-                rev_thresh = Decimal(str(rev_thresh_str))
-                if amount >= rev_thresh:
-                    review_reasons.append("CUSTOM_THRESHOLD_REACHED")
-            req_rev_ops = profile_config.get("require_review_operations", [])
-            if operation in req_rev_ops:
-                review_reasons.append("CUSTOM_ACTION_REVIEW_REQUIRED")
-
-        else:  # balanced control (default)
-            if amount is not None and budget_threshold is not None and amount >= budget_threshold:
-                review_reasons.append("APPROVAL_THRESHOLD_REACHED")
-            if tool_risk_tier in ("R3", "R4"):
-                review_reasons.append("HIGH_RISK_TIER_REVIEW_REQUIRED")
-
-        if review_reasons:
-            return "review", sorted(review_reasons)
-
-        return "allow", ["BASE_POLICY_ALLOW"]
 
     def get_decision(self, action_id: UUID) -> GovernanceDecisionRead | None:
         """Fetch evaluated governance decision for a specific action ID."""

@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: neolith-api
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: Dockerfile
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: NEOLITH_AGENT_EXECUTION_MODE
+        value: in_process
+      - key: NEOLITH_FINANCIAL_DATA_MODE
+        value: api
+      - key: OPA_URL
+        value: http://127.0.0.1:8181
+      - key: OPA_DECISION_PATH
+        value: /v1/data/neolith/decision/result
+      - key: DATABASE_URL
+        fromDatabase:
+          name: neolith-db
+          property: connectionString
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: LLM_PROVIDER
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM
+        sync: false
+      - key: TWILIO_WHATSAPP_WEBHOOK_PUBLIC_URL
+        sync: false
+      - key: ELEVENLABS_CUSTOM_LLM_BEARER_TOKEN
+        sync: false
+      - key: ELEVENLABS_CUSTOM_LLM_MODEL_ID
+        value: gpt-4o-mini
+
+databases:
+  - name: neolith-db
+    plan: free
+    region: oregon
+    databaseName: neolith
+    user: neolith

@@ -9,6 +9,10 @@ from neolith_agent.agent import FinancialAIAgent
 from neolith_agent.interfaces import InteractionTurn, InterfaceResponse
 
 
+class AgentWorkerUnavailableError(Exception):
+    """Raised when worker execution is requested but the worker service is unreachable."""
+
+
 class AgentWorkerClient:
     """Client for dispatching interaction turns to the internal Financial Agent service."""
 
@@ -24,31 +28,43 @@ class AgentWorkerClient:
         self._in_process_agent = in_process_agent
 
     async def process_turn(self, turn: InteractionTurn) -> InterfaceResponse:
-        """Forward an InteractionTurn to the worker service or in-process agent."""
+        """Forward an InteractionTurn to the worker service or in-process agent
+        based on NEOLITH_AGENT_EXECUTION_MODE.
+        """
         if self._in_process_agent is not None:
             return await self._in_process_agent.process_turn(turn)
 
+        execution_mode = (
+            os.getenv("NEOLITH_AGENT_EXECUTION_MODE")
+            or (
+                "worker"
+                if os.getenv("NEOLITH_USE_INTERNAL_WORKER", "").lower() in ("1", "true")
+                else "in_process"
+            )
+        ).lower()
+
+        if execution_mode == "in_process":
+            agent = FinancialAIAgent()
+            return await agent.process_turn(turn)
+
+        # Explicit 'worker' execution mode: forward over HTTP with zero silent fallback
         turn_dict = turn.model_dump(mode="json")
-
-        if self._client is not None:
-            resp = await self._client.post(f"{self.worker_url}/internal/v1/turns", json=turn_dict)
-            resp.raise_for_status()
-            data: dict[str, Any] = resp.json()
-            return InterfaceResponse.model_validate(data)
-
-        # In offline deployment or local unit tests where worker daemon is not enabled,
-        # run through the in-process Financial AI Agent directly.
-        if os.getenv("NEOLITH_USE_INTERNAL_WORKER", "").lower() not in ("1", "true"):
-            fallback_agent = FinancialAIAgent()
-            return await fallback_agent.process_turn(turn)
-
         try:
-            timeout_cfg = httpx.Timeout(10.0, connect=0.5)
+            if self._client is not None:
+                resp = await self._client.post(
+                    f"{self.worker_url}/internal/v1/turns", json=turn_dict
+                )
+                resp.raise_for_status()
+                data: dict[str, Any] = resp.json()
+                return InterfaceResponse.model_validate(data)
+
+            timeout_cfg = httpx.Timeout(10.0, connect=1.0)
             async with httpx.AsyncClient(timeout=timeout_cfg) as client:
                 resp = await client.post(f"{self.worker_url}/internal/v1/turns", json=turn_dict)
                 resp.raise_for_status()
                 data = resp.json()
                 return InterfaceResponse.model_validate(data)
-        except Exception:
-            fallback_agent = FinancialAIAgent()
-            return await fallback_agent.process_turn(turn)
+        except Exception as err:
+            raise AgentWorkerUnavailableError(
+                f"Agent worker service at '{self.worker_url}' is unavailable: {err}"
+            ) from err

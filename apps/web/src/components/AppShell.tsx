@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import { checkBackendHealth } from "@/lib/financial-api";
 
 interface AppShellProps {
   readonly children: ReactNode;
@@ -31,6 +32,7 @@ const KNOWLEDGE_NAV = [
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const [viewMode, setViewMode] = useState<ViewMode>("essentials");
+  const [backendStatus, setBackendStatus] = useState<"healthy" | "starting" | "unreachable" | "checking">("checking");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -39,6 +41,7 @@ export function AppShell({ children }: AppShellProps) {
     if (saved === "control" || saved === "essentials") {
       setViewMode(saved);
     }
+    void checkBackendHealth().then((res) => setBackendStatus(res.status));
   }, []);
 
   const handleModeChange = (mode: ViewMode) => {
@@ -76,8 +79,27 @@ export function AppShell({ children }: AppShellProps) {
 
             {/* Quick Status Pill */}
             <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-xs">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-slate-300 font-medium">Gateway Active</span>
+              {backendStatus === "healthy" ? (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  <span className="text-slate-300 font-medium">Connected</span>
+                </>
+              ) : backendStatus === "starting" ? (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                  <span className="text-amber-200 font-medium">Starting service</span>
+                </>
+              ) : backendStatus === "unreachable" ? (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-red-400" />
+                  <span className="text-slate-300 font-medium">Connection issue</span>
+                </>
+              ) : (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-slate-400 animate-pulse" />
+                  <span className="text-slate-400 font-medium">Checking...</span>
+                </>
+              )}
             </div>
           </div>
 

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AgentTaskConsole } from "@/components/AgentTaskConsole";
+import { ErrorState } from "@/components/ErrorState";
 import {
   Badge,
   Card,
@@ -10,8 +11,7 @@ import {
   type DataTableColumn,
 } from "@/components/ui";
 import {
-  FALLBACK_TASKS,
-  fetchApiWithFallback,
+  fetchApiResult,
   type TaskRecordDto,
 } from "@/lib/financial-api";
 
@@ -75,10 +75,25 @@ const TASK_COLUMNS: readonly DataTableColumn<TaskRecordDto>[] = [
 ];
 
 export default async function TasksPage() {
-  const tasksRes = await fetchApiWithFallback<readonly TaskRecordDto[]>(
-    "/tasks",
-    FALLBACK_TASKS
-  );
+  const tasksRes = await fetchApiResult<readonly TaskRecordDto[]>("/tasks");
+
+  if (tasksRes.status === "error") {
+    return (
+      <div style={{ maxWidth: "1200px", margin: "2rem auto", padding: "0 1.5rem" }}>
+        <ErrorState
+          title={tasksRes.isStarting ? "Starting secure service" : "Secure service unavailable"}
+          message={
+            tasksRes.isStarting
+              ? "Neolith is reconnecting. This can take a moment after inactivity on hosted services."
+              : "We couldn't reach Neolith's secure service to retrieve registered tasks."
+          }
+          isStarting={tasksRes.isStarting}
+          details={tasksRes.error}
+        />
+      </div>
+    );
+  }
+
   const tasks = tasksRes.data;
 
   return (
@@ -94,9 +109,7 @@ export default async function TasksPage() {
           }}
         >
           <Badge variant="info">Requester &amp; Treasury Task Workspace</Badge>
-          <Badge variant={tasksRes.live ? "allow" : "review"}>
-            {tasksRes.live ? "Live Task Registry" : "Seed Task Snapshot"}
-          </Badge>
+          <Badge variant="allow">Live Task Registry</Badge>
         </div>
         <h1 className="page-title">Task Registry &amp; Intake</h1>
         <p className="page-lead">

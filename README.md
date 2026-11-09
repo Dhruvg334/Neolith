@@ -330,7 +330,7 @@ Neolith/
 │   ├── api/                        # FastAPI control plane, Governance Runtime, Interaction Core, Twilio/ElevenLabs adapters, Alembic migrations & seed module
 │   │   ├── migrations/             # Alembic migration environment (revisions 0001, 0002, 0003_stage3_governance_and_profiles)
 │   │   ├── src/neolith_api/        # Core ORM models, governance runtime, financial sandbox, interactions, Twilio & ElevenLabs adapters
-│   │   └── tests/                  # 66 unit and integration tests (contracts, financial sandbox, agent, governance, web, WhatsApp, voice, parity)
+│   │   └── tests/                  # 76 unit and integration tests (contracts, financial sandbox, agent, governance, deployment hardening, web, WhatsApp, voice, parity)
 │   ├── agent-worker/               # Stateful LangGraph Financial AI Agent, FinancialContextClient, internal HTTP service, and mock/OpenAI providers
 │   └── tool-simulator/             # SimulatedBankingService (R1 read tools + permit-gated R2-R4 write stubs)
 ├── packages/
@@ -493,7 +493,19 @@ pnpm build
 :: Validate Docker Compose configuration
 docker compose -f infra/docker-compose.yml config
 ```
-```
+
+---
+
+<h2 align="center">Hosted Cloud Deployment (Vercel & Render)</h2>
+
+Neolith is production-ready for split cloud deployment:
+
+- **Frontend (Vercel)**: Next.js 15 App Router deployed with root directory `apps/web`.
+- **Backend (Render Free Web Service)**: Containerized FastAPI service co-locating a pinned Open Policy Agent (OPA 1.22.2) daemon on `127.0.0.1:8181` inside a single Docker container (0.1 CPU, 512 MB RAM footprint).
+- **Database (Render PostgreSQL)**: Provisioned via Blueprint (`render.yaml`) or external PostgreSQL `DATABASE_URL`.
+- **Multi-Channel**: Supports Web, Twilio WhatsApp, and ElevenLabs Conversational AI voice streaming through the same authoritative Runtime Gateway.
+
+For complete step-by-step instructions, environment variable configurations, and cold-start considerations, see [Deployment Guide](docs/DEPLOYMENT.md).
 
 ---
 

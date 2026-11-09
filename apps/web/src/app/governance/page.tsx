@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ActionInspector } from "@/components/ActionInspector";
+import { ErrorState } from "@/components/ErrorState";
 import type {
   DecisionOutcome,
   GovernanceDecisionDto,
@@ -92,17 +93,13 @@ export default function GovernancePage() {
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-800 space-y-3">
-          <p className="font-bold">Error loading governance telemetry:</p>
-          <p className="font-mono text-xs">{error}</p>
-          <button
-            type="button"
-            onClick={() => void loadData()}
-            className="rounded bg-red-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-900"
-          >
-            Retry Connection
-          </button>
-        </div>
+        <ErrorState
+          title="Secure governance service unavailable"
+          message="We couldn't retrieve decision records from Neolith's policy runtime."
+          details={error}
+          onRetry={() => void loadData()}
+          compact={true}
+        />
       ) : null}
 
       {/* Active Profile Banner */}

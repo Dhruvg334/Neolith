@@ -30,7 +30,10 @@ export default function AdoptPage() {
         <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
           Adopting Neolith in Your Organisation
         </h1>
-        <p className="text-sm sm:text-base text-slate-600 mt-2 leading-relaxed">
+        <p className="text-base font-bold text-teal-800 mt-2">
+          Neolith provides the control layer. Your organisation decides the rules.
+        </p>
+        <p className="text-sm sm:text-base text-slate-600 mt-1 leading-relaxed">
           A structured blueprint for deploying autonomous financial AI agents with
           zero implicit authority, deterministic policy boundaries, and enterprise controls.
         </p>

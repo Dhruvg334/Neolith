@@ -25,20 +25,19 @@ flowchart TD
     Gateway --> Agent["Financial AI Agent (Reasoning & Planning)"]
     Agent --> Proposal["Action Proposal (Zero Authority)"]
     Proposal --> Gov["Authoritative Governance Runtime (OPA Rego)"]
-    Gov --> DB[("Database & Policy Engine")]
-    Gov --> Permit["Execution Permit (JWS)"]
-    Permit --> Bank["Protected Financial Services (Simulator)"]
-    Bank --> Receipt["Decision Receipt (Hash-Linked)"]
+    Gov --> DB[("Postgres Database & Audit Log")]
+    Gov --> Dec["Authoritative Decision (Allow / Review / Deny)"]
+    Dec -.-> NextPhase["Target Execution Phase (Stage 4 Signed Settlement)"]
 
     classDef comp fill:#f8fafc,stroke:#0b1f33,stroke-width:1.5px;
-    class Client,Gateway,Agent,Proposal,Gov,DB,Permit,Bank,Receipt comp;
+    class Client,Gateway,Agent,Proposal,Gov,DB,Dec,NextPhase comp;
 `,
     content: `
 ### Three-Layer Architecture
 Neolith implements a strict three-layer architecture:
 1. **AI Agent Layer (Reasoning & Planning)**: Synthesizes operator goals, evaluates invoices, reads vendor profiles, and formulates structured financial proposals. The agent holds zero payment credentials and cannot directly execute any financial transaction.
 2. **Governance & Execution Control Layer (The Gateway)**: An authoritative policy gatekeeper powered by Open Policy Agent (OPA). Evaluates cryptographically verified agent manifests, capability bindings, category budget limits, and risk thresholds.
-3. **Enterprise Services Layer (Execution & Ledger)**: Dispatches transactions strictly upon receipt of valid, single-use execution permits, producing hash-linked audit decision receipts.
+3. **Enterprise Services & Audit Layer (Operational Decision Engine)**: Evaluates and immutably records Execution Requests and Governance Decisions in PostgreSQL, emitting comprehensive trace audit receipts.
 `,
   },
   {
@@ -55,7 +54,6 @@ sequenceDiagram
     participant Gov as Governance Runtime
     participant OPA as OPA Policy Engine
     participant DB as Postgres Ledger
-    participant Bank as Banking Service
 
     Operator->>Agent: Request: Pay invoice INV-001
     Agent->>Agent: Inspect context & create proposal
@@ -67,10 +65,7 @@ sequenceDiagram
     Gov->>DB: Persist ExecutionRequest & GovernanceDecision
     Gov-->>Agent: Decision: ALLOW (BASE_POLICY_ALLOW)
     Agent-->>Operator: Response with GovernanceSummary
-    alt When Allowed
-        Gov->>Bank: Execute payment with Permit
-        Bank->>DB: Record FinancialTransaction & Receipt
-    end
+    Note over Gov,DB: Current runtime authoritatively gates and audits every proposal.<br/>Target Stage 4 extends Allow decisions to Ed25519 Permit settlement.
 `,
     content: `
 ### Decision Sequence Specifications
@@ -149,9 +144,9 @@ flowchart LR
         G3 --> G4["7. Verify Budget Feasibility & Threshold"]
     end
 
-    subgraph DecisionSpace["Decision & Execution Space"]
+    subgraph DecisionSpace["Decision Space"]
         G4 --> D1{"Outcome"}
-        D1 -->|ALLOW| E1["Auto-Execute via Permit"]
+        D1 -->|ALLOW| E1["Action Permitted under Policy"]
         D1 -->|REVIEW| E2["Require Human Operator Approval"]
         D1 -->|DENY| E3["Hard Rejection with Reason Codes"]
     end

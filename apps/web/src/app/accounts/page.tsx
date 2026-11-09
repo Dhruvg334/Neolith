@@ -1,3 +1,4 @@
+import { ErrorState } from "@/components/ErrorState";
 import {
   Badge,
   Card,
@@ -8,11 +9,7 @@ import {
   type DataTableColumn,
 } from "@/components/ui";
 import {
-  FALLBACK_ACCOUNT,
-  FALLBACK_BENEFICIARIES,
-  FALLBACK_INVOICES,
-  FALLBACK_TRANSACTIONS,
-  fetchApiWithFallback,
+  fetchApiResult,
   type BeneficiaryDto,
   type FinancialAccountDto,
   type FinancialTransactionDto,
@@ -145,28 +142,36 @@ const TRANSACTION_COLUMNS: readonly DataTableColumn<FinancialTransactionDto>[] =
 export default async function AccountsPage() {
   const [accountsRes, invoicesRes, beneficiariesRes, transactionsRes] =
     await Promise.all([
-      fetchApiWithFallback<readonly FinancialAccountDto[]>(
-        "/financial/accounts",
-        [FALLBACK_ACCOUNT]
-      ),
-      fetchApiWithFallback<readonly InvoiceDto[]>(
-        "/financial/invoices",
-        FALLBACK_INVOICES
-      ),
-      fetchApiWithFallback<readonly BeneficiaryDto[]>(
-        "/financial/beneficiaries",
-        FALLBACK_BENEFICIARIES
-      ),
-      fetchApiWithFallback<readonly FinancialTransactionDto[]>(
-        "/financial/transactions",
-        FALLBACK_TRANSACTIONS
-      ),
+      fetchApiResult<readonly FinancialAccountDto[]>("/financial/accounts"),
+      fetchApiResult<readonly InvoiceDto[]>("/financial/invoices"),
+      fetchApiResult<readonly BeneficiaryDto[]>("/financial/beneficiaries"),
+      fetchApiResult<readonly FinancialTransactionDto[]>("/financial/transactions"),
     ]);
 
-  const accounts = accountsRes.data;
-  const invoices = invoicesRes.data;
-  const beneficiaries = beneficiariesRes.data;
-  const transactions = transactionsRes.data;
+  if (
+    accountsRes.status === "error" &&
+    invoicesRes.status === "error"
+  ) {
+    return (
+      <div style={{ maxWidth: "1200px", margin: "2rem auto", padding: "0 1.5rem" }}>
+        <ErrorState
+          title={accountsRes.isStarting ? "Starting secure service" : "Secure service unavailable"}
+          message={
+            accountsRes.isStarting
+              ? "Neolith is reconnecting. This can take a moment after inactivity on hosted services."
+              : "We couldn't reach Neolith's secure service to retrieve financial ledger records."
+          }
+          isStarting={accountsRes.isStarting}
+          details={accountsRes.error}
+        />
+      </div>
+    );
+  }
+
+  const accounts = accountsRes.status === "success" ? accountsRes.data : [];
+  const invoices = invoicesRes.status === "success" ? invoicesRes.data : [];
+  const beneficiaries = beneficiariesRes.status === "success" ? beneficiariesRes.data : [];
+  const transactions = transactionsRes.status === "success" ? transactionsRes.data : [];
 
   return (
     <div>
@@ -181,8 +186,8 @@ export default async function AccountsPage() {
           }}
         >
           <Badge variant="info">Treasury &amp; Accounts Payable Ledger</Badge>
-          <Badge variant={accountsRes.live ? "allow" : "review"}>
-            {accountsRes.live ? "Live Database State" : "Seed Snapshot"}
+          <Badge variant={accountsRes.status === "success" ? "allow" : "review"}>
+            {accountsRes.status === "success" ? "Live Database State" : "Reconnecting..."}
           </Badge>
         </div>
         <h1 className="page-title">Accounts, Invoices &amp; Beneficiaries</h1>

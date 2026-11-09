@@ -1,3 +1,4 @@
+import { ErrorState } from "@/components/ErrorState";
 import {
   Badge,
   BudgetMeter,
@@ -11,10 +12,7 @@ import {
   type DataTableColumn,
 } from "@/components/ui";
 import {
-  FALLBACK_AGENTS,
-  FALLBACK_BUDGETS,
-  FALLBACK_TOOLS,
-  fetchApiWithFallback,
+  fetchApiResult,
   type AgentRegistryDto,
   type FinancialCategoryBudgetDto,
   type FinancialToolMetadataDto,
@@ -125,23 +123,31 @@ const TOOL_COLUMNS: readonly DataTableColumn<FinancialToolMetadataDto>[] = [
 
 export default async function OperatorPage() {
   const [agentsRes, toolsRes, budgetsRes] = await Promise.all([
-    fetchApiWithFallback<readonly AgentRegistryDto[]>(
-      "/agents",
-      FALLBACK_AGENTS
-    ),
-    fetchApiWithFallback<readonly FinancialToolMetadataDto[]>(
-      "/tools",
-      FALLBACK_TOOLS
-    ),
-    fetchApiWithFallback<readonly FinancialCategoryBudgetDto[]>(
-      "/financial/budgets",
-      FALLBACK_BUDGETS
-    ),
+    fetchApiResult<readonly AgentRegistryDto[]>("/agents"),
+    fetchApiResult<readonly FinancialToolMetadataDto[]>("/tools"),
+    fetchApiResult<readonly FinancialCategoryBudgetDto[]>("/financial/budgets"),
   ]);
 
-  const agents = agentsRes.data;
-  const tools = toolsRes.data;
-  const budgets = budgetsRes.data;
+  if (agentsRes.status === "error" && toolsRes.status === "error") {
+    return (
+      <div style={{ maxWidth: "1200px", margin: "2rem auto", padding: "0 1.5rem" }}>
+        <ErrorState
+          title={agentsRes.isStarting ? "Starting secure service" : "Secure service unavailable"}
+          message={
+            agentsRes.isStarting
+              ? "Neolith is reconnecting. This can take a moment after inactivity on hosted services."
+              : "We couldn't reach Neolith's secure service to retrieve operator registries."
+          }
+          isStarting={agentsRes.isStarting}
+          details={agentsRes.error}
+        />
+      </div>
+    );
+  }
+
+  const agents = agentsRes.status === "success" ? agentsRes.data : [];
+  const tools = toolsRes.status === "success" ? toolsRes.data : [];
+  const budgets = budgetsRes.status === "success" ? budgetsRes.data : [];
   const readOnlyCount = tools.filter((t) => t.read_only).length;
   const protectedCount = tools.filter((t) => t.protected).length;
 
@@ -158,10 +164,10 @@ export default async function OperatorPage() {
           }}
         >
           <Badge variant="info">Operator Governance Control Plane</Badge>
-          <Badge variant={agentsRes.live ? "allow" : "review"}>
-            {agentsRes.live
+          <Badge variant={agentsRes.status === "success" ? "allow" : "review"}>
+            {agentsRes.status === "success"
               ? "System Online — Live Registry"
-              : "Seed Registry Snapshot"}
+              : "Connecting to Backend..."}
           </Badge>
         </div>
         <h1 className="page-title">Operator Control Plane</h1>

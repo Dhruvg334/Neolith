@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ErrorState } from "@/components/ErrorState";
 import type { GovernanceProfileDto } from "@/lib/financial-api";
 import {
   activateGovernanceProfile,
@@ -119,7 +120,10 @@ export default function PoliciesPage() {
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
           Governance Profiles & Thresholds
         </h1>
-        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+        <p className="text-sm font-medium text-teal-800 mt-1">
+          Neolith provides the control layer. Your organisation decides the rules.
+        </p>
+        <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
           Select standard risk profiles or configure custom spend limits, review thresholds, and operational constraints.
         </p>
       </div>
@@ -144,6 +148,13 @@ export default function PoliciesPage() {
 
         {loading ? (
           <div className="p-8 text-center text-xs text-slate-400">Loading policy profiles...</div>
+        ) : profiles.length === 0 ? (
+          <ErrorState
+            title="Policy service unavailable"
+            message="We couldn't retrieve governance profiles from the backend."
+            onRetry={loadProfiles}
+            compact={true}
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {profiles.map((profile) => (

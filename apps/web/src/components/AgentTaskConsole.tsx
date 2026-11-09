@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { ActionInspector } from "@/components/ActionInspector";
 import { Badge, Button, Card, CardHeader, CopyableId } from "@/components/ui";
-import { formatInrCurrency, getApiBaseUrl } from "@/lib/financial-api";
+import { buildApiUrl, formatInrCurrency } from "@/lib/financial-api";
 import type {
   FinancialActionProposal,
   GovernanceSummary,
@@ -60,7 +60,7 @@ export function AgentTaskConsole() {
     setTurns((prev) => [...prev, userTurn]);
 
     try {
-      const response = await fetch(`${getApiBaseUrl()}/interactions/message`, {
+      const response = await fetch(buildApiUrl("/interactions/message"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -410,10 +410,10 @@ export function AgentTaskConsole() {
                               letterSpacing: "0.05em",
                             }}
                           >
-                            Governance Boundary
+                            Governance Gate
                           </span>
                           <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#9A3412" }}>
-                            Authoritative Policy Gate
+                            Neolith checked whether this action follows your rules
                           </span>
                         </div>
                         <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#78350F" }}>
@@ -432,11 +432,11 @@ export function AgentTaskConsole() {
                         }}
                       >
                         <div>
-                          <span>Active Profile:</span>{" "}
+                          <span>Policy Profile:</span>{" "}
                           <strong>{turn.governance?.profile_name ?? "Balanced Control"}</strong>
                         </div>
                         <div>
-                          <span>Outcome:</span>{" "}
+                          <span>Result:</span>{" "}
                           <strong
                             style={{
                               color:
@@ -445,15 +445,18 @@ export function AgentTaskConsole() {
                                   : turn.governance?.outcome === "deny"
                                     ? "#B91C1C"
                                     : "#D97706",
-                              textTransform: "uppercase",
                             }}
                           >
-                            {turn.governance?.outcome ?? "ALLOW"}
+                            {turn.governance?.outcome === "allow"
+                              ? "Allowed"
+                              : turn.governance?.outcome === "deny"
+                                ? "Blocked"
+                                : "Needs review"}
                           </strong>
                         </div>
                         {turn.governance?.budget_remaining_after ? (
                           <div>
-                            <span>Remaining After:</span>{" "}
+                            <span>Budget After:</span>{" "}
                             <strong>INR {turn.governance.budget_remaining_after}</strong>
                           </div>
                         ) : null}
@@ -468,23 +471,14 @@ export function AgentTaskConsole() {
                           borderTop: "1px solid #FED7AA",
                         }}
                       >
-                        <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap" }}>
-                          {(turn.governance?.reason_codes ?? ["BASE_POLICY_ALLOW"]).map((rc) => (
-                            <span
-                              key={rc}
-                              style={{
-                                fontSize: "0.72rem",
-                                fontFamily: "monospace",
-                                background: "#FFEDD5",
-                                color: "#9A3412",
-                                padding: "0.1rem 0.35rem",
-                                borderRadius: "3px",
-                                border: "1px solid #FDBA74",
-                              }}
-                            >
-                              {rc}
-                            </span>
-                          ))}
+                        <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", alignItems: "center" }}>
+                          <span style={{ fontSize: "0.75rem", color: "#9A3412" }}>
+                            {turn.governance?.outcome === "allow"
+                              ? "✓ Routine spending permitted under policy"
+                              : turn.governance?.outcome === "review"
+                                ? "⏳ Requires human review before settlement"
+                                : "✕ Blocked by safety guardrails"}
+                          </span>
                         </div>
                         <button
                           type="button"
@@ -502,7 +496,7 @@ export function AgentTaskConsole() {
                             textDecoration: "underline",
                           }}
                         >
-                          Inspect Decision &rarr;
+                          View technical details &rarr;
                         </button>
                       </div>
                     </div>

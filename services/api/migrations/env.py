@@ -18,6 +18,10 @@ if config.config_file_name is not None:
 
 env_db_url = os.getenv("DATABASE_URL")
 if env_db_url:
+    if env_db_url.startswith("postgres://"):
+        env_db_url = "postgresql+psycopg://" + env_db_url[len("postgres://") :]
+    elif env_db_url.startswith("postgresql://") and not env_db_url.startswith("postgresql+"):
+        env_db_url = "postgresql+psycopg://" + env_db_url[len("postgresql://") :]
     config.set_main_option("sqlalchemy.url", env_db_url)
 
 target_metadata = Base.metadata

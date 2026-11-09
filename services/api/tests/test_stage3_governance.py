@@ -29,12 +29,12 @@ from neolith_api.main import create_app
 
 
 @pytest.fixture()
-def gov_client() -> TestClient:
+def gov_client(opa_server: str) -> TestClient:
     """Create a FastAPI TestClient backed by an in-memory SQLite Stage 3 database."""
     settings = Settings(
         database_url="sqlite+pysqlite:///:memory:",
         redis_url="redis://localhost:6379/0",
-        opa_url="http://localhost:8181",
+        opa_url=opa_server,
     )
     app: FastAPI = create_app(settings=settings)
     shared_engine = build_engine("sqlite+pysqlite:///:memory:")

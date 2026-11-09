@@ -34,6 +34,11 @@ jobs:
           python -m pip install -r requirements.lock
           python -m pip install --no-deps -e .
 
+      - name: Set up Open Policy Agent
+        uses: open-policy-agent/setup-opa@v2.4.0
+        with:
+          version: "1.22.2"
+
       - name: Validate documentation and contracts
         run: |
           python scripts/check_docs.py

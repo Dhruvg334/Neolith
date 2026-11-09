@@ -125,9 +125,27 @@ class Settings(BaseSettings):
         default="neolith-financial-agent", validation_alias="ELEVENLABS_CUSTOM_LLM_MODEL_ID"
     )
 
+    cors_allowed_origins: str = Field(
+        default="http://localhost:3000,http://127.0.0.1:3000",
+        validation_alias="CORS_ALLOWED_ORIGINS",
+    )
+    neolith_agent_execution_mode: Literal["in_process", "worker"] = Field(
+        default="in_process",
+        validation_alias="NEOLITH_AGENT_EXECUTION_MODE",
+    )
+
+    @property
+    def cors_allowed_origins_list(self) -> list[str]:
+        """Return parsed list of allowed CORS origins from comma-separated string."""
+        return [orig.strip() for orig in self.cors_allowed_origins.split(",") if orig.strip()]
+
     @field_validator("database_url")
     @classmethod
     def validate_database_url(cls, value: str) -> str:
+        if value.startswith("postgres://"):
+            value = "postgresql+psycopg://" + value[len("postgres://") :]
+        elif value.startswith("postgresql://") and not value.startswith("postgresql+"):
+            value = "postgresql+psycopg://" + value[len("postgresql://") :]
         allowed_prefixes = (
             "postgresql://",
             "postgresql+psycopg://",

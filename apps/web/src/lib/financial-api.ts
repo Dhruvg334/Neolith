@@ -178,12 +178,81 @@ export interface ExecutionRequestDto {
   readonly decision?: GovernanceDecisionDto | null;
 }
 
+export class ApiConnectionError extends Error {
+  public readonly isStarting: boolean;
+  public constructor(
+    message: string = "We couldn't reach Neolith's secure service.",
+    isStarting: boolean = false
+  ) {
+    super(message);
+    this.name = "ApiConnectionError";
+    this.isStarting = isStarting;
+  }
+}
+
+export class ApiTimeoutError extends Error {
+  public constructor(
+    message: string = "Request timed out while connecting to Neolith service."
+  ) {
+    super(message);
+    this.name = "ApiTimeoutError";
+  }
+}
+
+export class ApiResponseError extends Error {
+  public readonly status: number;
+  public readonly detail?: unknown;
+  public constructor(status: number, message: string, detail?: unknown) {
+    super(message);
+    this.name = "ApiResponseError";
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
 const DEFAULT_API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+
+/**
+ * Normalizes backend API URL to guarantee no duplicate `/api/v1` prefixes.
+ */
+export function buildApiUrl(path: string): string {
+  const rawBase =
+    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+  const base = rawBase.replace(/\/+$/, "");
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+
+  if (base.endsWith("/api/v1")) {
+    if (cleanPath.startsWith("/api/v1/")) {
+      return `${base}${cleanPath.slice("/api/v1".length)}`;
+    }
+    if (cleanPath === "/api/v1") {
+      return base;
+    }
+    return `${base}${cleanPath}`;
+  }
+
+  if (cleanPath.startsWith("/api/v1/")) {
+    return `${base}${cleanPath}`;
+  }
+  if (cleanPath === "/api/v1") {
+    return `${base}/api/v1`;
+  }
+  return `${base}/api/v1${cleanPath}`;
+}
 
 export function getApiBaseUrl(): string {
   return DEFAULT_API_BASE.replace(/\/+$/, "");
 }
+
+export type ApiStateResult<T> =
+  | { readonly status: "success"; readonly data: T; readonly live: true }
+  | {
+      readonly status: "error";
+      readonly error: string;
+      readonly isStarting: boolean;
+      readonly live: false;
+    };
 
 export interface ApiResult<T> {
   readonly data: T;
@@ -519,34 +588,122 @@ export const FALLBACK_AGENTS: readonly AgentRegistryDto[] = [
 
 export async function fetchApi<T>(
   path: string,
-  options?: RequestInit
+  options?: RequestInit & { timeoutMs?: number }
 ): Promise<T> {
-  const url = `${getApiBaseUrl()}${path}`;
-  const response = await fetch(url, {
-    cache: "no-store",
-    ...options,
-    headers: {
-      Accept: "application/json",
-      ...(options?.headers ?? {}),
-    },
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    let detail = `HTTP ${response.status} ${response.statusText}`;
-    try {
-      const parsed = JSON.parse(errorText) as { detail?: unknown };
-      if (parsed.detail) {
-        detail =
-          typeof parsed.detail === "string"
-            ? parsed.detail
-            : JSON.stringify(parsed.detail);
+  const url = buildApiUrl(path);
+  const timeoutMs = options?.timeoutMs ?? 15000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      cache: "no-store",
+      ...options,
+      signal: options?.signal ?? controller.signal,
+      headers: {
+        Accept: "application/json",
+        ...(options?.headers ?? {}),
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      let detail = `HTTP ${response.status} ${response.statusText}`;
+      let parsedDetail: unknown = undefined;
+      try {
+        const parsed = JSON.parse(errorText) as { detail?: unknown };
+        if (parsed.detail) {
+          parsedDetail = parsed.detail;
+          detail =
+            typeof parsed.detail === "string"
+              ? parsed.detail
+              : JSON.stringify(parsed.detail);
+        }
+      } catch {
+        // ignore non-json error responses
       }
-    } catch {
-      // ignore non-json error responses
+      throw new ApiResponseError(response.status, detail, parsedDetail);
     }
-    throw new Error(detail);
+    return (await response.json()) as T;
+  } catch (err: unknown) {
+    if (err instanceof ApiResponseError) {
+      throw err;
+    }
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new ApiTimeoutError("Request timed out connecting to Neolith backend.");
+    }
+    const message = err instanceof Error ? err.message : "Network error";
+    const isStarting =
+      message.includes("fetch failed") ||
+      message.includes("ECONNREFUSED") ||
+      message.includes("NetworkError");
+    throw new ApiConnectionError(
+      isStarting
+        ? "Neolith is reconnecting. This can take a moment after inactivity."
+        : "We couldn't reach Neolith's secure service.",
+      isStarting
+    );
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return response.json() as Promise<T>;
+}
+
+export async function fetchApiResult<T>(
+  path: string,
+  options?: RequestInit & { timeoutMs?: number }
+): Promise<ApiStateResult<T>> {
+  try {
+    const data = await fetchApi<T>(path, options);
+    return { status: "success", data, live: true };
+  } catch (err: unknown) {
+    if (err instanceof ApiConnectionError) {
+      return {
+        status: "error",
+        error: err.message,
+        isStarting: err.isStarting,
+        live: false,
+      };
+    }
+    if (err instanceof ApiTimeoutError) {
+      return {
+        status: "error",
+        error: "Request timed out connecting to Neolith service.",
+        isStarting: true,
+        live: false,
+      };
+    }
+    if (err instanceof ApiResponseError) {
+      return {
+        status: "error",
+        error: err.message,
+        isStarting: err.status === 503 || err.status === 504,
+        live: false,
+      };
+    }
+    const msg = err instanceof Error ? err.message : "Backend unreachable";
+    return { status: "error", error: msg, isStarting: false, live: false };
+  }
+}
+
+export async function checkBackendHealth(): Promise<{
+  status: "healthy" | "starting" | "unreachable";
+  details?: Record<string, unknown>;
+}> {
+  try {
+    const res = await fetchApi<{ status: string; checks?: Record<string, unknown> }>(
+      "/health",
+      { timeoutMs: 4000 }
+    );
+    if (res.status === "healthy" || res.status === "ok") {
+      return { status: "healthy", details: res.checks };
+    }
+    return { status: "starting", details: res.checks };
+  } catch (err: unknown) {
+    if (err instanceof ApiTimeoutError || (err instanceof ApiConnectionError && err.isStarting)) {
+      return { status: "starting" };
+    }
+    return { status: "unreachable" };
+  }
 }
 
 export async function getGovernanceProfiles(): Promise<GovernanceProfileDto[]> {
@@ -637,7 +794,7 @@ export async function fetchApiWithFallback<T>(
   path: string,
   fallback: T
 ): Promise<ApiResult<T>> {
-  const url = `${getApiBaseUrl()}${path}`;
+  const url = buildApiUrl(path);
   try {
     const response = await fetch(url, {
       cache: "no-store",

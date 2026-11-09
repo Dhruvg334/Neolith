@@ -1,4 +1,5 @@
-import { AgentTaskConsole } from "@/components/AgentTaskConsole";
+import { AgentInterfaceSwitcher } from "@/components/AgentInterfaceSwitcher";
+import { ErrorState } from "@/components/ErrorState";
 import {
   Badge,
   Card,
@@ -10,10 +11,9 @@ import {
   type TimelineStep,
 } from "@/components/ui";
 import {
-  FALLBACK_INVOICES,
   FALLBACK_SUMMARY,
   FALLBACK_TOOLS,
-  fetchApiWithFallback,
+  fetchApiResult,
   formatInrCurrency,
   type FinancialSummaryDto,
   type FinancialToolMetadataDto,
@@ -102,23 +102,31 @@ const TOOL_COLUMNS: readonly DataTableColumn<FinancialToolMetadataDto>[] = [
 
 export default async function FinancialAgentPage() {
   const [summaryRes, invoicesRes, toolsRes] = await Promise.all([
-    fetchApiWithFallback<FinancialSummaryDto>(
-      "/financial/summary",
-      FALLBACK_SUMMARY
-    ),
-    fetchApiWithFallback<readonly InvoiceDto[]>(
-      "/financial/invoices?status=unpaid",
-      FALLBACK_INVOICES
-    ),
-    fetchApiWithFallback<readonly FinancialToolMetadataDto[]>(
-      "/financial/tools",
-      FALLBACK_TOOLS
-    ),
+    fetchApiResult<FinancialSummaryDto>("/financial/summary"),
+    fetchApiResult<readonly InvoiceDto[]>("/financial/invoices?status=unpaid"),
+    fetchApiResult<readonly FinancialToolMetadataDto[]>("/financial/tools"),
   ]);
 
-  const summary = summaryRes.data;
-  const unpaidInvoices = invoicesRes.data;
-  const tools = toolsRes.data;
+  if (summaryRes.status === "error" && invoicesRes.status === "error") {
+    return (
+      <div style={{ maxWidth: "1200px", margin: "2rem auto", padding: "0 1.5rem" }}>
+        <ErrorState
+          title={summaryRes.isStarting ? "Starting secure service" : "Secure service unavailable"}
+          message={
+            summaryRes.isStarting
+              ? "Neolith is reconnecting. This can take a moment after inactivity on hosted services."
+              : "We couldn't reach Neolith's secure service. Please verify your connection or try again."
+          }
+          isStarting={summaryRes.isStarting}
+          details={summaryRes.error}
+        />
+      </div>
+    );
+  }
+
+  const summary = summaryRes.status === "success" ? summaryRes.data : FALLBACK_SUMMARY;
+  const unpaidInvoices = invoicesRes.status === "success" ? invoicesRes.data : [];
+  const tools = toolsRes.status === "success" ? toolsRes.data : FALLBACK_TOOLS;
 
   return (
     <div>
@@ -135,22 +143,21 @@ export default async function FinancialAgentPage() {
         >
           <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
             <Badge variant="info">Financial AI Agent</Badge>
-            <Badge variant="neutral">Channel: Web</Badge>
+            <Badge variant="neutral">Multi-Channel: Web &bull; WhatsApp &bull; Voice</Badge>
             <Badge variant="neutral">Framework: LangGraph</Badge>
           </div>
-          <Badge variant={summaryRes.live ? "allow" : "review"}>
-            {summaryRes.live ? "Connected to Live FastAPI Sandbox" : "Offline Sandbox Snapshot"}
+          <Badge variant={summaryRes.status === "success" ? "allow" : "review"}>
+            {summaryRes.status === "success" ? "Connected to Live Backend" : "Connecting..."}
           </Badge>
         </div>
         <h1 className="page-title">
           Financial Agent Workspace (<code className="inline-code">financial-ai-agent:0.1.0</code>)
         </h1>
         <p className="page-lead">
-          Interactive console for the Financial Operations AI Agent. The agent
-          inspects treasury balances, invoices, beneficiaries, and category
-          budgets via read-only APIs, and formulates structured{" "}
-          <code className="inline-code">FinancialActionProposal</code>{" "}
-          envelopes. Protected financial execution remains strictly blocked under Runtime Gateway execution gating.
+          Multi-channel operations console for the Financial AI Agent. Accessible seamlessly via
+          Web, WhatsApp, and Voice (ElevenLabs). The agent evaluates accounts payable, invoices, and category
+          budgets via read-only APIs, formulating structured <code className="inline-code">FinancialActionProposal</code> envelopes.
+          All execution remains governed under the Runtime Gateway policy engine.
         </p>
       </Card>
 
@@ -164,7 +171,7 @@ export default async function FinancialAgentPage() {
         }}
       >
         <div>
-          <AgentTaskConsole />
+          <AgentInterfaceSwitcher />
         </div>
 
         <div>

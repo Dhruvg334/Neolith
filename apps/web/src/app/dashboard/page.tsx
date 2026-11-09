@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ErrorState } from "@/components/ErrorState";
 import {
   Badge,
   BudgetMeter,
@@ -10,8 +11,7 @@ import {
   type DataTableColumn,
 } from "@/components/ui";
 import {
-  FALLBACK_SUMMARY,
-  fetchApiWithFallback,
+  fetchApiResult,
   type FinancialSummaryDto,
   type FinancialTransactionDto,
 } from "@/lib/financial-api";
@@ -60,10 +60,25 @@ const TRANSACTION_COLUMNS: readonly DataTableColumn<FinancialTransactionDto>[] =
 ];
 
 export default async function FinancialDashboardPage() {
-  const result = await fetchApiWithFallback<FinancialSummaryDto>(
-    "/financial/summary",
-    FALLBACK_SUMMARY
-  );
+  const result = await fetchApiResult<FinancialSummaryDto>("/financial/summary");
+
+  if (result.status === "error") {
+    return (
+      <div style={{ maxWidth: "1200px", margin: "2rem auto", padding: "0 1.5rem" }}>
+        <ErrorState
+          title={result.isStarting ? "Starting secure service" : "Secure service unavailable"}
+          message={
+            result.isStarting
+              ? "Neolith is reconnecting. This can take a moment after inactivity on hosted services."
+              : "We couldn't reach Neolith's secure service to retrieve the financial dashboard."
+          }
+          isStarting={result.isStarting}
+          details={result.error}
+        />
+      </div>
+    );
+  }
+
   const summary = result.data;
 
   return (
@@ -78,12 +93,8 @@ export default async function FinancialDashboardPage() {
             gap: "0.5rem",
           }}
         >
-          <Badge variant="info">Financial Reference Application (F16)</Badge>
-          <Badge variant={result.live ? "allow" : "review"}>
-            {result.live
-              ? "Connected to Live FastAPI Sandbox"
-              : "Seed Baseline Snapshot (API Offline)"}
-          </Badge>
+          <Badge variant="info">Financial Reference Application</Badge>
+          <Badge variant="allow">Connected to Live Backend</Badge>
         </div>
         <h1 className="page-title">
           Financial Dashboard — {summary.organisation_name}

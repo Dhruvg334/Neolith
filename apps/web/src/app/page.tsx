@@ -13,6 +13,9 @@ export default function HomePage() {
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
             Deterministic Governance for Autonomous Financial AI Agents
           </h1>
+          <p className="text-lg sm:text-xl font-bold text-teal-300">
+            Neolith provides the control layer. Your organisation decides the rules.
+          </p>
           <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
             Neolith separates intelligent financial goal understanding, vendor evaluation,
             and action planning from deterministic execution authority. Every agent proposal
