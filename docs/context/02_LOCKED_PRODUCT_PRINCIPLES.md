@@ -53,9 +53,9 @@ Agent memory may improve continuity but cannot create a new permission, budget, 
 
 Agent behaviour, governance correctness, security and cost must be tested through reproducible scenarios.
 
-## P10 — Academic demo must be real enough to inspect
+## P10 — Academic evaluation must be real enough to inspect
 
-The demo may use mock enterprise services and synthetic data, but core governance functions must have real backing state and real enforcement logic.
+The reference application may use mock enterprise services and synthetic data, but core governance functions must have real backing state and real enforcement logic.
 
 ## P11 — No fake metrics
 

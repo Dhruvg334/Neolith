@@ -16,7 +16,8 @@
 - `context/00_PROJECT_CONTEXT.md`
 - `context/02_LOCKED_PRODUCT_PRINCIPLES.md`
 - `context/03_GLOSSARY.md`
-- `context/04_DEMO_CONTEXT.md`
+- `context/04_FINANCIAL_SCENARIOS.md`
+- `context/FINANCIAL_REFERENCE_APPLICATION.md`
 
 ## Features
 
@@ -39,8 +40,3 @@ See `features/00_FEATURE_INDEX.md`.
 - `testing/TEST_STRATEGY.md`
 - `testing/ACCEPTANCE_TEST_MATRIX.md`
 - `testing/EVALUATION_PLAN.md`
-
-## Delivery
-
-- `IMPLEMENTATION_ROADMAP.md`
-- `TEAM_WORKFLOW.md`

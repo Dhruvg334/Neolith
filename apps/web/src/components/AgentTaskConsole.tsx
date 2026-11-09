@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Badge, Button, Card, CardHeader, CopyableId } from "@/components/ui";
-import { getApiBaseUrl } from "@/lib/financial-api";
+import { formatInrCurrency, getApiBaseUrl } from "@/lib/financial-api";
 import type { FinancialActionProposal, InterfaceResponse, InterfaceResponseStatus } from "@neolith/contracts";
 
 interface ChatTurn {
@@ -16,11 +16,11 @@ interface ChatTurn {
 }
 
 const BENCHMARK_EXAMPLES = [
-  "Pay INV-001 if the invoice is valid and within our software budget.",
+  "Show the Operations Account balance",
+  "Inspect INV-001",
+  "Pay INV-001 if it is valid and within our software budget",
   "Can we pay INV-002?",
-  "Pay INV-003.",
-  "What is our Operations Account balance?",
-  "Pay the invoice.",
+  "Inspect INV-003",
 ] as const;
 
 export function AgentTaskConsole() {
@@ -158,6 +158,14 @@ export function AgentTaskConsole() {
             rows={3}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (!submitting) {
+                  e.currentTarget.form?.requestSubmit();
+                }
+              }
+            }}
             style={{
               width: "100%",
               padding: "0.65rem 0.75rem",
@@ -176,10 +184,31 @@ export function AgentTaskConsole() {
               Dispatch Turn to Financial Agent
             </Button>
             <span style={{ fontSize: "0.82rem", color: "var(--muted)" }}>
-              Routes via <code className="inline-code">POST /api/v1/interactions/message</code> &rarr; LangGraph Agent
+              Press <strong>Enter</strong> to send, <strong>Shift+Enter</strong> for newline &bull; Routes via <code className="inline-code">POST /api/v1/interactions/message</code>
             </span>
           </div>
         </form>
+
+        {submitting ? (
+          <div
+            style={{
+              marginTop: "0.85rem",
+              padding: "0.75rem 0.9rem",
+              borderRadius: "8px",
+              border: "1px solid var(--accent)",
+              background: "var(--surface-muted)",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.6rem",
+              fontSize: "0.86rem",
+            }}
+          >
+            <span style={{ fontWeight: 600 }}>🤖 Workflow:</span>
+            <span>
+              Request understood &rarr; Ingesting financial context &rarr; Grounding evidence &rarr; Generating proposal...
+            </span>
+          </div>
+        ) : null}
 
         {errorMsg ? (
           <div
@@ -324,7 +353,7 @@ export function AgentTaskConsole() {
                       </div>
                       <div>
                         <span style={{ color: "var(--muted)" }}>Amount:</span>{" "}
-                        <strong>{turn.proposed_action.currency} {turn.proposed_action.amount ?? "N/A"}</strong>
+                        <strong>{formatInrCurrency(turn.proposed_action.amount, turn.proposed_action.currency)}</strong>
                       </div>
                       <div>
                         <span style={{ color: "var(--muted)" }}>Vendor:</span>{" "}

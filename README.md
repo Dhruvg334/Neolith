@@ -49,7 +49,7 @@ The repository currently contains **Phase 0 (Foundation)**, **Phase 1 (Financial
   2. **WhatsApp Messaging**: `POST /api/v1/integrations/twilio/whatsapp/webhook` with Twilio signature validation (`X-Twilio-Signature`), MessageSid idempotency, and asynchronous dispatch.
   3. **Voice Interface**: `POST /integrations/elevenlabs/v1/chat/completions` OpenAI-compatible streaming SSE endpoint terminating with `data: [DONE]`.
 - **Channel Parity**: All three channels resolve to the **same single Financial AI Agent**, guaranteeing consistent context retrieval, evidence analysis, and proposal production across every interface.
-- **Protected Execution Boundary**: Real-world execution (`pay_invoice`, `transfer_funds`) remains permit-gated and strictly blocked. Runtime governance evaluation, atomic Redis budget reservations, Ed25519 single-use execution permits, human-in-the-loop approvals, and tamper-evident Decision Receipts remain planned for **Phase 3**.
+- **Protected Execution Boundary**: Real-world execution (`pay_invoice`, `transfer_funds`, `add_beneficiary`, `cancel_payment`) remains permit-gated and strictly blocked. The Financial AI Agent produces strictly structured `FinancialActionProposal` envelopes; execution is gated by the Runtime Gateway control plane requiring cryptographic execution permits and atomic budget reservations.
 
 <h3 align="center">Three User Interfaces, One Agent, One Governance Path</h3>
 
@@ -246,9 +246,9 @@ flowchart LR
 
 ---
 
-<h2 align="center">Financial Reference Application (Neolith Demo Corp)</h2>
+<h2 align="center">Financial Reference Application (Neolith Finance)</h2>
 
-While Neolith's governance control plane is general-purpose, the repository includes an implemented **Financial Reference Sandbox foundation** (`services/api/src/neolith_api/financial/` and `services/tool-simulator/src/neolith_simulator/banking.py`) pre-seeded with deterministic enterprise treasury data for **Neolith Demo Corp**:
+While Neolith's governance control plane is general-purpose, the repository includes an implemented **Financial Reference Sandbox foundation** (`services/api/src/neolith_api/financial/` and `services/tool-simulator/src/neolith_simulator/banking.py`) pre-seeded with deterministic enterprise treasury data for **Neolith Finance**:
 
 - **Primary Operating Account**: `Operations Account` — Available Balance: **`INR 100,000.00`** (`active`)
 - **Monthly Category Budgets**:
@@ -299,7 +299,7 @@ While Neolith's governance control plane is general-purpose, the repository incl
 | **F13** | **Decision Receipts & Incidents** | Append-only SHA-256 hash-linked evidence chain (`previous_receipt_hash -> receipt_hash`) and incident timelines. |
 | **F14** | **OpenTelemetry Observability** | End-to-end `X-Trace-Id` propagation, structured JSON logging, and Jaeger distributed tracing. |
 | **F15** | **Evaluation & Assurance Lab** | Reproducible scenario harness testing happy paths, over-budget denials, prompt injection, permit replay, and emergency stops. |
-| **F16** | **Financial Reference Application** | Deterministic enterprise financial sandbox (`Neolith Demo Corp`) used as the primary governed-agent test application. |
+| **F16** | **Financial Reference Application** | Deterministic enterprise financial sandbox (`Neolith Finance`) used as the primary governed-agent test application. |
 | **F17** | **Multi-Channel Interaction Interfaces** | One channel-neutral interaction core serving Web, Twilio WhatsApp, and ElevenLabs Voice without creating alternate authority paths. |
 
 ---
@@ -383,7 +383,7 @@ py -3.12 -m venv .venv
 .venv\Scripts\python.exe -m pip install -e ".[dev]"
 ```
 
-Run Alembic migrations and seed the deterministic Financial Reference Application dataset (`Neolith Demo Corp`):
+Run Alembic migrations and seed the deterministic Financial Reference Application dataset (`Neolith Finance`):
 
 ```cmd
 cd services\api

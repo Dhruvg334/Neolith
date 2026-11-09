@@ -4,7 +4,7 @@ import os
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import Connection, engine_from_config, pool
 
 import neolith_api.core.models
 import neolith_api.financial.models
@@ -47,15 +47,15 @@ def run_migrations_online() -> None:
             poolclass=pool.NullPool,
         )
 
-    if hasattr(connectable, "connect"):
+    if isinstance(connectable, Connection):
+        context.configure(connection=connectable, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
+    elif connectable is not None:
         with connectable.connect() as connection:
             context.configure(connection=connection, target_metadata=target_metadata)
             with context.begin_transaction():
                 context.run_migrations()
-    else:
-        context.configure(connection=connectable, target_metadata=target_metadata)
-        with context.begin_transaction():
-            context.run_migrations()
 
 
 if context.is_offline_mode():

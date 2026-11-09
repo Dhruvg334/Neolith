@@ -18,7 +18,7 @@ class FinancialAccountModel(Base):
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     organisation_name: Mapped[str] = mapped_column(
-        String(255), nullable=False, default="Neolith Demo Corp"
+        String(255), nullable=False, default="Neolith Finance"
     )
     name: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     account_type: Mapped[str] = mapped_column(String(64), nullable=False, default="operating")

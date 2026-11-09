@@ -2,13 +2,14 @@
 
 Target: FastAPI + Python.
 
-Phase 0:
+Core capabilities:
 
 - application boot;
-- `/api/v1/health`;
-- config;
-- structured error format;
-- PostgreSQL/Redis/OPA dependency clients;
+- `/api/v1/health` and `/api/v1/ready`;
+- structured configuration loading and validation;
+- structured error formatting and correlation tracking;
+- PostgreSQL/Redis/OPA dependency health checks;
+- Interaction Core, channel adapters, and Financial Sandbox services;
 - contract validation.
 
-Do not implement protected execution before the Phase 3/4 governance primitives exist.
+Do not implement protected execution before governance verification primitives are active.

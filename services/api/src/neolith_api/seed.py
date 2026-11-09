@@ -26,7 +26,7 @@ from neolith_api.financial.models import (
 )
 from neolith_api.financial.tools import FINANCIAL_TOOL_SPECS
 
-SEED_NAMESPACE = uuid5(NAMESPACE_DNS, "neolith.financial.demo.v1")
+SEED_NAMESPACE = uuid5(NAMESPACE_DNS, "neolith.financial.sandbox.v1")
 
 
 def deterministic_uuid(key: str) -> UUID:
@@ -34,7 +34,7 @@ def deterministic_uuid(key: str) -> UUID:
     return uuid5(SEED_NAMESPACE, key)
 
 
-DEMO_ORG_NAME = "Neolith Demo Corp"
+DEMO_ORG_NAME = "Neolith Finance"
 DEMO_ACCOUNT_ID = deterministic_uuid("account:operations")
 DEMO_USER_ID = deterministic_uuid("user:operator")
 DEMO_AGENT_ID = deterministic_uuid("agent:financial-ai-agent")
@@ -47,7 +47,7 @@ def seed_demo_data(session: Session, *, reset: bool = False) -> dict[str, int]:
     """Populate or refresh the deterministic Financial Reference Application seed dataset.
 
     Running this function multiple times is idempotent and will never duplicate records.
-    When ``reset=True``, existing financial demo records are cleared and recreated cleanly.
+    When ``reset=True``, existing financial reference records are cleared and recreated cleanly.
     """
     if reset:
         session.execute(delete(FinancialTransactionModel))
@@ -80,7 +80,7 @@ def seed_demo_data(session: Session, *, reset: bool = False) -> dict[str, int]:
         user = UserModel(
             id=DEMO_USER_ID,
             email="operator@neolith.local",
-            display_name="Treasury Operator (Neolith Demo Corp)",
+            display_name="Treasury Operator (Neolith Finance)",
             role="operator",
             status="active",
         )
@@ -97,7 +97,7 @@ def seed_demo_data(session: Session, *, reset: bool = False) -> dict[str, int]:
             name="financial-ai-agent",
             description=(
                 "Autonomous Financial Operations & Accounts Payable AI Agent for "
-                "Neolith Demo Corp. Operates under strict Runtime Gateway governance."
+                "Neolith Finance. Operates under strict Runtime Gateway governance."
             ),
             owner_user_id=user.id,
             status="active",
@@ -392,7 +392,7 @@ def seed_demo_data(session: Session, *, reset: bool = False) -> dict[str, int]:
             amount=Decimal("100000.00"),
             currency="INR",
             status="completed",
-            reference="OPENING-BAL-001 — Treasury Allocation for Neolith Demo Corp",
+            reference="OPENING-BAL-001 — Treasury Allocation for Neolith Finance",
             idempotency_key="seed:opening-credit:operations",
             completed_at=datetime.now(UTC),
         )
@@ -406,12 +406,12 @@ def seed_demo_data(session: Session, *, reset: bool = False) -> dict[str, int]:
             user_id=user.id,
             original_request=(
                 "Inspect unpaid vendor invoices (INV-001, INV-002, INV-003) against "
-                "Neolith Demo Corp monthly category budgets and verify vendor status."
+                "Neolith Finance monthly category budgets and verify vendor status."
             ),
             objective="Evaluate accounts payable readiness under policy and budget guardrails.",
             constraints={"currency": "INR", "require_verified_vendor": True},
             state="planning",
-            trace_id="trace-seed-demo-001",
+            trace_id="trace-seed-ref-001",
         )
         session.add(sample_task)
 

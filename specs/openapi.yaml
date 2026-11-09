@@ -314,7 +314,7 @@ paths:
       operationId: getFinancialSummary
       responses:
         "200":
-          description: Aggregated financial demo summary
+          description: Aggregated financial reference summary
 
   /financial/tools:
     get:
@@ -328,7 +328,7 @@ paths:
       operationId: seedFinancialDemoData
       responses:
         "200":
-          description: Seeded or reset deterministic financial demo data
+          description: Seeded or reset deterministic financial reference data
 
   /interactions/message:
     post:

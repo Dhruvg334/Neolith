@@ -50,7 +50,7 @@ The system is designed around these ideas:
 
 ## Primary demonstration
 
-The first complete demonstration is a synthetic Financial AI Agent operating against Neolith Demo Corp.
+The first complete demonstration is a synthetic Financial AI Agent operating against Neolith Finance.
 
 Example goals include:
 
@@ -60,7 +60,7 @@ Example goals include:
 
 The same Financial AI Agent is exposed through the Web application, WhatsApp via Twilio, and a future ElevenLabs voice interface. These channels only transport user intent; all reasoning uses the same agent workflow and all protected execution uses the same Neolith governance path.
 
-The demo proves:
+The reference application proves:
 
 - agentic understanding and financial-context retrieval;
 - plan and action-proposal generation;

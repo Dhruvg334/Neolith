@@ -2,11 +2,13 @@
 
 from decimal import Decimal
 from pathlib import Path
+from typing import cast
 from uuid import uuid4
 
 import pytest
 from alembic import command
 from alembic.config import Config
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 from sqlalchemy import create_engine, inspect
@@ -34,9 +36,9 @@ from neolith_simulator.banking import (
 def stage1_client() -> TestClient:
     """Create a FastAPI TestClient backed by an in-memory SQLite Stage 1 database."""
     settings = Settings(
-        DATABASE_URL="sqlite+pysqlite:///:memory:",
-        REDIS_URL="redis://localhost:6379/0",
-        OPA_URL="http://localhost:8181",
+        database_url="sqlite+pysqlite:///:memory:",
+        redis_url="redis://localhost:6379/0",
+        opa_url="http://localhost:8181",
     )
     app = create_app(settings=settings)
     engine = create_engine(
@@ -89,7 +91,8 @@ def test_alembic_migration_creates_all_stage1_tables(tmp_path: Path) -> None:
 
 def test_seed_idempotency(stage1_client: TestClient) -> None:
     """1. Seed idempotency: running seed twice does not duplicate financial or registry records."""
-    factory = stage1_client.app.state.session_factory  # type: ignore[union-attr]
+    app = cast(FastAPI, stage1_client.app)
+    factory = app.state.session_factory
     with factory() as session:
         first_counts = seed_demo_data(session, reset=False)
         second_counts = seed_demo_data(session, reset=False)
@@ -124,7 +127,7 @@ def test_financial_account_endpoints(stage1_client: TestClient) -> None:
 
     acc = accounts[0]
     assert acc["id"] == str(DEMO_ACCOUNT_ID)
-    assert acc["organisation_name"] == "Neolith Demo Corp"
+    assert acc["organisation_name"] == "Neolith Finance"
     assert acc["name"] == "Operations Account"
     assert acc["currency"] == "INR"
     assert acc["available_balance"] == "100000.00"
@@ -201,7 +204,7 @@ def test_financial_summary_endpoint(stage1_client: TestClient) -> None:
     res = stage1_client.get("/api/v1/financial/summary")
     assert res.status_code == 200
     summary = res.json()
-    assert summary["organisation_name"] == "Neolith Demo Corp"
+    assert summary["organisation_name"] == "Neolith Finance"
     assert summary["total_available_balance"] == "100000.00"
     assert summary["currency"] == "INR"
     assert summary["unpaid_invoice_count"] == 3

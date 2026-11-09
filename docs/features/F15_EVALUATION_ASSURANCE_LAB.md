@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Treat safety, quality and regression testing as part of the system rather than ad hoc demo testing.
+Treat safety, quality and regression testing as part of the system rather than ad hoc manual testing.
 
 ## Evaluation dimensions
 

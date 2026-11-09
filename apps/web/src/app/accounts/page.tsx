@@ -187,7 +187,7 @@ export default async function AccountsPage() {
         </div>
         <h1 className="page-title">Accounts, Invoices &amp; Beneficiaries</h1>
         <p className="page-lead">
-          Synthetic financial state for Neolith Demo Corp. Includes verified and
+          Synthetic financial state for Neolith Finance. Includes verified and
           unverified vendor invoices designed to exercise allow, human-approval,
           and policy-deny paths through the Runtime Gateway.
         </p>

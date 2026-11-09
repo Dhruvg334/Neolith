@@ -66,7 +66,7 @@ class InteractionCoreService:
         if session is not None:
             return session
 
-        # Resolve demo user if user_id is None
+        # Resolve reference user if user_id is None
         resolved_user_id = user_id
         if resolved_user_id is None:
             user = self.db.scalars(select(UserModel).where(UserModel.role == "user")).first()

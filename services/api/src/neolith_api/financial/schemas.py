@@ -121,7 +121,7 @@ class FinancialToolMetadataResponse(BaseModel):
 
 
 class FinancialSummaryResponse(BaseModel):
-    """Aggregated financial demo state for the dashboard and agent context."""
+    """Aggregated financial reference state for the dashboard and agent context."""
 
     organisation_name: str
     primary_account: FinancialAccountResponse | None = None

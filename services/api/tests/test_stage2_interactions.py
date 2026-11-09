@@ -1,4 +1,4 @@
-"""Tests for Phase 2 Interaction Core, session/task binding, persistence, and Alembic migrations."""
+"""Tests for Interaction Core, session/task binding, persistence, and Alembic migrations."""
 
 from pathlib import Path
 from uuid import uuid4
@@ -19,9 +19,9 @@ from neolith_api.main import create_app
 def client_with_db() -> TestClient:
     """FastAPI TestClient with seeded in-memory database."""
     settings = Settings(
-        DATABASE_URL="sqlite+pysqlite:///:memory:",
-        REDIS_URL="redis://localhost:6379/0",
-        OPA_URL="http://localhost:8181",
+        database_url="sqlite+pysqlite:///:memory:",
+        redis_url="redis://localhost:6379/0",
+        opa_url="http://localhost:8181",
     )
     app = create_app(settings=settings)
     engine = build_engine("sqlite+pysqlite:///:memory:")

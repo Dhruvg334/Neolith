@@ -16,6 +16,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
         frozen=True,
+        populate_by_name=True,
     )
 
     app_env: Literal["local", "test", "staging", "production"] = Field(

@@ -10,7 +10,7 @@ from neolith_api.main import create_app
 @pytest.mark.asyncio
 async def test_health_endpoint_returns_expected_structure() -> None:
     """GET /api/v1/health returns status ok, service name, version, and trace header."""
-    settings = Settings(APP_ENV="test", LLM_API_KEY="")
+    settings = Settings(app_env="test", llm_api_key="")
     app = create_app(settings=settings)
 
     transport = ASGITransport(app=app)
@@ -30,7 +30,7 @@ async def test_health_endpoint_returns_expected_structure() -> None:
 @pytest.mark.asyncio
 async def test_health_endpoint_propagates_valid_trace_header() -> None:
     """GET /api/v1/health preserves a valid caller-supplied X-Trace-Id header."""
-    app = create_app(settings=Settings(APP_ENV="test"))
+    app = create_app(settings=Settings(app_env="test"))
     custom_trace_id = "trace-phase0-health-001"
 
     transport = ASGITransport(app=app)

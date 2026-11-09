@@ -240,7 +240,7 @@ export default async function OperatorPage() {
       <Card>
         <CardHeader
           title="Authoritative Category Budgets (GET /api/v1/financial/budgets)"
-          subtitle="Monthly spend caps enforced for Neolith Demo Corp."
+          subtitle="Monthly spend caps enforced for Neolith Finance."
         />
         <div style={{ display: "grid", gap: "1rem" }}>
           {budgets.map((budget) => (

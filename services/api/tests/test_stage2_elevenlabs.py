@@ -17,10 +17,10 @@ ELEVENLABS_URL = "/integrations/elevenlabs/v1/chat/completions"
 def elevenlabs_client() -> TestClient:
     """TestClient with configured ElevenLabs Custom LLM bearer token."""
     settings = Settings(
-        DATABASE_URL="sqlite+pysqlite:///:memory:",
-        REDIS_URL="redis://localhost:6379/0",
-        OPA_URL="http://localhost:8181",
-        ELEVENLABS_CUSTOM_LLM_BEARER_TOKEN=TEST_BEARER_TOKEN,
+        database_url="sqlite+pysqlite:///:memory:",
+        redis_url="redis://localhost:6379/0",
+        opa_url="http://localhost:8181",
+        elevenlabs_custom_llm_bearer_token=TEST_BEARER_TOKEN,
     )
     app = create_app(settings=settings)
     engine = build_engine("sqlite+pysqlite:///:memory:")

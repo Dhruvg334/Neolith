@@ -29,7 +29,7 @@ Financial actions make Neolith's core architectural distinction immediately visi
 ### Account
 
 ```text
-Organisation: Neolith Demo Corp
+Organisation: Neolith Finance
 Account: Operations Account
 Available balance: INR 100,000.00
 ```

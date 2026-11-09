@@ -20,7 +20,7 @@ class LLMProviderAdapter(Protocol):
 
 
 class DeterministicMockLLMProvider:
-    """Deterministic model provider for CI, offline tests, and deterministic demo fallback.
+    """Deterministic model provider for CI, offline tests, and deterministic fallback.
 
     Produces strictly financial-domain intent analysis and reasoning without external API calls.
     """
@@ -107,16 +107,16 @@ class DeterministicMockLLMProvider:
                 "target_id": "INV-002",
                 "amount": "35000.00",
                 "currency": "INR",
-                "category": "software",
+                "category": "infrastructure",
                 "vendor_name": "Nova Compute",
                 "justification": (
                     "Payment requested for invoice INV-002 from Nova Compute "
-                    "(exceeds software budget limit)."
+                    "(exceeds approval threshold of INR 25,000.00 within infrastructure budget)."
                 ),
                 "evidence_refs": [
                     "invoice:INV-002",
                     "beneficiary:Nova Compute",
-                    "budget:software",
+                    "budget:infrastructure",
                     "account:Operations Account",
                 ],
                 "is_injection": is_injection,

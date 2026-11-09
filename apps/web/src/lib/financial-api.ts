@@ -134,7 +134,7 @@ export interface ApiResult<T> {
 
 export const FALLBACK_ACCOUNT: FinancialAccountDto = {
   id: "66c55779-2142-5317-9f88-1d496747e188",
-  organisation_name: "Neolith Demo Corp",
+  organisation_name: "Neolith Finance",
   name: "Operations Account",
   account_type: "operating",
   currency: "INR",
@@ -261,7 +261,7 @@ export const FALLBACK_TRANSACTIONS: readonly FinancialTransactionDto[] = [
     amount: "100000.00",
     currency: "INR",
     status: "completed",
-    reference: "OPENING-BAL-001 — Treasury Allocation for Neolith Demo Corp",
+    reference: "OPENING-BAL-001 — Treasury Allocation for Neolith Finance",
     idempotency_key: "seed:opening-credit:operations",
     created_at: "2026-10-20T00:00:00Z",
     completed_at: "2026-10-20T00:00:00Z",
@@ -416,7 +416,7 @@ export const FALLBACK_TOOLS: readonly FinancialToolMetadataDto[] = [
 ];
 
 export const FALLBACK_SUMMARY: FinancialSummaryDto = {
-  organisation_name: "Neolith Demo Corp",
+  organisation_name: "Neolith Finance",
   primary_account: FALLBACK_ACCOUNT,
   total_available_balance: "100000.00",
   currency: "INR",
@@ -431,12 +431,12 @@ export const FALLBACK_TASKS: readonly TaskRecordDto[] = [
     id: "3a918273-4412-5918-8812-991827364512",
     user_id: "11111111-2222-3333-4444-555555555555",
     original_request:
-      "Inspect unpaid vendor invoices (INV-001, INV-002, INV-003) against Neolith Demo Corp monthly category budgets and verify vendor status.",
+      "Inspect unpaid vendor invoices (INV-001, INV-002, INV-003) against Neolith Finance monthly category budgets and verify vendor status.",
     objective:
       "Evaluate accounts payable readiness under policy and budget guardrails.",
     constraints: { currency: "INR", require_verified_vendor: true },
     state: "planning",
-    trace_id: "trace-seed-demo-001",
+    trace_id: "trace-seed-ref-001",
     created_at: "2026-10-20T00:00:00Z",
     updated_at: "2026-10-20T00:00:00Z",
   },
@@ -447,7 +447,7 @@ export const FALLBACK_AGENTS: readonly AgentRegistryDto[] = [
     id: "99182736-1122-5344-9988-776655443322",
     name: "financial-ai-agent",
     description:
-      "Autonomous Financial Operations & Accounts Payable AI Agent for Neolith Demo Corp. Operates under strict Runtime Gateway governance.",
+      "Autonomous Financial Operations & Accounts Payable AI Agent for Neolith Finance. Operates under strict Runtime Gateway governance.",
     status: "active",
     active_version: "0.1.0",
     framework: "langgraph",
@@ -482,4 +482,33 @@ export async function fetchApiWithFallback<T>(
       err instanceof Error ? err.message : "Backend API unreachable";
     return { data: fallback, live: false, error: message };
   }
+}
+
+/**
+ * Format string or number currency value as cleanly formatted Indian INR representation.
+ * Avoids floating-point math; splits integer and decimal components directly.
+ * Example: "100000.00" -> "INR 100,000.00"
+ */
+export function formatInrCurrency(
+  amount: string | number | null | undefined,
+  currency: string = "INR"
+): string {
+  if (amount === null || amount === undefined || amount === "") {
+    return `${currency} 0.00`;
+  }
+  const str = String(amount).trim();
+  const parts = str.split(".");
+  const intPart = parts[0] ?? "0";
+  const decPart = parts[1] ?? "00";
+  const formattedDec = decPart.padEnd(2, "0").slice(0, 2);
+
+  // Indian numbering format regex: last 3 digits, then groups of 2 digits
+  const lastThree = intPart.slice(-3);
+  const otherNumbers = intPart.slice(0, -3);
+  const formattedInt =
+    otherNumbers !== ""
+      ? otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + lastThree
+      : lastThree;
+
+  return `${currency} ${formattedInt}.${formattedDec}`;
 }

@@ -35,7 +35,7 @@ router = APIRouter(prefix="/financial", tags=["financial"])
 
 
 class SeedFinancialDemoResponse(BaseModel):
-    """Response returned when deterministic demo data is seeded or reset."""
+    """Response returned when deterministic reference data is seeded or reset."""
 
     status: str
     counts: dict[str, int]
@@ -50,7 +50,7 @@ class SeedFinancialDemoResponse(BaseModel):
 def get_accounts(
     session: Annotated[Session, Depends(get_db_session)],
 ) -> list[FinancialAccountResponse]:
-    """List synthetic treasury and operating accounts for Neolith Demo Corp."""
+    """List synthetic treasury and operating accounts for Neolith Finance."""
     return list_financial_accounts(session)
 
 
@@ -89,7 +89,7 @@ def get_invoices(
         Query(alias="status", description="Optional invoice status filter (e.g. unpaid, paid)"),
     ] = None,
 ) -> list[InvoiceResponse]:
-    """List synthetic vendor invoices for Neolith Demo Corp."""
+    """List synthetic vendor invoices for Neolith Finance."""
     return list_invoices(session, status_filter=status_filter)
 
 
@@ -165,7 +165,7 @@ def get_budgets(
 def get_summary(
     session: Annotated[Session, Depends(get_db_session)],
 ) -> FinancialSummaryResponse:
-    """Return aggregated financial telemetry for the Neolith Demo Corp sandbox."""
+    """Return aggregated financial telemetry for the Neolith Finance sandbox."""
     return build_financial_summary(session)
 
 

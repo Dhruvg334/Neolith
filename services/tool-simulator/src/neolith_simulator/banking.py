@@ -7,7 +7,7 @@ from uuid import NAMESPACE_DNS, UUID, uuid5
 
 from pydantic import BaseModel, ConfigDict, Field
 
-SIMULATOR_NAMESPACE = uuid5(NAMESPACE_DNS, "neolith.financial.demo.v1")
+SIMULATOR_NAMESPACE = uuid5(NAMESPACE_DNS, "neolith.financial.sandbox.v1")
 TWO_PLACES = Decimal("0.01")
 
 
@@ -169,7 +169,7 @@ class SimulatedWriteOperationReceipt(BaseModel):
 
 
 class SimulatedBankingService:
-    """Deterministic in-memory banking & accounts-payable simulator for Neolith Demo Corp.
+    """Deterministic in-memory banking & accounts-payable simulator for Neolith Finance.
 
     Read operations (R1) are immediately queryable by the Financial Agent and tests.
     Protected write operations (R2-R4) strictly require a verified Runtime Gateway
@@ -179,7 +179,7 @@ class SimulatedBankingService:
     def __init__(self) -> None:
         self._account = SimulatedAccountRecord(
             account_id=_det_uuid("account:operations"),
-            organisation_name="Neolith Demo Corp",
+            organisation_name="Neolith Finance",
             name="Operations Account",
             currency="INR",
             available_balance=format_money(Decimal("100000.00")),
@@ -281,7 +281,7 @@ class SimulatedBankingService:
                 amount=format_money(Decimal("100000.00")),
                 currency="INR",
                 status="completed",
-                reference="OPENING-BAL-001 — Treasury Allocation for Neolith Demo Corp",
+                reference="OPENING-BAL-001 — Treasury Allocation for Neolith Finance",
             )
         ]
 

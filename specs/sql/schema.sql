@@ -328,7 +328,7 @@ CREATE INDEX idx_reservations_state ON budget_reservations(state, expires_at);
 CREATE INDEX idx_permits_state ON execution_permits(state, expires_at);
 CREATE INDEX idx_receipts_action ON decision_receipts(action_id, chain_index);
 
--- Financial Reference Application Sandbox Tables (Isolated Demo Domain)
+-- Financial Reference Application Sandbox Tables (Isolated Financial Sandbox Domain)
 
 CREATE TABLE financial_accounts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

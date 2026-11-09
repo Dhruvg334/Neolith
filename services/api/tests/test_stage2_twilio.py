@@ -27,12 +27,12 @@ def twilio_client() -> tuple[TestClient, list[dict[str, Any]]]:
         return {"sid": f"SM{len(sent_messages)}", "status": "sent"}
 
     settings = Settings(
-        DATABASE_URL="sqlite+pysqlite:///:memory:",
-        REDIS_URL="redis://localhost:6379/0",
-        OPA_URL="http://localhost:8181",
-        TWILIO_AUTH_TOKEN=TEST_AUTH_TOKEN,
-        TWILIO_ACCOUNT_SID="AC_test_account_sid",
-        TWILIO_WHATSAPP_FROM="whatsapp:+14155238886",
+        database_url="sqlite+pysqlite:///:memory:",
+        redis_url="redis://localhost:6379/0",
+        opa_url="http://localhost:8181",
+        twilio_auth_token=TEST_AUTH_TOKEN,
+        twilio_account_sid="AC_test_account_sid",
+        twilio_whatsapp_from="whatsapp:+14155238886",
     )
     app = create_app(settings=settings)
     engine = build_engine("sqlite+pysqlite:///:memory:")

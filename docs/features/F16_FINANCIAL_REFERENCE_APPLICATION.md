@@ -1,6 +1,6 @@
 # F16 — Financial Reference Application
 
-> The filename is retained for repository continuity. The implemented primary reference application is now the Financial AI Agent and synthetic Neolith Demo Corp financial sandbox.
+> The filename is retained for repository continuity. The implemented primary reference application is now the Financial AI Agent and synthetic Neolith Finance financial sandbox.
 
 ## Purpose
 
@@ -39,7 +39,7 @@ The agent may not:
 - mint a permit;
 - call a protected write directly.
 
-## Primary demo cases
+## Primary reference cases
 
 ### Normal action — INV-001
 

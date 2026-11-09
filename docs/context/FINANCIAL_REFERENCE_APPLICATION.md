@@ -1,4 +1,4 @@
-# Financial Reference Application (`Neolith Demo Corp`)
+# Financial Reference Application (`Neolith Finance`)
 
 ## 1. Why the Financial Reference Application Exists
 
@@ -48,12 +48,12 @@ All 9 tools exposed to `financial-ai-agent` are registered in the `tools` and `t
 
 ---
 
-## 4. Deterministic Demo Dataset (`Neolith Demo Corp`)
+## 4. Deterministic Reference Dataset (`Neolith Finance`)
 
 The seed module (`services/api/src/neolith_api/seed.py`) populates a deterministic, idempotent baseline dataset:
 
 ### 4.1 Primary Account
-- **Organisation**: `Neolith Demo Corp`
+- **Organisation**: `Neolith Finance`
 - **Account Name**: `Operations Account`
 - **Currency**: `INR`
 - **Available Balance**: `100000.00`
@@ -67,7 +67,7 @@ The seed module (`services/api/src/neolith_api/seed.py`) populates a determinist
 | `miscellaneous` | `10000.00` | `5000.00` | `0.00` | `10000.00` |
 
 ### 4.3 Synthetic Vendor Invoices & Expected Governance Outcomes
-| Invoice ID | Vendor | Amount (`INR`) | Category | Vendor Status | Invoice Status | Expected Runtime Gateway Outcome (Phase 3 target) |
+| Invoice ID | Vendor | Amount (`INR`) | Category | Vendor Status | Invoice Status | Expected Runtime Gateway Outcome (Governance Target) |
 | :--- | :--- | ---: | :--- | :--- | :--- | :--- |
 | `INV-001` | `Acme Cloud` | `8000.00` | `software` | `verified` | `unpaid` | **`ALLOW`** — Verified vendor, within `25000.00 INR` software budget and below `15000.00 INR` approval threshold. |
 | `INV-002` | `Nova Compute` | `35000.00` | `infrastructure` | `verified` | `unpaid` | **`REVIEW`** — Verified vendor and within `50000.00 INR` infrastructure budget, but exceeds the `25000.00 INR` single-payment approval threshold. |
@@ -87,7 +87,7 @@ The seed module (`services/api/src/neolith_api/seed.py`) populates a determinist
 
 The reference application is built in explicit stages:
 
-### Phase 2 — Financial AI Agent and Interfaces
+### 6.1 Financial AI Agent and Multi-Channel Interfaces
 
 The Financial AI Agent reads the existing account, invoice, beneficiary and budget context and emits a typed `FinancialActionProposal`. It does not execute the action.
 
@@ -99,21 +99,21 @@ The same Financial Agent is reachable through:
 
 All channels normalise into `InteractionTurn` and receive `InterfaceResponse`.
 
-### Phase 3 — Governance Decision
+### 6.2 Governance Decision Engine
 
 A `FinancialActionProposal` is converted to a canonical `ExecutionRequest` and submitted to the Runtime Gateway. Neolith independently evaluates identity, permission, OPA policy, risk and current budget state to return `ALLOW`, `REVIEW` or `DENY`.
 
-### Phase 4 — Governed Execution
+### 6.3 Governed Execution Control
 
 For actions that may proceed, Neolith atomically reserves budget and issues a short-lived Ed25519 `ExecutionPermit` bound to exact parameters and current revocation epoch. The `SimulatedBankingService` accepts protected writes only through that permit.
 
-### Phase 5+ — Approval, Receipts and Revocation
+### 6.4 Human Approval, Decision Receipts and Revocation
 
 Human approval, hash-linked Decision Receipts and runtime revocation complete the reference execution chain.
 
 ## 7. Interaction Interfaces
 
-The Web interface remains the primary inspectable demo surface. WhatsApp and Voice are additional ingress methods, not alternate agents.
+The Web interface remains the primary inspectable presentation surface. WhatsApp and Voice are additional ingress methods, not alternate agents.
 
 ```text
 Web / Twilio WhatsApp / ElevenLabs Voice

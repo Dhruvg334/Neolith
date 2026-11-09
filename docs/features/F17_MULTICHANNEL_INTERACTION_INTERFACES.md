@@ -50,7 +50,7 @@ Provider-specific fields remain at the adapter boundary and do not leak into the
 
 ## Web interface
 
-The website remains the primary inspectable interface for the academic demo.
+The website remains the primary inspectable interface for the academic presentation.
 
 The web client sends a user message to the interaction API and receives a typed `InterfaceResponse`.
 

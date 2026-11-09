@@ -16,7 +16,7 @@ Application processes:
 - LangGraph worker;
 - tool simulator.
 
-## Hosted academic demo
+## Hosted academic presentation environment
 
 Recommended separation:
 
@@ -33,7 +33,7 @@ Recommended separation:
 
 - local;
 - development;
-- demo.
+- presentation / staging.
 
 Each has separate:
 
@@ -61,11 +61,11 @@ No paid model API key is required for CI.
 - seed/reset script works;
 - no secret exposed;
 - current policy bundle identified;
-- demo can be reset reproducibly.
+- reference environment can be reset reproducibly.
 
 ## Public interaction endpoints
 
-Twilio and ElevenLabs require externally reachable HTTPS endpoints in the deployed demo environment.
+Twilio and ElevenLabs require externally reachable HTTPS endpoints in the deployed presentation environment.
 
 Expose only the required ingress routes through the public API service:
 
@@ -84,4 +84,4 @@ Deployment requirements:
 - provider authentication before task processing;
 - webhooks remain separate from protected financial service endpoints.
 
-Local tunnels such as ngrok may be used for development only. The final demo should use stable hosted HTTPS URLs where possible.
+Local tunnels such as ngrok may be used for development only. The final presentation environment should use stable hosted HTTPS URLs where possible.

@@ -230,7 +230,7 @@ Priority:
 |---|---:|---|---|
 | FR-054 | P1 | Operator shall quarantine agent. | New protected action denied. |
 | FR-055 | P1 | Operator shall revoke task/authority. | Further execution rejected. |
-| FR-056 | P1 | Operator shall trigger global demo stop. | Revocation epoch advances. |
+| FR-056 | P1 | Operator shall trigger global emergency stop. | Revocation epoch advances. |
 | FR-057 | P1 | Existing old permits shall fail after stop. | Adapter rejects epoch mismatch. |
 | FR-058 | P1 | Restore shall require explicit operator action. | Stop does not auto-clear. |
 

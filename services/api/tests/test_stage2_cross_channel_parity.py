@@ -28,13 +28,13 @@ def cross_channel_app() -> tuple[TestClient, list[dict[str, Any]]]:
         return {"sid": f"SM_{len(sent_whatsapp)}", "status": "sent"}
 
     settings = Settings(
-        DATABASE_URL="sqlite+pysqlite:///:memory:",
-        REDIS_URL="redis://localhost:6379/0",
-        OPA_URL="http://localhost:8181",
-        TWILIO_AUTH_TOKEN=TEST_AUTH_TOKEN,
-        TWILIO_ACCOUNT_SID="AC_parity_account",
-        TWILIO_WHATSAPP_FROM="whatsapp:+14155238886",
-        ELEVENLABS_CUSTOM_LLM_BEARER_TOKEN=TEST_BEARER_TOKEN,
+        database_url="sqlite+pysqlite:///:memory:",
+        redis_url="redis://localhost:6379/0",
+        opa_url="http://localhost:8181",
+        twilio_auth_token=TEST_AUTH_TOKEN,
+        twilio_account_sid="AC_parity_account",
+        twilio_whatsapp_from="whatsapp:+14155238886",
+        elevenlabs_custom_llm_bearer_token=TEST_BEARER_TOKEN,
     )
     app = create_app(settings=settings)
     engine = build_engine("sqlite+pysqlite:///:memory:")

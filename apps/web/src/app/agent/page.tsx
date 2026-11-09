@@ -14,6 +14,7 @@ import {
   FALLBACK_SUMMARY,
   FALLBACK_TOOLS,
   fetchApiWithFallback,
+  formatInrCurrency,
   type FinancialSummaryDto,
   type FinancialToolMetadataDto,
   type InvoiceDto,
@@ -40,15 +41,15 @@ const AGENT_PIPELINE_PREVIEW: readonly TimelineStep[] = [
   },
   {
     id: "step-gateway",
-    title: "3. Runtime Gateway Policy, Budget & Risk Evaluation (Phase 3)",
+    title: "3. Runtime Gateway Policy, Budget & Risk Evaluation",
     layer: "governance",
     state: "pending",
     description:
-      "Neolith governance will evaluate RBAC/ABAC capabilities, OPA Rego policies, atomic Redis budget limits, and vendor verification status.",
+      "Neolith governance evaluates RBAC/ABAC capabilities, OPA Rego policies, atomic Redis budget limits, and vendor verification status.",
   },
   {
     id: "step-settlement",
-    title: "4. Permit-Verified Settlement in Banking Simulator (Phase 3)",
+    title: "4. Permit-Verified Settlement in Banking Simulator",
     layer: "enterprise",
     state: "pending",
     description:
@@ -122,16 +123,34 @@ export default async function FinancialAgentPage() {
   return (
     <div>
       <Card>
-        <Badge variant="info">Financial AI Agent Console</Badge>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: "0.5rem",
+            marginBottom: "0.5rem",
+          }}
+        >
+          <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
+            <Badge variant="info">Financial AI Agent</Badge>
+            <Badge variant="neutral">Channel: Web</Badge>
+            <Badge variant="neutral">Framework: LangGraph</Badge>
+          </div>
+          <Badge variant={summaryRes.live ? "allow" : "review"}>
+            {summaryRes.live ? "Connected to Live FastAPI Sandbox" : "Offline Sandbox Snapshot"}
+          </Badge>
+        </div>
         <h1 className="page-title">
-          Financial Agent Workspace (<code className="inline-code">financial-ai-agent</code>)
+          Financial Agent Workspace (<code className="inline-code">financial-ai-agent:0.1.0</code>)
         </h1>
         <p className="page-lead">
           Interactive console for the Financial Operations AI Agent. The agent
           inspects treasury balances, invoices, beneficiaries, and category
           budgets via read-only APIs, and formulates structured{" "}
           <code className="inline-code">FinancialActionProposal</code>{" "}
-          envelopes. Protected financial execution remains strictly blocked until Phase 3 governance.
+          envelopes. Protected financial execution remains strictly blocked under Runtime Gateway execution gating.
         </p>
       </Card>
 
@@ -163,7 +182,7 @@ export default async function FinancialAgentPage() {
                 <p className="card-copy" style={{ marginBottom: "0.5rem" }}>
                   <strong>Available Balance:</strong>{" "}
                   <code className="inline-code" style={{ fontSize: "1rem" }}>
-                    {summary.currency} {summary.total_available_balance}
+                    {formatInrCurrency(summary.total_available_balance, summary.currency)}
                   </code>
                 </p>
                 <p className="card-copy" style={{ marginBottom: "0.25rem" }}>
@@ -173,7 +192,7 @@ export default async function FinancialAgentPage() {
                   {summary.monthly_budgets.map((b) => (
                     <li key={b.id} style={{ marginBottom: "0.2rem" }}>
                       <code className="inline-code">{b.category}</code>:{" "}
-                      <strong>{b.currency} {b.available_amount}</strong> available / {b.limit_amount} limit
+                      <strong>{formatInrCurrency(b.available_amount, b.currency)}</strong> available / {formatInrCurrency(b.limit_amount, b.currency)} limit
                     </li>
                   ))}
                 </ul>
@@ -188,7 +207,7 @@ export default async function FinancialAgentPage() {
                     <li key={inv.id} style={{ marginBottom: "0.45rem" }}>
                       <strong>{inv.invoice_number}</strong> — {inv.vendor_name} (
                       <code className="inline-code">
-                        {inv.currency} {inv.amount}
+                        {formatInrCurrency(inv.amount, inv.currency)}
                       </code>
                       , {inv.category},{" "}
                       <span style={{ color: inv.is_verified_vendor ? "var(--allow-fg)" : "var(--deny-fg)" }}>

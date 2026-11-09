@@ -106,7 +106,7 @@ export default function HomePage() {
               <Link href="/dashboard">Financial Dashboard &rarr;</Link>
             </h2>
             <p className="card-copy">
-              Treasury summary for Neolith Demo Corp showing INR 100,000.00
+              Treasury summary for Neolith Finance showing INR 100,000.00
               operating balance, unpaid invoices, and monthly category budgets.
             </p>
           </Card>

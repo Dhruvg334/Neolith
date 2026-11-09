@@ -36,7 +36,7 @@ def initialize_database(
     *,
     seed_if_empty: bool = True,
 ) -> sessionmaker[Session]:
-    """Ensure all ORM tables exist and optionally seed deterministic financial demo data."""
+    """Ensure all ORM tables exist and optionally seed deterministic financial reference data."""
     import neolith_api.core.models
     import neolith_api.financial.models  # noqa: F401
     from neolith_api.seed import seed_demo_data

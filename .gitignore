@@ -4,6 +4,7 @@
 # but must not be published to the repository.
 # ------------------------------------------------------------
 .project-private/
+.agents/
 docs/internal/
 docs/drafts/
 source-material/

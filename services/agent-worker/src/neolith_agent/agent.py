@@ -1,4 +1,4 @@
-"""Stateful LangGraph Financial AI Agent implementation (Part A)."""
+"""Stateful LangGraph Financial AI Agent implementation."""
 
 from decimal import Decimal
 from typing import Any
@@ -284,8 +284,16 @@ class FinancialAIAgent:
             is_verified = matched_inv.is_verified_vendor
         else:
             amount = Decimal(str(entities.get("amount") or "8000.00"))
-            vendor_name = entities.get("vendor_name") or "Acme Cloud"
-            category = entities.get("category") or "software"
+            vendor_name = entities.get("vendor_name") or (
+                "Nova Compute"
+                if target_id == "INV-002"
+                else ("Unknown Supplies" if target_id == "INV-003" else "Acme Cloud")
+            )
+            category = entities.get("category") or (
+                "infrastructure"
+                if target_id == "INV-002"
+                else ("miscellaneous" if target_id == "INV-003" else "software")
+            )
             is_verified = target_id in ("INV-001", "INV-002")
 
         # Specific message wording per reference scenario
@@ -299,12 +307,15 @@ class FinancialAIAgent:
             )
         elif target_id == "INV-002":
             justification = (
-                "Payment proposed for invoice INV-002; amount exceeds software category budget."
+                "Payment proposed for invoice INV-002 from Nova Compute; amount INR 35,000.00 "
+                "exceeds approval threshold INR 25,000.00 within infrastructure budget."
             )
             msg = (
                 f"I found INV-002 from {vendor_name} for {currency} {amount:,.2f} "
-                "and prepared a payment proposal. Note that this exceeds the available software "
-                "budget limit. Neolith governance has not authorised or executed this action yet."
+                "and prepared a payment proposal. Note that this exceeds the single-payment "
+                "approval threshold of INR 25,000.00 within the infrastructure budget "
+                "(limit INR 50,000.00). Neolith governance has not authorised or executed "
+                "this action yet."
             )
         elif target_id == "INV-003":
             status_note = "unverified" if not is_verified else "verified"

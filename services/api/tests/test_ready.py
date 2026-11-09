@@ -25,7 +25,7 @@ class StaticDependencyInspector:
 @pytest.mark.asyncio
 async def test_ready_endpoint_returns_200_when_all_dependencies_healthy() -> None:
     """GET /api/v1/ready returns 200 ready when PostgreSQL, Redis, and OPA are reachable."""
-    app = create_app(settings=Settings(APP_ENV="test"))
+    app = create_app(settings=Settings(app_env="test"))
     app.state.dependency_inspector = StaticDependencyInspector(
         ReadinessReport(
             postgres=DependencyProbeResult(status="ok"),
@@ -53,7 +53,7 @@ async def test_ready_endpoint_returns_200_when_all_dependencies_healthy() -> Non
 @pytest.mark.asyncio
 async def test_ready_endpoint_returns_503_when_dependency_fails() -> None:
     """GET /api/v1/ready returns 503 degraded when any required dependency fails."""
-    app = create_app(settings=Settings(APP_ENV="test"))
+    app = create_app(settings=Settings(app_env="test"))
     app.state.dependency_inspector = StaticDependencyInspector(
         ReadinessReport(
             postgres=DependencyProbeResult(status="ok"),
@@ -83,11 +83,11 @@ async def test_runtime_dependency_inspector_handles_unreachable_endpoints_safely
     """RuntimeDependencyInspector reports error status without raising or leaking secrets."""
 
     settings = Settings(
-        APP_ENV="test",
-        DATABASE_URL="postgresql+psycopg://neolith:secret_pw@127.0.0.1:59997/neolith",
-        REDIS_URL="redis://:secret_redis@127.0.0.1:59998/0",
-        OPA_URL="http://127.0.0.1:59999",
-        NEOLITH_DEPENDENCY_TIMEOUT_SECONDS=0.2,
+        app_env="test",
+        database_url="postgresql+psycopg://neolith:secret_pw@127.0.0.1:59997/neolith",
+        redis_url="redis://:secret_redis@127.0.0.1:59998/0",
+        opa_url="http://127.0.0.1:59999",
+        dependency_timeout_seconds=0.2,
     )
     inspector = RuntimeDependencyInspector(settings=settings)
     report = await inspector.inspect()

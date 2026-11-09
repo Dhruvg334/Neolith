@@ -172,7 +172,7 @@ Examples:
 - an ElevenLabs integration token proves the request came through the configured voice integration;
 - neither automatically proves the user has `finance.invoice.pay` permission.
 
-Until explicit user-binding is implemented, the reference application may map demo channels to a seeded demo user. That mapping must be visible, deterministic and restricted to non-production environments.
+Until explicit user-binding is implemented, the reference application may map interaction channels to a seeded reference user. That mapping must be visible, deterministic and restricted to non-production environments.
 
 ## 8. Idempotency
 

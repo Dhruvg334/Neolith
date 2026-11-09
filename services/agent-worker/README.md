@@ -2,7 +2,7 @@
 
 Target: LangGraph.
 
-Phase 2 introduces the primary procurement agent.
+Implements the stateful Financial AI Agent.
 
 The worker may:
 

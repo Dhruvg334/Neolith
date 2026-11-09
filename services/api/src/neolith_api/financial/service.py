@@ -234,12 +234,10 @@ def list_financial_tools(session: Session) -> list[FinancialToolMetadataResponse
 
 
 def build_financial_summary(session: Session) -> FinancialSummaryResponse:
-    """Compute the aggregated financial demo summary using exact Decimal arithmetic."""
+    """Compute the aggregated financial reference summary using exact Decimal arithmetic."""
     accounts = list_financial_accounts(session)
     primary_account = accounts[0] if accounts else None
-    organisation_name = (
-        primary_account.organisation_name if primary_account else "Neolith Demo Corp"
-    )
+    organisation_name = primary_account.organisation_name if primary_account else "Neolith Finance"
 
     total_balance = Decimal("0.00")
     for acc in accounts:

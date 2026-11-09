@@ -9,7 +9,7 @@ from neolith_api.core.config import Settings
 def test_settings_loads_defaults_without_llm_credentials(monkeypatch: pytest.MonkeyPatch) -> None:
     """Settings loads valid defaults and does not require LLM_API_KEY."""
     monkeypatch.delenv("LLM_API_KEY", raising=False)
-    settings = Settings(_env_file=None)
+    settings = Settings()
 
     assert settings.app_name == "neolith"
     assert settings.service_name == "neolith-api"
@@ -27,7 +27,7 @@ def test_settings_respects_environment_overrides(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setenv("NEOLITH_PERMIT_TTL_SECONDS", "45")
     monkeypatch.setenv("LLM_PROVIDER", "mock")
 
-    settings = Settings(_env_file=None)
+    settings = Settings()
 
     assert settings.app_env == "staging"
     assert settings.api_port == 8080
@@ -39,10 +39,10 @@ def test_settings_respects_environment_overrides(monkeypatch: pytest.MonkeyPatch
 def test_settings_rejects_invalid_schemes_and_bounds() -> None:
     """Settings rejects non-PostgreSQL database URLs and out-of-range permit TTLs."""
     with pytest.raises(ValidationError):
-        Settings(_env_file=None, DATABASE_URL="mysql://localhost:3306/neolith")
+        Settings(database_url="mysql://localhost:3306/neolith")
 
     with pytest.raises(ValidationError):
-        Settings(_env_file=None, REDIS_URL="http://localhost:6379/0")
+        Settings(redis_url="http://localhost:6379/0")
 
     with pytest.raises(ValidationError):
-        Settings(_env_file=None, NEOLITH_PERMIT_TTL_SECONDS=600)
+        Settings(neolith_permit_ttl_seconds=600)
