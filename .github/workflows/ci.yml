@@ -58,9 +58,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Open Policy Agent
-        uses: open-policy-agent/setup-opa@v2
+        uses: open-policy-agent/setup-opa@v2.4.0
         with:
-          version: latest
+          version: "1.22.2"
 
       - name: Validate Rego syntax and run policy tests
         run: |

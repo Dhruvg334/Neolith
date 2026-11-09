@@ -436,18 +436,38 @@ Open `http://localhost:3000` in your browser to explore:
 
 ### 6. Run Quality Gates, Contract Validators & Automated Tests
 
+Neolith provides a unified cross-platform verification script that orchestrates all 12 mandatory CI-parity verification gates:
+
+```cmd
+:: Run the complete 12-gate local verification suite
+python scripts/verify_project.py
+```
+
+Individual checks can also be run independently:
+
 ```cmd
 :: Validate OpenAPI 3.1.0, JSON Schemas, SQL DDL, and Evaluation YAML fixtures
-.venv\Scripts\python.exe scripts\check_docs.py
-.venv\Scripts\python.exe scripts\validate_contracts.py
+python scripts/check_docs.py
+python scripts/validate_contracts.py
 
 :: Run Python linter, formatter check, strict typecheck, and pytest suite
-.venv\Scripts\python.exe -m ruff check .
-.venv\Scripts\python.exe -m ruff format --check .
-.venv\Scripts\python.exe -m mypy
-.venv\Scripts\python.exe -m pytest -v
+python -m ruff check .
+python -m ruff format --check .
+python -m mypy
+python -m pytest -v
+
+:: Run OPA Rego policy syntax check and test suite (pinned OPA v1.22.2)
+opa check policy/rego policy/tests
+opa test policy/rego policy/tests -v
 
 :: Run Frontend ESLint, TypeScript typecheck, and production build
+pnpm lint
+pnpm typecheck
+pnpm build
+
+:: Validate Docker Compose configuration
+docker compose -f infra/docker-compose.yml config
+```
 pnpm lint
 pnpm typecheck
 pnpm build

@@ -25,6 +25,7 @@ credentials/
 *.credentials.json
 
 # Python
+.ci-venv/
 .venv/
 venv/
 env/
