@@ -1,7 +1,21 @@
+import type { Metadata } from "next";
 import { Badge, Card, CardHeader, CopyableId } from "@/components/ui";
 
 interface TaskDetailPageProps {
   readonly params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: TaskDetailPageProps): Promise<Metadata> {
+  const { id } = await params;
+  return {
+    title: `Task ${id.slice(0, 8)} — Neolith`,
+    description: `Lifecycle state machine and governance trace inspection for task ${id}.`,
+    alternates: {
+      canonical: `/tasks/${id}`,
+    },
+  };
 }
 
 export default async function TaskDetailPage({ params }: TaskDetailPageProps) {

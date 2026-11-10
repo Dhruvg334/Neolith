@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { AgentInterfaceSwitcher } from "@/components/AgentInterfaceSwitcher";
 import { ErrorState } from "@/components/ErrorState";
 import {
@@ -21,6 +22,15 @@ import {
 } from "@/lib/financial-api";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Financial AI Agent",
+  description:
+    "Multi-channel conversational financial assistant operating with zero execution authority across Web, WhatsApp, and Voice.",
+  alternates: {
+    canonical: "/agent",
+  },
+};
 
 const AGENT_PIPELINE_PREVIEW: readonly TimelineStep[] = [
   {

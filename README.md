@@ -41,8 +41,12 @@ Instead of giving the AI direct authority to move money or modify company system
 
 <h2 align="center">Current Build Status</h2>
 
-The repository contains **Phase 0 (Foundation)**, **Phase 1 (Financial Sandbox & Domain Reference)**, **Phase 2 (Financial AI Agent & Multi-Channel Interaction Core)**, and **Phase 3 (Policy-Driven Governance Runtime & Documentation Hub)** fully implemented, tested, and verified.
+The repository contains **Phase 0 (Foundation)**, **Phase 1 (Financial Sandbox & Domain Reference)**, **Phase 2 (Financial AI Agent & Multi-Channel Interaction Core)**, **Phase 3 (Policy-Driven Governance Runtime & Cloud Deployment)**, and **Phase 4 (Human Checkpoints, Execution Permits, Banking Settlement & Receipts Chain)** fully implemented, tested, and verified.
 
+- **Human Checkpoints Subsystem (`/approvals` & `/api/v1/approvals`)**: Dedicated human approval queue for proposed actions classified as `review` (such as `INV-002` Nova Compute INR 35,000.00, strict governance mode, or custom threshold breaches). Approvers review canonical parameter SHA-256 hashes, attached audit notes, and can either execute (`approve`) or discard (`reject`) with an authoritative decision note.
+- **Execution Permit Service (F09) & Banking Settlement (F10)**: Dynamic issuance of short-lived, single-use Execution Permits (`execution_permits` table) bound to operation name, canonical parameter SHA-256 hash, and 60-second expiration. Upon approval, automated banking settlement atomically updates financial account balances, marks invoices `paid`, records audited ledger transactions, and consumes the execution permit.
+- **Tamper-Evident Decision Receipts Chain (F13 & `/receipts/[id]`)**: Append-only SHA-256 cryptographic hash-linked receipt chain (`decision_receipts` table) where each receipt hashes `previous_receipt_hash`, `chain_index`, `payload_hash`, and `event_type`. Provides real-time whole-chain verification via `GET /api/v1/receipts/verify` and an interactive visual cryptography explorer.
+- **Agentic Web Development Handbook Compliance & Anti-Vibe-Coding**: Production SEO and crawler controls across all 15 routes: unique descriptive `<title>` and `<meta name="description">` tags, canonical URL alternates, semantic HTML (`<main>`, `<header>`, `<footer>`, `<nav>`), crawler directives (`robots.ts` explicitly controlling `Google-Extended`, `GPTBot`, `AnthropicBot`, `CCBot`), `/sitemap.xml`, machine-readable `/llms.txt`, full favicon package (`/icon.svg`, `/site.webmanifest`), and enterprise trust pages (`/privacy`, `/terms`, `/security`).
 - **Policy-Driven Governance Decision Runtime (`services/api`)**: Deterministic evaluation gateway (`POST /api/v1/actions/evaluate` and `GET /api/v1/actions/{action_id}`) executing Open Policy Agent (Rego v1) rules, category budget constraints, identity/permission bindings, and vendor verification checks. Records all evaluations in PostgreSQL (`governance_decisions`, `execution_requests`, `risk_signals`) with deterministic SHA-256 parameter hashing.
 - **Configurable Governance Profiles (`/api/v1/governance/profiles`)**: Enterprise policy postures selectable dynamically without code redeployment:
   1. **Strict Control**: Human-in-the-loop sign-off required for all actions; zero automated execution.
@@ -51,7 +55,7 @@ The repository contains **Phase 0 (Foundation)**, **Phase 1 (Financial Sandbox &
   4. **Custom Profiles**: Granular per-organisation thresholds (`single_action_threshold_inr`, `max_daily_spend_inr`, auto-approved risk tiers).
 - **Canonical Evaluation Scenarios**:
   - **`INV-001` (Acme Cloud, INR 8,000.00)**: Evaluates to **`ALLOW`** (verified vendor, within software budget).
-  - **`INV-002` (Nova Compute, INR 35,000.00)**: Evaluates to **`REVIEW`** (`APPROVAL_REQUIRED`, exceeds INR 25,000.00 threshold).
+  - **`INV-002` (Nova Compute, INR 35,000.00)**: Evaluates to **`REVIEW`** (`APPROVAL_REQUIRED`, exceeds INR 25,000.00 threshold) and queues an approval checkpoint.
   - **`INV-003` (Unknown Supplies, INR 85,000.00)**: Evaluates to **`DENY`** with dual reason codes (`BUDGET_EXCEEDED` and `UNVERIFIED_BENEFICIARY`).
 - **Financial AI Agent (`services/agent-worker`)**: Stateful LangGraph agent with structured financial intent extraction, read-only context retrieval, evidence assembly, inspectable planning, and typed `FinancialActionProposal` generation.
 - **Multi-Channel Interaction Core (`services/api`)**: Unified normalisation of user turns into canonical `InteractionTurn` records across three ingress channels:
@@ -323,14 +327,14 @@ Neolith/
 ├── apps/
 │   └── web/                        # Next.js 15 App Router frontend + reusable enterprise UI library
 │       └── src/
-│           ├── app/                # Routes: /, /dashboard, /accounts, /agent, /tasks, /governance, /policies, /adopt, /docs, /operator
-│           ├── components/         # AppShell, ActionInspector, MermaidViewer, AgentTaskConsole & UI primitives
+│           ├── app/                # Routes: /, /dashboard, /accounts, /agent, /tasks, /approvals, /receipts/[id], /governance, /policies, /adopt, /docs, /operator, /privacy, /terms, /security, /llms.txt
+│           ├── components/         # AppShell, ActionInspector, MermaidViewer, ApprovalsQueueClient, ReceiptDetailClient & UI primitives
 │           └── lib/                # Typed Financial & Governance API client with offline seed snapshot fallback
 ├── services/
-│   ├── api/                        # FastAPI control plane, Governance Runtime, Interaction Core, Twilio/ElevenLabs adapters, Alembic migrations & seed module
-│   │   ├── migrations/             # Alembic migration environment (revisions 0001, 0002, 0003_stage3_governance_and_profiles)
-│   │   ├── src/neolith_api/        # Core ORM models, governance runtime, financial sandbox, interactions, Twilio & ElevenLabs adapters
-│   │   └── tests/                  # 76 unit and integration tests (contracts, financial sandbox, agent, governance, deployment hardening, web, WhatsApp, voice, parity)
+│   ├── api/                        # FastAPI control plane, Governance Runtime, Approvals, Permits, Receipts, Twilio/ElevenLabs adapters, Alembic migrations & seed module
+│   │   ├── migrations/             # Alembic migration environment (revisions 0001, 0002, 0003_stage3_governance, 0004_stage4_approvals_permits_receipts)
+│   │   ├── src/neolith_api/        # Core ORM models, governance runtime, approvals, permits, receipts, interactions, Twilio & ElevenLabs adapters
+│   │   └── tests/                  # 81 unit and integration tests (contracts, financial sandbox, agent, governance, stage 4 approvals/receipts, hardening, web, WhatsApp, voice)
 │   ├── agent-worker/               # Stateful LangGraph Financial AI Agent, FinancialContextClient, internal HTTP service, and mock/OpenAI providers
 │   └── tool-simulator/             # SimulatedBankingService (R1 read tools + permit-gated R2-R4 write stubs)
 ├── packages/
@@ -438,6 +442,12 @@ curl http://localhost:8000/api/v1/governance/profiles/active
 curl -X POST http://localhost:8000/api/v1/actions/evaluate ^
   -H "Content-Type: application/json" ^
   -d "{\"agent_id\": \"financial-ai-agent\", \"agent_version\": \"1.0.0\", \"action_type\": \"pay_invoice\", \"risk_tier\": \"R2\", \"category\": \"software\", \"amount_inr\": 8000.00, \"vendor_verified\": true, \"parameters\": {\"invoice_id\": \"INV-001\"}}"
+
+:: Inspect pending approvals queue (e.g. seeded INV-002 review checkpoint)
+curl http://localhost:8000/api/v1/approvals
+
+:: Verify SHA-256 cryptographic integrity of decision receipts chain
+curl http://localhost:8000/api/v1/receipts/verify
 ```
 
 ### 5. Frontend Setup & Verification (`apps/web`)
@@ -453,11 +463,14 @@ Open `http://localhost:3000` in your browser to explore:
 - `/accounts` — Accounts, Vendor Invoices (`INV-001`, `INV-002`, `INV-003`), Beneficiaries & Ledger
 - `/agent` — Financial Agent Console with Visual Governance Boundaries & Action Inspector Drawer
 - `/tasks` — Persisted Task Registry & Goal Intake
+- `/approvals` — Human Checkpoints Queue with Canonical Action Inspector, Reviewer Notes & One-Click Settlement
+- `/receipts/[id]` — Tamper-Evident Decision Receipt Explorer with Live SHA-256 Chain Verification
 - `/governance` — Governance Workspace with Active Profile Banner, Decisions Table & Drawer
 - `/policies` — Governance Profile Selector (Strict, Balanced, High Autonomy) & Custom Policy Builder
 - `/adopt` — Enterprise Adoption Guide & 10-Step Integration Journey
 - `/docs` — Documentation Hub with 7 Interactive Zoomable Mermaid Architecture Diagrams
 - `/operator` — Operator Control Plane (Registered Agents, `R1`–`R4` Tool Classifications, Budgets & Reason Codes)
+- `/privacy`, `/terms`, `/security` — Production Legal, Privacy, and Trust Compliance Pages
 
 ### 6. Run Quality Gates, Contract Validators & Automated Tests
 

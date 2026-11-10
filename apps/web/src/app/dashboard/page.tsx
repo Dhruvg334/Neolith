@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ErrorState } from "@/components/ErrorState";
 import {
@@ -17,6 +18,15 @@ import {
 } from "@/lib/financial-api";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Treasury Dashboard",
+  description:
+    "Live treasury accounts, category budget limits, unpaid vendor invoices, and double-entry transaction ledger.",
+  alternates: {
+    canonical: "/dashboard",
+  },
+};
 
 const TRANSACTION_COLUMNS: readonly DataTableColumn<FinancialTransactionDto>[] = [
   {

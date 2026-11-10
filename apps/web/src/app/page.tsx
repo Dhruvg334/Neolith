@@ -1,4 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Neolith — AI-Powered Agentic Decision and Execution System",
+  description:
+    "Deterministic governance for autonomous financial AI agents separating intelligent planning from governed execution authority.",
+  alternates: {
+    canonical: "/",
+  },
+};
 
 export default function HomePage() {
   return (

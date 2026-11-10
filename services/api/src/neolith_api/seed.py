@@ -1,6 +1,6 @@
 """Deterministic, repeatable, idempotent seed dataset for Stage 1 Financial Sandbox."""
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from uuid import NAMESPACE_DNS, UUID, uuid5
 
@@ -26,12 +26,16 @@ from neolith_api.financial.models import (
 )
 from neolith_api.financial.tools import FINANCIAL_TOOL_SPECS
 from neolith_api.governance.models import (
+    ApprovalModel,
+    DecisionReceiptModel,
+    ExecutionPermitModel,
     ExecutionRequestModel,
     GovernanceDecisionModel,
     GovernanceProfileModel,
     PermissionBindingModel,
     RiskSignalModel,
 )
+from neolith_api.governance.service import compute_receipt_hash, hash_payload
 
 SEED_NAMESPACE = uuid5(NAMESPACE_DNS, "neolith.financial.sandbox.v1")
 
@@ -57,6 +61,9 @@ def seed_demo_data(session: Session, *, reset: bool = False) -> dict[str, int]:
     When ``reset=True``, existing financial reference records are cleared and recreated cleanly.
     """
     if reset:
+        session.execute(delete(DecisionReceiptModel))
+        session.execute(delete(ExecutionPermitModel))
+        session.execute(delete(ApprovalModel))
         session.execute(delete(RiskSignalModel))
         session.execute(delete(GovernanceDecisionModel))
         session.execute(delete(ExecutionRequestModel))
@@ -565,6 +572,101 @@ def seed_demo_data(session: Session, *, reset: bool = False) -> dict[str, int]:
                 status="active",
             )
             session.add(binding)
+
+    session.flush()
+
+    # 14. Initial Sample Pending Approval (INV-002 Nova Compute - Exceeds Approval Threshold)
+    existing_sample_appr = session.scalars(select(ApprovalModel)).first()
+    if existing_sample_appr is None:
+        inv_002 = session.scalars(
+            select(InvoiceModel).where(InvoiceModel.invoice_number == "INV-002")
+        ).first()
+        if inv_002:
+            action_id = deterministic_uuid("action:review:INV-002")
+            now = datetime.now(UTC)
+            params = {
+                "invoice_number": inv_002.invoice_number,
+                "vendor_name": inv_002.vendor_name,
+                "amount": str(inv_002.amount),
+                "category": inv_002.category,
+                "description": inv_002.description,
+            }
+            params_hash = hash_payload(params)
+            ctx = {"source": "seed_demo_data"}
+            ctx_hash = hash_payload(ctx)
+
+            exec_req = ExecutionRequestModel(
+                id=action_id,
+                trace_id="trace-seed-inv-002",
+                task_id=sample_task.id,
+                user_id=user.id,
+                agent_version_id=DEMO_AGENT_VERSION_ID,
+                tool_version_id=deterministic_uuid("tool_version:pay_invoice:0.1.0"),
+                operation="pay_invoice",
+                resource="INV-002",
+                category="infrastructure",
+                amount=inv_002.amount,
+                currency="INR",
+                parameters=params,
+                parameters_hash=params_hash,
+                context_payload=ctx,
+                context_hash=ctx_hash,
+                nonce="nonce-seed-inv-002",
+                state="review",
+                requested_at=now,
+                created_at=now,
+            )
+            session.add(exec_req)
+
+            gov_dec = GovernanceDecisionModel(
+                id=deterministic_uuid("decision:seed:INV-002"),
+                action_id=action_id,
+                outcome="review",
+                permission_result={"allowed": True, "capability": "financial:invoice:pay"},
+                reason_codes=["REVIEW_THRESHOLD_EXCEEDED"],
+                risk_tier="R3",
+                policy_version_ids=["policy:neolith-core:v1"],
+                policy_bundle_digest="digest:neolith-policy-bundle-sha256",
+                input_hash=hash_payload({"action_id": str(action_id), "outcome": "review"}),
+                created_at=now,
+            )
+            session.add(gov_dec)
+
+            appr = ApprovalModel(
+                id=deterministic_uuid("approval:seed:INV-002"),
+                action_id=action_id,
+                action_hash=params_hash,
+                required_role="approver",
+                state="pending",
+                expires_at=now + timedelta(days=1),
+                created_at=now,
+            )
+            session.add(appr)
+
+            # Genesis Decision Receipt (F13)
+            receipt_payload = {
+                "action_id": str(action_id),
+                "outcome": "review",
+                "reason_codes": ["REVIEW_THRESHOLD_EXCEEDED"],
+                "risk_tier": "R3",
+                "operation": "pay_invoice",
+                "amount": str(inv_002.amount),
+                "currency": "INR",
+            }
+            p_digest = hash_payload(receipt_payload)
+            r_digest = compute_receipt_hash(None, 1, p_digest, "decision")
+            receipt = DecisionReceiptModel(
+                id=deterministic_uuid("receipt:seed:genesis"),
+                chain_index=1,
+                action_id=action_id,
+                event_type="decision",
+                payload=receipt_payload,
+                payload_hash=p_digest,
+                previous_receipt_hash=None,
+                receipt_hash=r_digest,
+                created_at=now,
+            )
+            session.add(receipt)
 
     session.commit()
     return {

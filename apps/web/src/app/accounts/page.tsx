@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ErrorState } from "@/components/ErrorState";
 import {
   Badge,
@@ -17,6 +18,15 @@ import {
 } from "@/lib/financial-api";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Accounts & Invoices",
+  description:
+    "Synthetic financial accounts, verified vendor directory, and payable vendor invoice queues.",
+  alternates: {
+    canonical: "/accounts",
+  },
+};
 
 const INVOICE_COLUMNS: readonly DataTableColumn<InvoiceDto>[] = [
   {

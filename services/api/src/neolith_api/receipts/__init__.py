@@ -31,3 +31,14 @@ class DecisionReceiptSchema(BaseModel):
     previous_receipt_hash: str | None = None
     receipt_hash: str
     created_at: datetime
+
+
+class ReceiptVerificationResponse(BaseModel):
+    """Result of verifying cryptographic integrity of decision receipts hash chain."""
+
+    valid: bool
+    total_receipts: int
+    head_hash: str | None = None
+    broken_at_index: int | None = None
+    error: str | None = None
+    verified_at: datetime

@@ -21,6 +21,7 @@ const ESSENTIALS_NAV = [
 const CONTROL_NAV = [
   { href: "/governance", label: "Governance" },
   { href: "/policies", label: "Policies" },
+  { href: "/approvals", label: "Approvals" },
   { href: "/operator", label: "Operator" },
 ] as const;
 
@@ -248,6 +249,147 @@ export function AppShell({ children }: AppShellProps) {
         {/* Content View */}
         <main className="flex-1 p-6 md:p-8 min-w-0">{children}</main>
       </div>
+
+      {/* Semantic Footer (Handbook Part II Anti-Vibe-Coding Standards) */}
+      <footer className="border-t border-slate-200 bg-white text-slate-600 text-xs mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+            {/* Col 1: Brand & Purpose */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span
+                  className="w-6 h-6 rounded flex items-center justify-center font-black text-xs text-white"
+                  style={{ backgroundColor: "#0F766E" }}
+                >
+                  N
+                </span>
+                <span className="font-bold text-slate-900 tracking-tight text-sm">Neolith</span>
+              </div>
+              <p className="text-slate-500 text-xs leading-relaxed">
+                Separating intelligent planning from governed execution authority. Deterministic OPA policy
+                runtime, short-lived permits, and tamper-evident decision receipts.
+              </p>
+              <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span>Deterministic Invariants Enforced</span>
+              </div>
+            </div>
+
+            {/* Col 2: Navigation */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                Platform Workspaces
+              </span>
+              <ul className="space-y-1.5 text-xs">
+                <li>
+                  <Link href="/agent" className="hover:text-slate-900 transition-colors">
+                    Financial AI Agent
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/dashboard" className="hover:text-slate-900 transition-colors">
+                    Treasury Dashboard
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/accounts" className="hover:text-slate-900 transition-colors">
+                    Operating Accounts & Invoices
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/tasks" className="hover:text-slate-900 transition-colors">
+                    Activity & Plans
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/approvals" className="hover:text-slate-900 transition-colors">
+                    Human Approval Queue
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 3: Control & Invariants */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                Governance & Security
+              </span>
+              <ul className="space-y-1.5 text-xs">
+                <li>
+                  <Link href="/governance" className="hover:text-slate-900 transition-colors">
+                    Governance Runtime
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/policies" className="hover:text-slate-900 transition-colors">
+                    Policy Configuration & Packs
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/operator" className="hover:text-slate-900 transition-colors">
+                    Emergency Controls & Kill-Switch
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/security" className="hover:text-slate-900 transition-colors">
+                    Security Architecture
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/docs" className="hover:text-slate-900 transition-colors">
+                    Technical Documentation Hub
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 4: Trust & Compliance */}
+            <div className="space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                Trust & Compliance
+              </span>
+              <ul className="space-y-1.5 text-xs">
+                <li>
+                  <Link href="/adopt" className="hover:text-slate-900 transition-colors">
+                    Enterprise Adoption Guide
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/privacy" className="hover:text-slate-900 transition-colors">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/terms" className="hover:text-slate-900 transition-colors">
+                    Terms of Service
+                  </Link>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/dhruvg-04/Neolith"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-slate-900 transition-colors"
+                  >
+                    GitHub Source Repository &rarr;
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-400">
+            <p>&copy; {new Date().getFullYear()} Neolith Project. All rights reserved.</p>
+            <div className="flex items-center gap-4">
+              <span>Maintained by Dhruv Gupta</span>
+              <span>&middot;</span>
+              <span>Open Policy Agent v1.22.2</span>
+              <span>&middot;</span>
+              <span>Apache 2.0 License</span>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

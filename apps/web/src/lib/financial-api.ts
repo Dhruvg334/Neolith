@@ -816,6 +816,59 @@ export async function fetchApiWithFallback<T>(
   }
 }
 
+export interface ApprovalRecordDto {
+  readonly id: string;
+  readonly action_id: string;
+  readonly action_hash: string;
+  readonly operation: string;
+  readonly resource?: string | null;
+  readonly amount?: string | number | null;
+  readonly currency?: string | null;
+  readonly category?: string | null;
+  readonly vendor_name?: string | null;
+  readonly description?: string | null;
+  readonly is_verified_vendor: boolean;
+  readonly governance_outcome: string;
+  readonly reason_codes: readonly string[];
+  readonly required_role: string;
+  readonly state: "pending" | "approved" | "rejected" | "expired";
+  readonly expires_at: string;
+  readonly decided_by?: string | null;
+  readonly decision_note?: string | null;
+  readonly decided_at?: string | null;
+  readonly created_at: string;
+}
+
+export interface ApprovalDecisionResponseDto {
+  readonly approval: ApprovalRecordDto;
+  readonly permit_id?: string | null;
+  readonly execution_status?: string | null;
+  readonly settlement_tx_id?: string | null;
+  readonly receipt_id?: string | null;
+  readonly message: string;
+}
+
+export interface DecisionReceiptDto {
+  readonly receipt_id: string;
+  readonly chain_index: number;
+  readonly action_id: string;
+  readonly event_type: string;
+  readonly payload: Record<string, unknown>;
+  readonly payload_hash: string;
+  readonly previous_receipt_hash?: string | null;
+  readonly receipt_hash: string;
+  readonly created_at: string;
+}
+
+export interface ReceiptVerificationDto {
+  readonly valid: boolean;
+  readonly total_receipts: number;
+  readonly head_hash?: string | null;
+  readonly broken_at_index?: number | null;
+  readonly error?: string | null;
+  readonly verified_at: string;
+}
+
 /**
  * Format string or number currency value as cleanly formatted Indian INR representation.
  * Avoids floating-point math; splits integer and decimal components directly.
@@ -843,4 +896,90 @@ export function formatInrCurrency(
       : lastThree;
 
   return `${currency} ${formattedInt}.${formattedDec}`;
+}
+
+/**
+ * Fetch human approvals with optional state filter.
+ */
+export async function fetchApprovals(
+  state?: string
+): Promise<ApiResult<readonly ApprovalRecordDto[]>> {
+  const path = state ? `/approvals?state=${encodeURIComponent(state)}` : "/approvals";
+  return fetchApiWithFallback<readonly ApprovalRecordDto[]>(path, []);
+}
+
+/**
+ * Fetch a single human approval record by UUID.
+ */
+export async function fetchApproval(
+  approvalId: string
+): Promise<ApiResult<ApprovalRecordDto | null>> {
+  return fetchApiWithFallback<ApprovalRecordDto | null>(
+    `/approvals/${encodeURIComponent(approvalId)}`,
+    null
+  );
+}
+
+/**
+ * Submit operator decision (approve/reject) on a pending human checkpoint.
+ */
+export async function submitApprovalDecision(
+  approvalId: string,
+  decision: "approve" | "reject",
+  note?: string,
+  decidedBy: string = "operator@neolith.local"
+): Promise<{ data: ApprovalDecisionResponseDto | null; success: boolean; error?: string }> {
+  const url = buildApiUrl(`/approvals/${encodeURIComponent(approvalId)}/decision`);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        decision,
+        note: note || undefined,
+        decided_by: decidedBy,
+      }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      return { data: null, success: false, error: `HTTP ${res.status}: ${errText}` };
+    }
+    const data = (await res.json()) as ApprovalDecisionResponseDto;
+    return { data, success: true };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Network error during approval decision";
+    return { data: null, success: false, error: message };
+  }
+}
+
+/**
+ * Fetch recent tamper-evident decision receipts.
+ */
+export async function fetchReceipts(
+  actionId?: string
+): Promise<ApiResult<readonly DecisionReceiptDto[]>> {
+  const path = actionId ? `/receipts?action_id=${encodeURIComponent(actionId)}` : "/receipts";
+  return fetchApiWithFallback<readonly DecisionReceiptDto[]>(path, []);
+}
+
+/**
+ * Fetch a specific decision receipt by ID.
+ */
+export async function fetchReceipt(
+  receiptId: string
+): Promise<ApiResult<DecisionReceiptDto | null>> {
+  return fetchApiWithFallback<DecisionReceiptDto | null>(
+    `/receipts/${encodeURIComponent(receiptId)}`,
+    null
+  );
+}
+
+/**
+ * Verify cryptographic integrity of the decision receipts chain (F13).
+ */
+export async function verifyReceiptChain(): Promise<ApiResult<ReceiptVerificationDto | null>> {
+  return fetchApiWithFallback<ReceiptVerificationDto | null>("/receipts/verify", null);
 }

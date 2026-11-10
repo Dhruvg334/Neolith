@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any, cast
 from uuid import UUID, uuid4
@@ -12,6 +12,11 @@ from uuid import UUID, uuid4
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from neolith_api.approvals import (
+    ApprovalDecisionResponse,
+    ApprovalEnrichedRead,
+    ApprovalState,
+)
 from neolith_api.core.config import get_settings
 from neolith_api.core.models import (
     AgentModel,
@@ -25,6 +30,7 @@ from neolith_api.core.models import (
 )
 from neolith_api.financial.models import (
     BeneficiaryModel,
+    FinancialAccountModel,
     FinancialTransactionModel,
     InvoiceModel,
 )
@@ -33,6 +39,9 @@ from neolith_api.governance.evaluator import (
     PolicyEvaluator,
 )
 from neolith_api.governance.models import (
+    ApprovalModel,
+    DecisionReceiptModel,
+    ExecutionPermitModel,
     ExecutionRequestModel,
     GovernanceDecisionModel,
     GovernanceProfileModel,
@@ -47,12 +56,29 @@ from neolith_api.governance.schemas import (
     GovernanceProfileCreate,
     GovernanceProfileUpdate,
 )
+from neolith_api.receipts import (
+    DecisionReceiptSchema,
+    ReceiptEventType,
+    ReceiptVerificationResponse,
+)
 
 
 def hash_payload(data: dict[str, Any]) -> str:
     """Compute deterministic SHA-256 digest of arbitrary JSON-compatible dictionary."""
     canonical = json.dumps(data, sort_keys=True, separators=(",", ":"))
     return f"sha256:{hashlib.sha256(canonical.encode('utf-8')).hexdigest()}"
+
+
+def compute_receipt_hash(
+    previous_hash: str | None,
+    chain_index: int,
+    payload_hash: str,
+    event_type: str,
+) -> str:
+    """Compute cryptographic hash linking this receipt to previous receipt in chain (F13)."""
+    prev = previous_hash if previous_hash else ("0" * 64)
+    data = f"{prev}:{chain_index}:{payload_hash}:{event_type}"
+    return f"sha256:{hashlib.sha256(data.encode('utf-8')).hexdigest()}"
 
 
 class GovernanceRuntimeService:
@@ -447,6 +473,71 @@ class GovernanceRuntimeService:
         self.db.add(decision_record)
         self.db.flush()
 
+        # 11. Append Append-Only Decision Receipt and Trigger Permitting / Human Checkpoints
+        self.append_decision_receipt(
+            action_id=action_id,
+            event_type="decision",
+            payload={
+                "action_id": str(action_id),
+                "outcome": decision,
+                "reason_codes": reason_codes,
+                "risk_tier": tool_risk_tier,
+                "operation": req.operation,
+                "amount": str(req.amount) if req.amount else None,
+                "category": req.category,
+            },
+        )
+
+        if decision == "review":
+            # Create human approval checkpoint (F08)
+            existing_appr = self.db.scalars(
+                select(ApprovalModel).where(ApprovalModel.action_id == action_id)
+            ).first()
+            if not existing_appr:
+                approval = ApprovalModel(
+                    id=uuid4(),
+                    action_id=action_id,
+                    action_hash=parameters_hash_val,
+                    required_role="approver",
+                    state="pending",
+                    expires_at=now + timedelta(days=1),
+                    created_at=now,
+                )
+                self.db.add(approval)
+                self.db.flush()
+
+        elif decision == "allow":
+            # Issue Execution Permit (F09)
+            permit = self.issue_execution_permit(action_id=action_id)
+            self.append_decision_receipt(
+                action_id=action_id,
+                event_type="permit_issued",
+                payload={
+                    "permit_id": str(permit.id),
+                    "action_id": str(action_id),
+                    "nonce": permit.nonce,
+                    "audience": permit.audience,
+                    "expires_at": permit.expires_at.isoformat(),
+                },
+            )
+
+            # Settle immediately if pay_invoice (F10)
+            if req.operation == "pay_invoice":
+                tx = self.execute_settlement(action_id, permit)
+                if tx:
+                    self.append_decision_receipt(
+                        action_id=action_id,
+                        event_type="execution",
+                        payload={
+                            "transaction_id": str(tx.id),
+                            "action_id": str(action_id),
+                            "amount": str(tx.amount),
+                            "currency": tx.currency,
+                            "reference": tx.reference,
+                            "completed_at": datetime.now(UTC).isoformat(),
+                        },
+                    )
+
         # Update task state
         persisted_task = self.db.get(TaskModel, task_id)
         if persisted_task:
@@ -548,4 +639,511 @@ class GovernanceRuntimeService:
             requested_at=exec_req.requested_at,
             created_at=exec_req.created_at,
             decision=decision,
+        )
+
+    # -------------------------------------------------------------------------
+    # F09 Execution Permit Issuance & F10 Banking Settlement
+    # -------------------------------------------------------------------------
+
+    def issue_execution_permit(
+        self,
+        action_id: UUID,
+        reservation_id: UUID | None = None,
+    ) -> ExecutionPermitModel:
+        """Issue a short-lived, single-use Execution Permit for an approved action (F09)."""
+        existing = self.db.scalars(
+            select(ExecutionPermitModel).where(ExecutionPermitModel.action_id == action_id)
+        ).first()
+        if existing:
+            return existing
+
+        now = datetime.now(UTC)
+        nonce = f"nonce-{uuid4().hex}"
+        token_hash = hash_payload(
+            {"action_id": str(action_id), "nonce": nonce, "issued_at": now.isoformat()}
+        )
+        sys_state = self.db.scalars(select(SystemStateModel)).first()
+        epoch = int(sys_state.revocation_epoch) if sys_state else 0
+
+        permit = ExecutionPermitModel(
+            id=uuid4(),
+            action_id=action_id,
+            reservation_id=reservation_id,
+            token_hash=token_hash,
+            nonce=nonce,
+            audience="neolith:tool-simulator",
+            revocation_epoch=epoch,
+            state="issued",
+            issued_at=now,
+            not_before=now,
+            expires_at=now + timedelta(minutes=15),
+        )
+        self.db.add(permit)
+        self.db.flush()
+        return permit
+
+    def execute_settlement(
+        self,
+        action_id: UUID,
+        permit: ExecutionPermitModel,
+    ) -> FinancialTransactionModel | None:
+        """Execute banking settlement and ledger updates for an allowed or approved payment.
+
+        Fulfills F10 Banking Settlement.
+        """
+        exec_req = self.db.get(ExecutionRequestModel, action_id)
+        if not exec_req or exec_req.operation != "pay_invoice":
+            return None
+
+        # Resolve invoice
+        invoice_num = exec_req.parameters.get("invoice_number") or exec_req.resource
+        invoice: InvoiceModel | None = None
+        if invoice_num:
+            invoice = self.db.scalars(
+                select(InvoiceModel).where(InvoiceModel.invoice_number == invoice_num)
+            ).first()
+
+        if not invoice:
+            return None
+
+        # Idempotency check: if transaction already exists for this action, return it
+        existing_tx = self.db.scalars(
+            select(FinancialTransactionModel).where(
+                FinancialTransactionModel.idempotency_key == f"settlement:{action_id}"
+            )
+        ).first()
+        if existing_tx:
+            return existing_tx
+
+        # Resolve primary operating financial account
+        account = self.db.scalars(
+            select(FinancialAccountModel).order_by(FinancialAccountModel.created_at.asc())
+        ).first()
+        if not account:
+            return None
+
+        now = datetime.now(UTC)
+        # 1. Update invoice status to 'paid'
+        invoice.status = "paid"
+        invoice.updated_at = now
+
+        # 2. Debit available balance
+        account.available_balance = Decimal(str(account.available_balance)) - Decimal(
+            str(invoice.amount)
+        )
+        account.updated_at = now
+
+        # 3. Insert transaction
+        tx = FinancialTransactionModel(
+            id=uuid4(),
+            transaction_type="invoice_payment",
+            account_id=account.id,
+            invoice_id=invoice.id,
+            beneficiary_id=invoice.vendor_id,
+            category=invoice.category,
+            amount=invoice.amount,
+            currency=invoice.currency,
+            status="completed",
+            reference=f"PAY-{invoice.invoice_number} — Settled via Execution Permit",
+            idempotency_key=f"settlement:{action_id}",
+            completed_at=now,
+        )
+        self.db.add(tx)
+
+        # 4. Consume permit
+        permit.state = "consumed"
+        permit.consumed_at = now
+
+        # 5. Update execution request state
+        exec_req.state = "executed"
+
+        # 6. Update task state if linked
+        if exec_req.task_id:
+            task = self.db.get(TaskModel, exec_req.task_id)
+            if task:
+                task.state = "completed"
+
+        self.db.flush()
+        return tx
+
+    # -------------------------------------------------------------------------
+    # F08 Human Approvals
+    # -------------------------------------------------------------------------
+
+    def _enrich_approval(self, approval: ApprovalModel) -> ApprovalEnrichedRead:
+        """Enrich ApprovalModel with execution request, invoice, and governance details."""
+        exec_req = self.db.get(ExecutionRequestModel, approval.action_id)
+        operation = exec_req.operation if exec_req else "unknown"
+        resource = exec_req.resource if exec_req else None
+        amount = exec_req.amount if exec_req else None
+        currency = exec_req.currency if exec_req else "INR"
+        category = exec_req.category if exec_req else None
+        vendor_name: str | None = None
+        description: str | None = None
+        is_verified_vendor = False
+
+        if resource:
+            invoice = self.db.scalars(
+                select(InvoiceModel).where(InvoiceModel.invoice_number == resource)
+            ).first()
+            if invoice:
+                vendor_name = invoice.vendor_name
+                description = invoice.description
+                is_verified_vendor = invoice.is_verified_vendor
+                if not amount:
+                    amount = invoice.amount
+                if not category:
+                    category = invoice.category
+
+        if not vendor_name and exec_req:
+            vendor_name = exec_req.parameters.get("vendor_name")
+
+        gov_decision = self.db.scalars(
+            select(GovernanceDecisionModel).where(
+                GovernanceDecisionModel.action_id == approval.action_id
+            )
+        ).first()
+        outcome = gov_decision.outcome if gov_decision else "review"
+        reason_codes = gov_decision.reason_codes if gov_decision else []
+
+        approval_state = cast(ApprovalState, approval.state)
+        return ApprovalEnrichedRead(
+            id=approval.id,
+            action_id=approval.action_id,
+            action_hash=approval.action_hash,
+            operation=operation,
+            resource=resource,
+            amount=amount,
+            currency=currency,
+            category=category,
+            vendor_name=vendor_name,
+            description=description,
+            is_verified_vendor=is_verified_vendor,
+            governance_outcome=outcome,
+            reason_codes=reason_codes,
+            required_role=approval.required_role,
+            state=approval_state,
+            expires_at=approval.expires_at,
+            decided_by=approval.decided_by,
+            decision_note=approval.decision_note,
+            decided_at=approval.decided_at,
+            created_at=approval.created_at,
+        )
+
+    def list_approvals(
+        self, state: str | None = None, limit: int = 50, offset: int = 0
+    ) -> list[ApprovalEnrichedRead]:
+        """List human approval requests with optional state filtering."""
+        stmt = (
+            select(ApprovalModel)
+            .order_by(ApprovalModel.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        if state:
+            stmt = stmt.where(ApprovalModel.state == state)
+        records = self.db.scalars(stmt).all()
+        return [self._enrich_approval(r) for r in records]
+
+    def get_approval(self, approval_id: UUID) -> ApprovalEnrichedRead | None:
+        """Fetch a single enriched human approval request by ID."""
+        record = self.db.get(ApprovalModel, approval_id)
+        if not record:
+            return None
+        return self._enrich_approval(record)
+
+    def decide_approval(
+        self,
+        approval_id: UUID,
+        decision: str,
+        note: str | None = None,
+        decided_by: str | None = None,
+    ) -> ApprovalDecisionResponse:
+        """Record operator decision on pending approval, issue permit and settle on approve.
+
+        Fulfills F08 Human Approvals.
+        """
+        approval = self.db.get(ApprovalModel, approval_id)
+        if not approval:
+            raise ValueError(f"Approval '{approval_id}' not found.")
+        if approval.state != "pending":
+            raise ValueError(f"Approval '{approval_id}' is already {approval.state}.")
+
+        now = datetime.now(UTC)
+        exec_req = self.db.get(ExecutionRequestModel, approval.action_id)
+        if not exec_req:
+            raise ValueError(f"Execution request '{approval.action_id}' not found.")
+
+        # Resolve user
+        user = None
+        if decided_by:
+            user = self.db.scalars(select(UserModel).where(UserModel.email == decided_by)).first()
+        if not user:
+            user = self.db.scalars(
+                select(UserModel).where(UserModel.role.in_(["operator", "admin"]))
+            ).first()
+
+        permit_id = None
+        exec_status = None
+        settlement_tx_id = None
+        appr_receipt_id = None
+
+        if decision == "approve":
+            approval.state = "approved"
+            approval.decided_by = user.id if user else None
+            approval.decision_note = note
+            approval.decided_at = now
+
+            # Append approval receipt
+            appr_receipt = self.append_decision_receipt(
+                action_id=approval.action_id,
+                event_type="approval",
+                payload={
+                    "approval_id": str(approval.id),
+                    "action_id": str(approval.action_id),
+                    "decision": "approved",
+                    "note": note,
+                    "decided_by": user.email if user else "operator@neolith.local",
+                    "decided_at": now.isoformat(),
+                },
+            )
+            appr_receipt_id = appr_receipt.id
+
+            # Issue Execution Permit
+            permit = self.issue_execution_permit(action_id=approval.action_id)
+            permit_id = permit.id
+
+            # Append permit issued receipt
+            self.append_decision_receipt(
+                action_id=approval.action_id,
+                event_type="permit_issued",
+                payload={
+                    "permit_id": str(permit.id),
+                    "action_id": str(approval.action_id),
+                    "nonce": permit.nonce,
+                    "expires_at": permit.expires_at.isoformat(),
+                },
+            )
+
+            # Settle if pay_invoice
+            if exec_req.operation == "pay_invoice":
+                tx = self.execute_settlement(approval.action_id, permit)
+                if tx:
+                    settlement_tx_id = tx.id
+                    exec_status = "settled"
+                    self.append_decision_receipt(
+                        action_id=approval.action_id,
+                        event_type="execution",
+                        payload={
+                            "transaction_id": str(tx.id),
+                            "action_id": str(approval.action_id),
+                            "amount": str(tx.amount),
+                            "currency": tx.currency,
+                            "reference": tx.reference,
+                            "completed_at": now.isoformat(),
+                        },
+                    )
+            else:
+                exec_status = "permit_issued"
+
+            msg = f"Approval {approval.id} approved. Execution permit {permit.id} issued."
+
+        elif decision == "reject":
+            approval.state = "rejected"
+            approval.decided_by = user.id if user else None
+            approval.decision_note = note
+            approval.decided_at = now
+            exec_req.state = "denied"
+            if exec_req.task_id:
+                task = self.db.get(TaskModel, exec_req.task_id)
+                if task:
+                    task.state = "denied"
+
+            appr_receipt = self.append_decision_receipt(
+                action_id=approval.action_id,
+                event_type="approval",
+                payload={
+                    "approval_id": str(approval.id),
+                    "action_id": str(approval.action_id),
+                    "decision": "rejected",
+                    "note": note,
+                    "decided_by": user.email if user else "operator@neolith.local",
+                    "decided_at": now.isoformat(),
+                },
+            )
+            appr_receipt_id = appr_receipt.id
+            msg = f"Approval {approval.id} rejected by operator."
+        else:
+            raise ValueError(
+                f"Invalid approval decision '{decision}'. Must be 'approve' or 'reject'."
+            )
+
+        self.db.flush()
+        enriched = self._enrich_approval(approval)
+        return ApprovalDecisionResponse(
+            approval=enriched,
+            permit_id=permit_id,
+            execution_status=exec_status,
+            settlement_tx_id=settlement_tx_id,
+            receipt_id=appr_receipt_id,
+            message=msg,
+        )
+
+    # -------------------------------------------------------------------------
+    # F13 Decision Receipts Chain & Verification
+    # -------------------------------------------------------------------------
+
+    def append_decision_receipt(
+        self,
+        action_id: UUID,
+        event_type: str,
+        payload: dict[str, Any],
+    ) -> DecisionReceiptModel:
+        """Append a tamper-evident, hash-linked receipt to the immutable ledger (F13)."""
+        max_index = self.db.scalar(select(func.max(DecisionReceiptModel.chain_index)))
+        next_index = (int(max_index) + 1) if max_index is not None else 1
+
+        prev_receipt = self.db.scalars(
+            select(DecisionReceiptModel).order_by(DecisionReceiptModel.chain_index.desc())
+        ).first()
+        prev_hash = prev_receipt.receipt_hash if prev_receipt else None
+
+        payload_digest = hash_payload(payload)
+        receipt_digest = compute_receipt_hash(
+            prev_hash,
+            next_index,
+            payload_digest,
+            event_type,
+        )
+
+        receipt = DecisionReceiptModel(
+            id=uuid4(),
+            chain_index=next_index,
+            action_id=action_id,
+            event_type=event_type,
+            payload=payload,
+            payload_hash=payload_digest,
+            previous_receipt_hash=prev_hash,
+            receipt_hash=receipt_digest,
+            created_at=datetime.now(UTC),
+        )
+        self.db.add(receipt)
+        self.db.flush()
+        return receipt
+
+    def list_receipts(
+        self, action_id: UUID | None = None, limit: int = 50, offset: int = 0
+    ) -> list[DecisionReceiptSchema]:
+        """List decision receipts ordered newest first."""
+        stmt = (
+            select(DecisionReceiptModel)
+            .order_by(DecisionReceiptModel.chain_index.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        if action_id:
+            stmt = stmt.where(DecisionReceiptModel.action_id == action_id)
+        records = self.db.scalars(stmt).all()
+        return [
+            DecisionReceiptSchema(
+                receipt_id=r.id,
+                chain_index=int(r.chain_index),
+                action_id=r.action_id,
+                event_type=cast(ReceiptEventType, r.event_type),
+                payload=r.payload,
+                payload_hash=r.payload_hash,
+                previous_receipt_hash=r.previous_receipt_hash,
+                receipt_hash=r.receipt_hash,
+                created_at=r.created_at,
+            )
+            for r in records
+        ]
+
+    def get_receipt(self, receipt_id: UUID) -> DecisionReceiptSchema | None:
+        """Fetch a single decision receipt by ID."""
+        r = self.db.get(DecisionReceiptModel, receipt_id)
+        if not r:
+            # Check by action_id fallback
+            r = self.db.scalars(
+                select(DecisionReceiptModel).where(DecisionReceiptModel.action_id == receipt_id)
+            ).first()
+        if not r:
+            return None
+        return DecisionReceiptSchema(
+            receipt_id=r.id,
+            chain_index=int(r.chain_index),
+            action_id=r.action_id,
+            event_type=cast(ReceiptEventType, r.event_type),
+            payload=r.payload,
+            payload_hash=r.payload_hash,
+            previous_receipt_hash=r.previous_receipt_hash,
+            receipt_hash=r.receipt_hash,
+            created_at=r.created_at,
+        )
+
+    def verify_receipt_chain(self) -> ReceiptVerificationResponse:
+        """Verify the cryptographic hash chain integrity of all decision receipts (F13)."""
+        receipts = list(
+            self.db.scalars(
+                select(DecisionReceiptModel).order_by(DecisionReceiptModel.chain_index.asc())
+            ).all()
+        )
+        if not receipts:
+            return ReceiptVerificationResponse(
+                valid=True,
+                total_receipts=0,
+                head_hash=None,
+                verified_at=datetime.now(UTC),
+            )
+
+        prev_hash: str | None = None
+        for rec in receipts:
+            idx = int(rec.chain_index)
+            # Check previous hash linkage
+            if rec.previous_receipt_hash != prev_hash:
+                return ReceiptVerificationResponse(
+                    valid=False,
+                    total_receipts=len(receipts),
+                    broken_at_index=idx,
+                    error=(
+                        f"Chain broken at index {idx}: previous_receipt_hash "
+                        f"'{rec.previous_receipt_hash}' does not match expected '{prev_hash}'"
+                    ),
+                    verified_at=datetime.now(UTC),
+                )
+
+            # Check payload hash integrity
+            expected_payload_hash = hash_payload(rec.payload)
+            if rec.payload_hash != expected_payload_hash:
+                return ReceiptVerificationResponse(
+                    valid=False,
+                    total_receipts=len(receipts),
+                    broken_at_index=idx,
+                    error=f"Chain broken at index {idx}: payload_hash mismatch",
+                    verified_at=datetime.now(UTC),
+                )
+
+            # Recompute and verify receipt hash
+            expected_hash = compute_receipt_hash(
+                prev_hash,
+                idx,
+                rec.payload_hash,
+                rec.event_type,
+            )
+            if rec.receipt_hash != expected_hash:
+                return ReceiptVerificationResponse(
+                    valid=False,
+                    total_receipts=len(receipts),
+                    broken_at_index=idx,
+                    error=f"Chain broken at index {idx}: receipt_hash mismatch",
+                    verified_at=datetime.now(UTC),
+                )
+
+            prev_hash = rec.receipt_hash
+
+        return ReceiptVerificationResponse(
+            valid=True,
+            total_receipts=len(receipts),
+            head_hash=receipts[-1].receipt_hash,
+            verified_at=datetime.now(UTC),
         )

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { AgentTaskConsole } from "@/components/AgentTaskConsole";
 import { ErrorState } from "@/components/ErrorState";
@@ -16,6 +17,15 @@ import {
 } from "@/lib/financial-api";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Activity & Tasks",
+  description:
+    "Autonomous agent plan execution tracking, live status milestones, and task runbook inspection.",
+  alternates: {
+    canonical: "/tasks",
+  },
+};
 
 const TASK_COLUMNS: readonly DataTableColumn<TaskRecordDto>[] = [
   {

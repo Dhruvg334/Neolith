@@ -1,0 +1,16 @@
+{
+  "name": "Neolith Governance Runtime",
+  "short_name": "Neolith",
+  "description": "Enterprise agentic AI system separating intelligent planning from governed execution authority.",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "theme_color": "#0B1F33",
+  "background_color": "#0B1F33",
+  "display": "standalone",
+  "start_url": "/"
+}

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ErrorState } from "@/components/ErrorState";
 import {
   Badge,
@@ -19,6 +20,15 @@ import {
 } from "@/lib/financial-api";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Operator Controls",
+  description:
+    "Treasury operator controls, cluster-wide emergency kill-switch, permit revocation epoch, and active registry status.",
+  alternates: {
+    canonical: "/operator",
+  },
+};
 
 const SAMPLE_REASON_CODES = [
   "BASE_POLICY_ALLOW",
