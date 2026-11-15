@@ -8,7 +8,10 @@ from langgraph.graph import END, START, StateGraph
 
 from neolith_agent.client import FinancialContextClient
 from neolith_agent.interfaces import InteractionTurn, InterfaceResponse
-from neolith_agent.provider import DeterministicMockLLMProvider, LLMProviderAdapter
+from neolith_agent.provider import (
+    LLMProviderAdapter,
+    create_llm_provider,
+)
 from neolith_agent.state import (
     AgentWorkflowState,
     FinancialActionProposal,
@@ -32,7 +35,7 @@ class FinancialAIAgent:
         provider: LLMProviderAdapter | None = None,
         context_client: FinancialContextClient | None = None,
     ) -> None:
-        self.provider = provider or DeterministicMockLLMProvider()
+        self.provider = provider or create_llm_provider()
         self.context_client = context_client or FinancialContextClient()
         self.workflow = self._build_graph()
 

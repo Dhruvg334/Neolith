@@ -136,3 +136,73 @@ class ExecutionRequestRead(BaseModel):
     requested_at: datetime
     created_at: datetime
     decision: GovernanceDecisionRead | None = None
+
+
+class ActionSummaryItem(BaseModel):
+    """Input action candidate or evaluated record for LLM summarization."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: str | None = None
+    target_id: str | None = None
+    action_type: str = "pay_invoice"
+    vendor_name: str | None = None
+    is_verified_vendor: bool = True
+    amount: str = "0.00"
+    currency: str = "INR"
+    category: str = "general"
+    outcome: DecisionOutcome = "allow"
+    risk_tier: str = "R1"
+    reason_codes: list[str] = Field(default_factory=list)
+    rule_explanation: str | None = None
+    justification: str | None = None
+
+
+class SummarizeActivityRequest(BaseModel):
+    """Request payload to summarize financial agent activities."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    actions: list[ActionSummaryItem] = Field(default_factory=list)
+    profile_name: str | None = None
+    organization_name: str | None = None
+    focus_area: str | None = None
+
+
+class ActionOutcomeBreakdown(BaseModel):
+    """Aggregated numerical breakdown of actions evaluated in the session."""
+
+    allowed_count: int
+    allowed_amount: str
+    controlled_count: int
+    controlled_amount: str
+    blocked_count: int
+    blocked_amount: str
+    total_proposed_amount: str
+    currency: str = "INR"
+
+
+class InvariantFinding(BaseModel):
+    """Structured audit observation of a security invariant."""
+
+    invariant: str
+    verdict: str
+    explanation: str
+    action_ref: str | None = None
+
+
+class GovernanceActivitySummaryResponse(BaseModel):
+    """Clean, structured, well-formatted LLM governance synthesis output."""
+
+    executive_summary: str
+    governance_posture: str
+    active_profile_name: str
+    breakdown: ActionOutcomeBreakdown
+    key_observations: list[str]
+    invariant_findings: list[InvariantFinding]
+    audit_readiness_statement: str
+    zero_trust_guarantee: str
+    provider_used: str
+    model: str
+    is_live_llm: bool
+    generated_at: str

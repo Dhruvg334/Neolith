@@ -93,11 +93,13 @@ class Settings(BaseSettings):
         min_length=1,
     )
 
-    llm_provider: Literal["openai", "mock"] = Field(
-        default="openai",
+    llm_provider: Literal["gemini", "openai", "mock"] = Field(
+        default="gemini",
         validation_alias="LLM_PROVIDER",
     )
     llm_api_key: str = Field(default="", validation_alias="LLM_API_KEY")
+    gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
+    gemini_model: str = Field(default="gemini-1.5-flash", validation_alias="GEMINI_MODEL")
     llm_model_fast: str = Field(default="", validation_alias="LLM_MODEL_FAST")
     llm_model_reasoning: str = Field(default="", validation_alias="LLM_MODEL_REASONING")
     embedding_model: str = Field(default="", validation_alias="EMBEDDING_MODEL")
@@ -138,6 +140,24 @@ class Settings(BaseSettings):
     def cors_allowed_origins_list(self) -> list[str]:
         """Return parsed list of allowed CORS origins from comma-separated string."""
         return [orig.strip() for orig in self.cors_allowed_origins.split(",") if orig.strip()]
+
+    @property
+    def effective_gemini_api_key(self) -> str:
+        """Return GEMINI_API_KEY if configured, otherwise fallback to LLM_API_KEY."""
+        return self.gemini_api_key.strip() or self.llm_api_key.strip()
+
+    @property
+    def effective_llm_provider(self) -> str:
+        """Return active LLM provider, accounting for available API keys."""
+        if self.llm_provider == "mock":
+            return "mock"
+        if self.llm_provider == "openai" and self.llm_api_key:
+            return "openai"
+        if (
+            self.llm_provider == "gemini" or not self.llm_provider
+        ) and self.effective_gemini_api_key:
+            return "gemini"
+        return "mock"
 
     @field_validator("database_url")
     @classmethod

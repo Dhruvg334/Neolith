@@ -111,8 +111,10 @@ You can deploy the backend using the included Blueprint (`render.yaml`) or manua
 | `OPA_URL` | Local OPA daemon address | `http://127.0.0.1:8181` | Yes |
 | `OPA_DECISION_PATH` | Rego decision rule path | `/v1/data/neolith/decision/result` | Yes |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated allowed frontend origins | `https://your-neolith.vercel.app` | Yes |
-| `LLM_PROVIDER` | LLM backend for planning agent | `openai` or `mock` | Yes |
-| `LLM_API_KEY` | OpenAI API key (if `LLM_PROVIDER=openai`) | `sk-...` | Conditional |
+| `LLM_PROVIDER` | LLM backend for planning agent & governance summarizer | `gemini` (recommended), `openai`, or `mock` | Yes |
+| `GEMINI_API_KEY` | Google Gemini API key (for live LLM activity summarization) | `AIzaSy...` | Conditional |
+| `GEMINI_MODEL` | Gemini model identifier | `gemini-1.5-flash` | Optional |
+| `LLM_API_KEY` | Fallback model key (Gemini or OpenAI) | `...` | Optional |
 | `TWILIO_ACCOUNT_SID` | Twilio Account SID for WhatsApp | `AC...` | Optional |
 | `TWILIO_AUTH_TOKEN` | Twilio Auth Token for HMAC webhook verification | `...` | Optional |
 | `TWILIO_WHATSAPP_FROM` | Twilio WhatsApp sender address | `whatsapp:+14155238886` | Optional |

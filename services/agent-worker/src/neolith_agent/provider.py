@@ -1,9 +1,14 @@
 """Provider-pluggable LLM adapter, deterministic mock, and OpenAI adapter (D-012, Part C)."""
 
 import json
+import logging
 import os
 import re
 from typing import Any, Protocol
+
+import httpx
+
+logger = logging.getLogger(__name__)
 
 
 class LLMProviderAdapter(Protocol):
@@ -263,3 +268,111 @@ class OpenAILLMProvider:
         content = response.choices[0].message.content or "{}"
         parsed: dict[str, Any] = json.loads(content)
         return parsed
+
+
+class GeminiLLMProvider:
+    """Official Google Gemini Generative Language API adapter for production model reasoning.
+
+    Uses Google's v1beta REST API with JSON schema mode and bearer/header authentication.
+    """
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        timeout: float = 15.0,
+    ) -> None:
+        key = (
+            api_key
+            or os.getenv("GEMINI_API_KEY")
+            or os.getenv("LLM_API_KEY")
+            or os.getenv("GOOGLE_API_KEY")
+        )
+        if not key:
+            msg = "Gemini API key must be provided or set via GEMINI_API_KEY / LLM_API_KEY"
+            raise ValueError(msg)
+        self.api_key = key
+        self.model = (
+            model or os.getenv("GEMINI_MODEL") or os.getenv("LLM_MODEL_FAST") or "gemini-1.5-flash"
+        )
+        self.timeout = timeout
+        self.endpoint = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
+        )
+
+    async def generate_structured(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        response_schema: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Generate structured JSON via Google Gemini generateContent API with clean parsing."""
+        _ = response_schema
+        payload: dict[str, Any] = {
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [{"text": user_prompt}],
+                }
+            ],
+            "systemInstruction": {
+                "parts": [{"text": system_prompt}],
+            },
+            "generationConfig": {
+                "temperature": 0.1,
+                "responseMimeType": "application/json",
+            },
+        }
+
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            response = await client.post(
+                self.endpoint,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": self.api_key,
+                },
+                json=payload,
+            )
+            response.raise_for_status()
+            data: dict[str, Any] = response.json()
+
+        candidates: list[dict[str, Any]] = data.get("candidates", [])
+        if not candidates:
+            msg = "Gemini API returned zero candidate responses."
+            raise ValueError(msg)
+
+        content: dict[str, Any] = candidates[0].get("content", {})
+        parts: list[dict[str, Any]] = content.get("parts", [])
+        if not parts:
+            msg = "Gemini API candidate response contained no parts."
+            raise ValueError(msg)
+
+        raw_text: str = str(parts[0].get("text", "")).strip()
+
+        # Sanitize markdown formatting if Gemini wrapped output in ```json ... ```
+        clean_text = raw_text
+        if clean_text.startswith("```"):
+            clean_text = re.sub(r"^```(?:json)?\s*", "", clean_text, flags=re.MULTILINE)
+            clean_text = re.sub(r"\s*```$", "", clean_text, flags=re.MULTILINE).strip()
+
+        parsed: dict[str, Any] = json.loads(clean_text)
+        return parsed
+
+
+def create_llm_provider(
+    provider_name: str | None = None,
+    api_key: str | None = None,
+    model: str | None = None,
+) -> LLMProviderAdapter:
+    """Instantiate appropriate LLM provider with fail-safe fallback to deterministic mock."""
+    name = (provider_name or os.getenv("LLM_PROVIDER") or "").strip().lower()
+    gemini_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("LLM_API_KEY")
+    openai_key = api_key or os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY")
+
+    if (name == "gemini" or (not name and gemini_key)) and gemini_key:
+        return GeminiLLMProvider(api_key=gemini_key, model=model)
+    if (name == "openai" or (not name and openai_key)) and openai_key:
+        return OpenAILLMProvider(api_key=openai_key, model=model)
+
+    return DeterministicMockLLMProvider()

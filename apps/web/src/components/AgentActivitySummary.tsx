@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -11,8 +11,13 @@ import {
   FileCode,
   Layers,
   Clock,
+  ShieldCheck,
 } from "lucide-react";
-import { formatInrCurrency } from "@/lib/financial-api";
+import {
+  formatInrCurrency,
+  summarizeGovernanceActivity,
+  type GovernanceActivitySummaryDto,
+} from "@/lib/financial-api";
 import { ActionInspector } from "@/components/ActionInspector";
 
 export interface ActivityActionRecord {
@@ -99,12 +104,16 @@ export function AgentActivitySummary({
   extraActions = [],
   activeProfileName = "Balanced Control",
 }: AgentActivitySummaryProps) {
-  const allActions = [...extraActions, ...BASELINE_ACTIVITY_ACTIONS];
+  const allActions = useMemo(
+    () => [...extraActions, ...BASELINE_ACTIVITY_ACTIONS],
+    [extraActions]
+  );
   const [activeTab, setActiveTab] = useState<"all" | "allow" | "review" | "deny">("all");
   const [isReanalyzing, setIsReanalyzing] = useState(false);
+  const [summaryData, setSummaryData] = useState<GovernanceActivitySummaryDto | null>(null);
   const [selectedActionForInspect, setSelectedActionForInspect] = useState<ActivityActionRecord | null>(null);
 
-  // Compute Telemetry Aggregates
+  // Compute Telemetry Aggregates (Used as immediate local baseline)
   const totalProposedAmount = allActions.reduce(
     (acc, act) => acc + (parseFloat(act.amount) || 0),
     0
@@ -123,12 +132,53 @@ export function AgentActivitySummary({
     return a.outcome === activeTab;
   });
 
-  const handleReanalyze = () => {
+  const fetchLiveSummary = useCallback(async () => {
     setIsReanalyzing(true);
-    setTimeout(() => {
+    try {
+      const payloadActions = allActions.map((a) => ({
+        id: a.id,
+        target_id: a.targetId,
+        action_type: a.actionType,
+        vendor_name: a.vendorName,
+        is_verified_vendor: a.isVerifiedVendor,
+        amount: a.amount,
+        currency: a.currency,
+        category: a.category,
+        outcome: a.outcome,
+        risk_tier: a.riskTier,
+        reason_codes: a.reasonCodes,
+        rule_explanation: a.ruleExplanation,
+        justification: a.justification,
+      }));
+
+      const res = await summarizeGovernanceActivity({
+        actions: payloadActions,
+        profile_name: activeProfileName,
+        organization_name: "Neolith Finance",
+      });
+      setSummaryData(res);
+    } catch {
+      // Fallback gracefully without throwing or crashing
+    } finally {
       setIsReanalyzing(false);
-    }, 900);
+    }
+  }, [allActions, activeProfileName]);
+
+  useEffect(() => {
+    fetchLiveSummary();
+  }, [fetchLiveSummary]);
+
+  const handleReanalyze = () => {
+    fetchLiveSummary();
   };
+
+  const currentAllowedCount = summaryData?.breakdown.allowed_count ?? allowedActions.length;
+  const currentAllowedAmount = summaryData?.breakdown.allowed_amount ?? allowedTotal.toString();
+  const currentControlledCount = summaryData?.breakdown.controlled_count ?? controlledActions.length;
+  const currentControlledAmount = summaryData?.breakdown.controlled_amount ?? controlledTotal.toString();
+  const currentBlockedCount = summaryData?.breakdown.blocked_count ?? blockedActions.length;
+  const currentBlockedAmount = summaryData?.breakdown.blocked_amount ?? blockedTotal.toString();
+  const currentTotalAmount = summaryData?.breakdown.total_proposed_amount ?? totalProposedAmount.toString();
 
   return (
     <div className="space-y-6 mt-8">
@@ -147,7 +197,7 @@ export function AgentActivitySummary({
                 <h3 className="text-base font-bold tracking-tight text-white flex items-center gap-2">
                   <span>AI Financial Governance Brief</span>
                   <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-orange-300 border border-slate-700">
-                    Audit Engine Synthesis
+                    {summaryData?.is_live_llm ? "Gemini Live Synthesis" : "Governance Audit Synthesis"}
                   </span>
                 </h3>
                 <p className="text-xs text-slate-400">
@@ -157,31 +207,42 @@ export function AgentActivitySummary({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleReanalyze}
-              disabled={isReanalyzing}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors shadow-sm disabled:opacity-50"
-            >
-              <RotateCcw className={`w-3.5 h-3.5 ${isReanalyzing ? "animate-spin text-orange-400" : ""}`} />
-              <span>{isReanalyzing ? "Synthesizing Session..." : "Re-analyze Session"}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {summaryData?.governance_posture && (
+                <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-mono font-bold bg-slate-900 border border-emerald-500/40 text-emerald-400">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{summaryData.governance_posture}</span>
+                </span>
+              )}
+
+              <button
+                type="button"
+                onClick={handleReanalyze}
+                disabled={isReanalyzing}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors shadow-sm disabled:opacity-50"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${isReanalyzing ? "animate-spin text-orange-400" : ""}`} />
+                <span>{isReanalyzing ? "Synthesizing Session..." : "Re-analyze Session"}</span>
+              </button>
+            </div>
           </div>
 
           {/* Natural Language Synthesis Narrative */}
-          <div className="rounded-xl border border-slate-800/80 bg-slate-900/60 p-4 text-xs leading-relaxed text-slate-300 space-y-2 font-sans">
+          <div className="rounded-xl border border-slate-800/80 bg-slate-900/60 p-4 text-xs leading-relaxed text-slate-300 space-y-3 font-sans">
             <p>
-              <strong>Session Overview:</strong> The Financial AI Agent evaluated{" "}
-              <strong className="text-white">{allActions.length} financial actions</strong> proposing a cumulative volume of{" "}
-              <strong className="text-white">{formatInrCurrency(totalProposedAmount.toString())}</strong>. Neolith&apos;s Zero-Trust
-              Governance Gateway intercepted 100% of candidate operations, preventing any ambient authority or unverified debit.
+              <strong>Session Overview:</strong>{" "}
+              {summaryData?.executive_summary || (
+                <>
+                  The Financial AI Agent evaluated <strong className="text-white">{allActions.length} financial actions</strong> proposing a cumulative volume of <strong className="text-white">{formatInrCurrency(totalProposedAmount.toString())}</strong>. Neolith&apos;s Zero-Trust Governance Gateway intercepted 100% of candidate operations, preventing any ambient authority or unverified debit.
+                </>
+              )}
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 text-[11px]">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 text-[11px]">
               <div className="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-800/40 text-emerald-200">
                 <div className="font-bold flex items-center gap-1 text-emerald-400 mb-1">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Allowed: {allowedActions.length} Actions ({formatInrCurrency(allowedTotal.toString())})</span>
+                  <span>Allowed: {currentAllowedCount} Actions ({formatInrCurrency(currentAllowedAmount)})</span>
                 </div>
                 <span>
                   Validated against verified vendor whitelist and category budget caps. Minted 60-second Ed25519 single-use execution permits for settlement.
@@ -191,7 +252,7 @@ export function AgentActivitySummary({
               <div className="p-2.5 rounded-lg bg-amber-950/40 border border-amber-800/40 text-amber-200">
                 <div className="font-bold flex items-center gap-1 text-amber-400 mb-1">
                   <Clock className="w-3.5 h-3.5" />
-                  <span>Controlled: {controlledActions.length} In Review ({formatInrCurrency(controlledTotal.toString())})</span>
+                  <span>Controlled: {currentControlledCount} In Review ({formatInrCurrency(currentControlledAmount)})</span>
                 </div>
                 <span>
                   High-value transactions exceeded review threshold or R3 classification. Execution was paused and enqueued in human approvals queue.
@@ -201,7 +262,7 @@ export function AgentActivitySummary({
               <div className="p-2.5 rounded-lg bg-red-950/40 border border-red-800/40 text-red-200">
                 <div className="font-bold flex items-center gap-1 text-red-400 mb-1">
                   <XCircle className="w-3.5 h-3.5" />
-                  <span>Blocked: {blockedActions.length} Safeguarded ({formatInrCurrency(blockedTotal.toString())})</span>
+                  <span>Blocked: {currentBlockedCount} Safeguarded ({formatInrCurrency(currentBlockedAmount)})</span>
                 </div>
                 <span>
                   Deterministic OPA invariants intercepted unbudgeted spend and unverified beneficiaries. Zero financial leakage permitted.
@@ -209,9 +270,58 @@ export function AgentActivitySummary({
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-400 pt-1">
-              <strong>Zero-Trust Guarantee:</strong> The Financial AI Agent possesses zero native payment authority. Every transaction requires an authoritative, cryptographically signed permit from the Neolith Governance Runtime.
-            </p>
+            {/* Key Observations List */}
+            {summaryData?.key_observations && summaryData.key_observations.length > 0 && (
+              <div className="pt-2 border-t border-slate-800/80">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-1.5">
+                  Key Security & Invariant Observations:
+                </span>
+                <ul className="space-y-1 text-[11px] text-slate-300">
+                  {summaryData.key_observations.map((obs, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <span className="text-orange-400 mt-0.5">•</span>
+                      <span>{obs}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Regulatory and Zero-Trust Statement */}
+            <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-400">
+              <p className="flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                <span>
+                  <strong>EU AI Act Readiness:</strong> {summaryData?.audit_readiness_statement || "Full compliance with Articles 9, 12, 14, and 15."}
+                </span>
+              </p>
+              <span className="text-[10px] text-slate-500 font-mono">
+                {summaryData?.generated_at ? `Generated ${new Date(summaryData.generated_at).toLocaleTimeString()}` : "Evaluated just now"}
+              </span>
+            </div>
+
+            {/* Live Model Telemetry Pill */}
+            <div className="mt-2 pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    summaryData?.is_live_llm ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                  }`}
+                />
+                <span>
+                  Engine: <strong className="text-slate-200">{summaryData?.provider_used || "Neolith Governance Synthesis"}</strong>
+                </span>
+                <span className="text-slate-600">•</span>
+                <span>
+                  Model: <code className="font-mono text-orange-300">{summaryData?.model || "gemini-1.5-flash"}</code>
+                </span>
+              </div>
+              <span className="text-[10px] text-slate-500 font-mono">
+                {summaryData?.is_live_llm
+                  ? "Live Gemini API Connected"
+                  : "Deterministic Fallback • Add GEMINI_API_KEY in backend .env to activate live Gemini model"}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -224,7 +334,7 @@ export function AgentActivitySummary({
             Total Proposed
           </div>
           <div className="text-lg font-extrabold text-slate-900 mt-0.5 font-mono">
-            {formatInrCurrency(totalProposedAmount.toString())}
+            {formatInrCurrency(currentTotalAmount)}
           </div>
           <div className="text-[10px] text-slate-500 mt-0.5">
             {allActions.length} candidate action{allActions.length === 1 ? "" : "s"}
@@ -237,10 +347,10 @@ export function AgentActivitySummary({
             Auto-Settled (Allowed)
           </div>
           <div className="text-lg font-extrabold text-emerald-700 mt-0.5 font-mono">
-            {formatInrCurrency(allowedTotal.toString())}
+            {formatInrCurrency(currentAllowedAmount)}
           </div>
           <div className="text-[10px] text-emerald-600 mt-0.5">
-            {allowedActions.length} permitted under policy
+            {currentAllowedCount} permitted under policy
           </div>
         </div>
 
@@ -250,10 +360,10 @@ export function AgentActivitySummary({
             Controlled (In Review)
           </div>
           <div className="text-lg font-extrabold text-amber-700 mt-0.5 font-mono">
-            {formatInrCurrency(controlledTotal.toString())}
+            {formatInrCurrency(currentControlledAmount)}
           </div>
           <div className="text-[10px] text-amber-600 mt-0.5">
-            {controlledActions.length} held in /approvals queue
+            {currentControlledCount} held in /approvals queue
           </div>
         </div>
 
@@ -263,10 +373,10 @@ export function AgentActivitySummary({
             Safeguarded (Blocked)
           </div>
           <div className="text-lg font-extrabold text-red-700 mt-0.5 font-mono">
-            {formatInrCurrency(blockedTotal.toString())}
+            {formatInrCurrency(currentBlockedAmount)}
           </div>
           <div className="text-[10px] text-red-600 mt-0.5">
-            {blockedActions.length} policy invariant denials
+            {currentBlockedCount} policy invariant denials
           </div>
         </div>
       </div>

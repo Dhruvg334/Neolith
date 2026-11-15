@@ -6,14 +6,18 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from neolith_api.core.config import get_settings
 from neolith_api.core.database import get_db_session
 from neolith_api.governance.schemas import (
+    GovernanceActivitySummaryResponse,
     GovernanceDecisionRead,
     GovernanceProfileCreate,
     GovernanceProfileRead,
     GovernanceProfileUpdate,
+    SummarizeActivityRequest,
 )
 from neolith_api.governance.service import GovernanceRuntimeService
+from neolith_api.governance.summarizer import generate_activity_summary
 
 router = APIRouter(prefix="/governance", tags=["governance"])
 
@@ -147,3 +151,32 @@ def get_decision(
             detail=f"Governance decision for action '{action_id}' not found.",
         )
     return decision
+
+
+@router.post(
+    "/summarize",
+    response_model=GovernanceActivitySummaryResponse,
+    status_code=status.HTTP_200_OK,
+    operation_id="summarizeGovernanceActivity",
+)
+async def post_summarize_activity(
+    payload: SummarizeActivityRequest,
+    session: Annotated[Session, Depends(get_db_session)],
+) -> GovernanceActivitySummaryResponse:
+    """Generate an AI/LLM executive summary and audit breakdown of financial agent actions."""
+    settings = get_settings()
+    return await generate_activity_summary(session, payload, settings)
+
+
+@router.get(
+    "/summarize",
+    response_model=GovernanceActivitySummaryResponse,
+    status_code=status.HTTP_200_OK,
+    operation_id="getGovernanceActivitySummary",
+)
+async def get_activity_summary(
+    session: Annotated[Session, Depends(get_db_session)],
+) -> GovernanceActivitySummaryResponse:
+    """Retrieve the latest synthesized executive summary of governance activities."""
+    settings = get_settings()
+    return await generate_activity_summary(session, SummarizeActivityRequest(), settings)

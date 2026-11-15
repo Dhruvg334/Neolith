@@ -486,6 +486,34 @@ paths:
         "404":
           $ref: "#/components/responses/Problem"
 
+  /governance/summarize:
+    get:
+      operationId: getGovernanceActivitySummary
+      description: Retrieve synthesized LLM executive summary of governance activities
+      responses:
+        "200":
+          description: Executive activity summary
+          content:
+            application/json:
+              schema:
+                type: object
+    post:
+      operationId: summarizeGovernanceActivity
+      description: Generate AI/LLM executive summary and audit breakdown of financial agent actions
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: Synthesized governance activity summary
+          content:
+            application/json:
+              schema:
+                type: object
+
 
 components:
   parameters:

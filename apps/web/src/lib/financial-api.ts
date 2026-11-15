@@ -178,6 +178,55 @@ export interface ExecutionRequestDto {
   readonly decision?: GovernanceDecisionDto | null;
 }
 
+export interface ActionSummaryItemDto {
+  readonly id?: string | null;
+  readonly target_id?: string | null;
+  readonly action_type?: string;
+  readonly vendor_name?: string | null;
+  readonly is_verified_vendor?: boolean;
+  readonly amount?: string;
+  readonly currency?: string;
+  readonly category?: string;
+  readonly outcome?: DecisionOutcome;
+  readonly risk_tier?: string;
+  readonly reason_codes?: readonly string[];
+  readonly rule_explanation?: string | null;
+  readonly justification?: string | null;
+}
+
+export interface ActionOutcomeBreakdownDto {
+  readonly allowed_count: number;
+  readonly allowed_amount: string;
+  readonly controlled_count: number;
+  readonly controlled_amount: string;
+  readonly blocked_count: number;
+  readonly blocked_amount: string;
+  readonly total_proposed_amount: string;
+  readonly currency: string;
+}
+
+export interface InvariantFindingDto {
+  readonly invariant: string;
+  readonly verdict: string;
+  readonly explanation: string;
+  readonly action_ref?: string | null;
+}
+
+export interface GovernanceActivitySummaryDto {
+  readonly executive_summary: string;
+  readonly governance_posture: string;
+  readonly active_profile_name: string;
+  readonly breakdown: ActionOutcomeBreakdownDto;
+  readonly key_observations: readonly string[];
+  readonly invariant_findings: readonly InvariantFindingDto[];
+  readonly audit_readiness_statement: string;
+  readonly zero_trust_guarantee: string;
+  readonly provider_used: string;
+  readonly model: string;
+  readonly is_live_llm: boolean;
+  readonly generated_at: string;
+}
+
 export class ApiConnectionError extends Error {
   public readonly isStarting: boolean;
   public constructor(
@@ -784,6 +833,22 @@ export async function evaluateActionProposal(
   payload: Record<string, unknown>
 ): Promise<GovernanceDecisionDto> {
   return fetchApi<GovernanceDecisionDto>("/api/v1/actions/evaluate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getGovernanceActivitySummary(): Promise<GovernanceActivitySummaryDto> {
+  return fetchApi<GovernanceActivitySummaryDto>("/api/v1/governance/summarize");
+}
+
+export async function summarizeGovernanceActivity(payload: {
+  actions?: readonly ActionSummaryItemDto[];
+  profile_name?: string;
+  organization_name?: string;
+}): Promise<GovernanceActivitySummaryDto> {
+  return fetchApi<GovernanceActivitySummaryDto>("/api/v1/governance/summarize", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
