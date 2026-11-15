@@ -3,7 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
+import {
+  Home,
+  Bot,
+  Wallet,
+  Activity,
+  ShieldCheck,
+  FileCode,
+  CheckSquare,
+  Cpu,
+  BookOpen,
+  Compass,
+  Menu,
+  X,
+  ExternalLink,
+  Lock,
+} from "lucide-react";
 import { checkBackendHealth } from "@/lib/financial-api";
+import { InfoIcon } from "@/components/ui/InfoIcon";
 
 interface AppShellProps {
   readonly children: ReactNode;
@@ -11,29 +28,37 @@ interface AppShellProps {
 
 export type ViewMode = "essentials" | "control";
 
-const ESSENTIALS_NAV = [
-  { href: "/", label: "Home" },
-  { href: "/agent", label: "Financial Agent" },
-  { href: "/accounts", label: "Accounts" },
-  { href: "/tasks", label: "Activity" },
-] as const;
+interface NavItem {
+  readonly href: string;
+  readonly label: string;
+  readonly icon: typeof Home;
+  readonly badge?: string;
+}
 
-const CONTROL_NAV = [
-  { href: "/governance", label: "Governance" },
-  { href: "/policies", label: "Policies" },
-  { href: "/approvals", label: "Approvals" },
-  { href: "/operator", label: "Operator" },
-] as const;
+const ESSENTIALS_NAV: readonly NavItem[] = [
+  { href: "/", label: "Home", icon: Home },
+  { href: "/agent", label: "Financial Agent", icon: Bot, badge: "AI" },
+  { href: "/accounts", label: "Accounts & Budgets", icon: Wallet },
+  { href: "/tasks", label: "Task Trace Activity", icon: Activity },
+];
 
-const KNOWLEDGE_NAV = [
-  { href: "/docs", label: "Docs" },
-  { href: "/adopt", label: "Adopt" },
-] as const;
+const CONTROL_NAV: readonly NavItem[] = [
+  { href: "/governance", label: "Governance Engine", icon: ShieldCheck },
+  { href: "/policies", label: "OPA Policies", icon: FileCode },
+  { href: "/approvals", label: "Human Approvals", icon: CheckSquare, badge: "Review" },
+  { href: "/operator", label: "Operator Control", icon: Cpu, badge: "Kill-Switch" },
+];
+
+const KNOWLEDGE_NAV: readonly NavItem[] = [
+  { href: "/docs", label: "Documentation Hub", icon: BookOpen },
+  { href: "/adopt", label: "Adopt Neolith", icon: Compass },
+];
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const [viewMode, setViewMode] = useState<ViewMode>("essentials");
   const [backendStatus, setBackendStatus] = useState<"healthy" | "starting" | "unreachable" | "checking">("checking");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -45,6 +70,11 @@ export function AppShell({ children }: AppShellProps) {
     void checkBackendHealth().then((res) => setBackendStatus(res.status));
   }, []);
 
+  // Close mobile menu on path change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
   const handleModeChange = (mode: ViewMode) => {
     setViewMode(mode);
     if (typeof window !== "undefined") {
@@ -53,118 +83,219 @@ export function AppShell({ children }: AppShellProps) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-      {/* Top Application Bar */}
-      <header
-        className="sticky top-0 z-40 border-b border-slate-800 text-white"
-        style={{ backgroundColor: "#0B1F33" }}
-      >
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-ember-500 selection:text-white">
+      {/* 1. TOP AUTHORITATIVE APPLICATION BAR */}
+      <header className="sticky top-0 z-40 bg-[#070B16] border-b border-slate-800/80 shadow-glow-obsidian text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2 group">
-              <span
-                className="w-8 h-8 rounded flex items-center justify-center font-black text-sm tracking-wider"
-                style={{ backgroundColor: "#0F766E", color: "#FFFFFF" }}
-              >
+          {/* Brand & Status */}
+          <div className="flex items-center gap-4 sm:gap-6">
+            <Link href="/" className="flex items-center gap-2.5 group">
+              <span className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm tracking-wider bg-gradient-to-br from-ember-500 to-ember-600 text-white shadow-glow group-hover:scale-105 transition-all">
                 N
               </span>
               <div className="flex flex-col">
-                <span className="font-bold text-lg leading-tight tracking-tight text-white group-hover:text-teal-300 transition-colors">
+                <span className="font-extrabold text-lg leading-tight tracking-tight text-white group-hover:text-ember-400 transition-colors">
                   Neolith
                 </span>
-                <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400">
+                <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">
                   Governance Runtime
                 </span>
               </div>
             </Link>
 
-            {/* Quick Status Pill */}
-            <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 text-xs">
+            {/* Live Gateway Connection Indicator */}
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-700/80 text-xs">
               {backendStatus === "healthy" ? (
                 <>
-                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                  <span className="text-slate-300 font-medium">Connected</span>
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                  </span>
+                  <span className="text-slate-300 font-medium">Gateway Active</span>
                 </>
               ) : backendStatus === "starting" ? (
                 <>
                   <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-                  <span className="text-amber-200 font-medium">Starting service</span>
+                  <span className="text-amber-300 font-medium">Starting...</span>
                 </>
               ) : backendStatus === "unreachable" ? (
                 <>
                   <span className="h-2 w-2 rounded-full bg-red-400" />
-                  <span className="text-slate-300 font-medium">Connection issue</span>
+                  <span className="text-red-300 font-medium">Offline (Sandboxed)</span>
                 </>
               ) : (
                 <>
                   <span className="h-2 w-2 rounded-full bg-slate-400 animate-pulse" />
-                  <span className="text-slate-400 font-medium">Checking...</span>
+                  <span className="text-slate-400 font-medium">Probing Gateway</span>
                 </>
               )}
             </div>
           </div>
 
-          {/* Mode Switcher */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center bg-slate-800/90 p-1 rounded-lg border border-slate-700/60">
+          {/* Desktop Right Controls: View Switcher & Actions */}
+          <div className="hidden md:flex items-center gap-4">
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
               <button
                 type="button"
                 onClick={() => handleModeChange("essentials")}
-                className={`px-3 py-1 text-xs font-semibold rounded transition-all duration-150 ${
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 ${
                   viewMode === "essentials"
-                    ? "bg-teal-700 text-white shadow-sm"
+                    ? "bg-slate-800 text-white shadow-sm"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
-                title="Essentials mode: streamlined operational experience"
+                title="Essentials mode: streamlined agent and requester workflows"
               >
                 Essentials
               </button>
               <button
                 type="button"
                 onClick={() => handleModeChange("control")}
-                className={`px-3 py-1 text-xs font-semibold rounded transition-all duration-150 ${
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center gap-1.5 ${
                   viewMode === "control"
-                    ? "text-white shadow-sm"
+                    ? "bg-ember-500 text-white shadow-glow"
                     : "text-slate-400 hover:text-slate-200"
                 }`}
-                style={
-                  viewMode === "control"
-                    ? { backgroundColor: "#F97316" }
-                    : undefined
-                }
-                title="Control mode: deep governance policy and trace inspection"
+                title="Control mode: deep policy, approval, and operator governance"
               >
+                <Lock className="w-3 h-3" />
                 Control
               </button>
+              <InfoIcon
+                title="Adaptive View Mode"
+                content="Essentials mode streamlines requester activity and financial summaries. Control mode reveals deep OPA evaluation traces, human approval queues, and the operator emergency kill-switch."
+                side="bottom"
+                badge="Dual Interface"
+                className="ml-1"
+              />
             </div>
+
+            {/* Quick Action Button */}
+            <Link
+              href="/agent"
+              className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-ember-500 text-white hover:bg-ember-600 transition-all shadow-glow hover:scale-[1.02] flex items-center gap-1.5"
+            >
+              <Bot className="w-3.5 h-3.5" />
+              Agent Console
+            </Link>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <div className="flex md:hidden items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg bg-slate-900 text-slate-300 hover:text-white border border-slate-800"
+              aria-label="Toggle navigation menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Dropdown Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-slate-800 bg-[#070B16] px-4 pt-3 pb-6 space-y-4 animate-slide-down">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <span className="text-xs font-semibold text-slate-400">View Mode:</span>
+              <div className="flex gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => handleModeChange("essentials")}
+                  className={`px-3 py-1 text-xs font-bold rounded ${
+                    viewMode === "essentials" ? "bg-slate-800 text-white" : "text-slate-400"
+                  }`}
+                >
+                  Essentials
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleModeChange("control")}
+                  className={`px-3 py-1 text-xs font-bold rounded ${
+                    viewMode === "control" ? "bg-ember-500 text-white" : "text-slate-400"
+                  }`}
+                >
+                  Control
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block px-2">
+                Workspaces
+              </span>
+              {[...ESSENTIALS_NAV, ...CONTROL_NAV, ...KNOWLEDGE_NAV].map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium ${
+                      isActive ? "bg-ember-500 text-white" : "text-slate-300 hover:bg-slate-900"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon className="w-4 h-4" />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.badge && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
+                        {item.badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </header>
 
-      {/* Main Layout Body with Navigation and Workspace */}
+      {/* 2. MAIN APPLICATION WORKSPACE & SIDEBAR */}
       <div className="flex-1 flex max-w-7xl w-full mx-auto">
-        {/* Navigation Sidebar */}
-        <aside className="w-56 shrink-0 border-r border-slate-200 bg-white py-6 px-4 flex flex-col justify-between">
+        {/* Navigation Sidebar (Desktop) */}
+        <aside className="hidden md:flex w-64 shrink-0 border-r border-slate-200/80 bg-white py-6 px-4 flex-col justify-between">
           <div className="space-y-6">
             {/* Essentials Section */}
             <div>
-              <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Essentials
-              </span>
+              <div className="px-3 flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                  Requester Flow
+                </span>
+                {viewMode === "essentials" && (
+                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                    Active
+                  </span>
+                )}
+              </div>
               <nav className="mt-2 space-y-1" aria-label="Essentials navigation">
                 {ESSENTIALS_NAV.map((item) => {
+                  const Icon = item.icon;
                   const isActive = pathname === item.href;
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-md transition-all duration-100 ${
+                      className={`flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-xl transition-all duration-150 ${
                         isActive
-                          ? "bg-teal-50 text-teal-800 font-semibold"
+                          ? "bg-slate-900 text-white shadow-sm"
                           : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                       }`}
                     >
-                      {item.label}
+                      <div className="flex items-center gap-2.5">
+                        <Icon className={`w-4 h-4 ${isActive ? "text-ember-400" : "text-slate-400"}`} />
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge && (
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            isActive ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
@@ -173,33 +304,43 @@ export function AppShell({ children }: AppShellProps) {
 
             {/* Control Section */}
             <div>
-              <div className="flex items-center justify-between px-3">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Control
+              <div className="px-3 flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                  Governance Control
                 </span>
                 {viewMode === "control" && (
-                  <span
-                    className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded text-white"
-                    style={{ backgroundColor: "#F97316" }}
-                  >
+                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-ember-500 text-white shadow-glow">
                     Active
                   </span>
                 )}
               </div>
               <nav className="mt-2 space-y-1" aria-label="Control navigation">
                 {CONTROL_NAV.map((item) => {
+                  const Icon = item.icon;
                   const isActive = pathname === item.href;
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-md transition-all duration-100 ${
+                      className={`flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-xl transition-all duration-150 ${
                         isActive
-                          ? "bg-amber-50 text-amber-900 font-semibold border-l-2 border-amber-600"
+                          ? "bg-ember-500 text-white shadow-glow"
                           : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                       }`}
                     >
-                      {item.label}
+                      <div className="flex items-center gap-2.5">
+                        <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-slate-400"}`} />
+                        <span>{item.label}</span>
+                      </div>
+                      {item.badge && (
+                        <span
+                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            isActive ? "bg-ember-600 text-white" : "bg-amber-50 text-amber-700"
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
@@ -208,23 +349,25 @@ export function AppShell({ children }: AppShellProps) {
 
             {/* Knowledge Section */}
             <div>
-              <span className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                Knowledge
+              <span className="px-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                Resources
               </span>
               <nav className="mt-2 space-y-1" aria-label="Knowledge navigation">
                 {KNOWLEDGE_NAV.map((item) => {
+                  const Icon = item.icon;
                   const isActive = pathname === item.href;
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-medium rounded-md transition-all duration-100 ${
+                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all duration-150 ${
                         isActive
-                          ? "bg-slate-100 text-slate-900 font-semibold"
+                          ? "bg-slate-100 text-slate-900 border-l-2 border-slate-900"
                           : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                       }`}
                     >
-                      {item.label}
+                      <Icon className="w-4 h-4 text-slate-400" />
+                      <span>{item.label}</span>
                     </Link>
                   );
                 })}
@@ -232,160 +375,162 @@ export function AppShell({ children }: AppShellProps) {
             </div>
           </div>
 
-          {/* Sidebar Footer info */}
-          <div className="pt-6 border-t border-slate-200">
-            <div className="px-3 py-2 rounded bg-slate-50 border border-slate-200 text-[11px] text-slate-500 space-y-1">
-              <div className="flex items-center justify-between font-semibold text-slate-700">
-                <span>Mode:</span>
-                <span className="capitalize">{mounted ? viewMode : "essentials"}</span>
+          {/* Sidebar Status Pill Card */}
+          <div className="pt-4 border-t border-slate-100 space-y-2">
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600 space-y-1.5">
+              <div className="flex items-center justify-between font-bold text-slate-800">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-ember-500" />
+                  Mode: <span className="capitalize font-mono text-ember-600">{mounted ? viewMode : "essentials"}</span>
+                </span>
+                <span className="text-[10px] uppercase font-mono px-1 rounded bg-slate-200 text-slate-700">
+                  Enforced
+                </span>
               </div>
-              <p className="text-[10px] text-slate-400 leading-tight">
-                Presentation view toggle. Permissions & invariants remain authoritative.
+              <p className="text-[10px] text-slate-500 leading-normal m-0">
+                Zero implicit authority. Agents hold no direct payment keys.
               </p>
             </div>
           </div>
         </aside>
 
         {/* Content View */}
-        <main className="flex-1 p-6 md:p-8 min-w-0">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0">{children}</main>
       </div>
 
-      {/* Semantic Footer (Handbook Part II Anti-Vibe-Coding Standards) */}
+      {/* 3. SEMANTIC ENTERPRISE FOOTER */}
       <footer className="border-t border-slate-200 bg-white text-slate-600 text-xs mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            {/* Col 1: Brand & Purpose */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+            {/* Col 1: Brand & Mental Model */}
             <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span
-                  className="w-6 h-6 rounded flex items-center justify-center font-black text-xs text-white"
-                  style={{ backgroundColor: "#0F766E" }}
-                >
+              <div className="flex items-center gap-2.5">
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs text-white bg-ember-500 shadow-glow">
                   N
                 </span>
-                <span className="font-bold text-slate-900 tracking-tight text-sm">Neolith</span>
+                <span className="font-extrabold text-slate-900 tracking-tight text-base">Neolith</span>
               </div>
-              <p className="text-slate-500 text-xs leading-relaxed">
-                Separating intelligent planning from governed execution authority. Deterministic OPA policy
-                runtime, short-lived permits, and tamper-evident decision receipts.
+              <p className="text-slate-500 text-xs leading-relaxed m-0">
+                Separating intelligent planning from governed execution authority. Deterministic OPA policy runtime,
+                single-use execution permits, and SHA-256 decision receipts.
               </p>
-              <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 <span>Deterministic Invariants Enforced</span>
               </div>
             </div>
 
-            {/* Col 2: Navigation */}
+            {/* Col 2: Platform Workspaces */}
             <div className="space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                Platform Workspaces
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                Workspaces
               </span>
-              <ul className="space-y-1.5 text-xs">
+              <ul className="space-y-1.5 text-xs list-none p-0 m-0">
                 <li>
-                  <Link href="/agent" className="hover:text-slate-900 transition-colors">
-                    Financial AI Agent
+                  <Link href="/agent" className="hover:text-ember-600 transition-colors">
+                    Financial AI Agent Console
                   </Link>
                 </li>
                 <li>
-                  <Link href="/dashboard" className="hover:text-slate-900 transition-colors">
+                  <Link href="/dashboard" className="hover:text-ember-600 transition-colors">
                     Treasury Dashboard
                   </Link>
                 </li>
                 <li>
-                  <Link href="/accounts" className="hover:text-slate-900 transition-colors">
+                  <Link href="/accounts" className="hover:text-ember-600 transition-colors">
                     Operating Accounts & Invoices
                   </Link>
                 </li>
                 <li>
-                  <Link href="/tasks" className="hover:text-slate-900 transition-colors">
-                    Activity & Plans
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/approvals" className="hover:text-slate-900 transition-colors">
-                    Human Approval Queue
+                  <Link href="/tasks" className="hover:text-ember-600 transition-colors">
+                    Task Activity Logs
                   </Link>
                 </li>
               </ul>
             </div>
 
-            {/* Col 3: Control & Invariants */}
+            {/* Col 3: Governance & Control */}
             <div className="space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                Governance & Security
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                Governance & Control
               </span>
-              <ul className="space-y-1.5 text-xs">
+              <ul className="space-y-1.5 text-xs list-none p-0 m-0">
                 <li>
-                  <Link href="/governance" className="hover:text-slate-900 transition-colors">
-                    Governance Runtime
+                  <Link href="/governance" className="hover:text-ember-600 transition-colors">
+                    Governance Runtime Gateway
                   </Link>
                 </li>
                 <li>
-                  <Link href="/policies" className="hover:text-slate-900 transition-colors">
-                    Policy Configuration & Packs
+                  <Link href="/policies" className="hover:text-ember-600 transition-colors">
+                    OPA Rego Policy Rules
                   </Link>
                 </li>
                 <li>
-                  <Link href="/operator" className="hover:text-slate-900 transition-colors">
-                    Emergency Controls & Kill-Switch
+                  <Link href="/approvals" className="hover:text-ember-600 transition-colors">
+                    Human Approvals Queue
                   </Link>
                 </li>
                 <li>
-                  <Link href="/security" className="hover:text-slate-900 transition-colors">
-                    Security Architecture
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/docs" className="hover:text-slate-900 transition-colors">
-                    Technical Documentation Hub
+                  <Link href="/operator" className="hover:text-ember-600 transition-colors">
+                    Operator Control & Kill-Switch
                   </Link>
                 </li>
               </ul>
             </div>
 
-            {/* Col 4: Trust & Compliance */}
+            {/* Col 4: Trust, Architecture & Legal */}
             <div className="space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                Trust & Compliance
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+                Trust & Verification
               </span>
-              <ul className="space-y-1.5 text-xs">
+              <ul className="space-y-1.5 text-xs list-none p-0 m-0">
                 <li>
-                  <Link href="/adopt" className="hover:text-slate-900 transition-colors">
-                    Enterprise Adoption Guide
+                  <Link href="/docs" className="hover:text-ember-600 transition-colors">
+                    System Documentation Hub
                   </Link>
                 </li>
                 <li>
-                  <Link href="/privacy" className="hover:text-slate-900 transition-colors">
-                    Privacy Policy
+                  <Link href="/adopt" className="hover:text-ember-600 transition-colors">
+                    Organization Adoption Guide
                   </Link>
                 </li>
                 <li>
-                  <Link href="/terms" className="hover:text-slate-900 transition-colors">
-                    Terms of Service
+                  <Link href="/security" className="hover:text-ember-600 transition-colors">
+                    Security Architecture & Invariants
                   </Link>
                 </li>
                 <li>
-                  <a
-                    href="https://github.com/dhruvg-04/Neolith"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-slate-900 transition-colors"
-                  >
-                    GitHub Source Repository &rarr;
-                  </a>
+                  <Link href="/llms.txt" className="hover:text-ember-600 transition-colors">
+                    Machine-Readable llms.txt
+                  </Link>
                 </li>
               </ul>
             </div>
           </div>
 
-          <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-400">
-            <p>&copy; {new Date().getFullYear()} Neolith Project. All rights reserved.</p>
+          <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-400">
+            <div>
+              © {new Date().getFullYear()} Neolith. Enterprise Agentic Governance System.
+            </div>
             <div className="flex items-center gap-4">
-              <span>Maintained by Dhruv Gupta</span>
-              <span>&middot;</span>
-              <span>Open Policy Agent v1.22.2</span>
-              <span>&middot;</span>
-              <span>Apache 2.0 License</span>
+              <Link href="/privacy" className="hover:text-slate-600 transition-colors">
+                Privacy Policy
+              </Link>
+              <Link href="/terms" className="hover:text-slate-600 transition-colors">
+                Terms of Service
+              </Link>
+              <Link href="/security" className="hover:text-slate-600 transition-colors">
+                Security
+              </Link>
+              <a
+                href="https://github.com/Dhruvg334/Neolith"
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-slate-600 transition-colors flex items-center gap-1"
+              >
+                GitHub
+                <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
           </div>
         </div>

@@ -13,12 +13,18 @@
   "dependencies": {
     "@neolith/contracts": "workspace:*",
     "@panzoom/panzoom": "^4.6.2",
+    "autoprefixer": "^10.6.2",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.73.0",
     "mermaid": "^12.3.0",
     "next": "15.5.29",
+    "postcss": "^8.5.33",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "tailwind-merge": "^2.6.1",
+    "tailwindcss": "^3.4.19"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.1",

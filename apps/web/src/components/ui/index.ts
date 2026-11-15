@@ -40,3 +40,6 @@ export {
 export { BudgetMeter, type BudgetMeterProps } from "./BudgetMeter";
 export { EmptyState, type EmptyStateProps } from "./EmptyState";
 export { ErrorBoundary, type ErrorBoundaryProps } from "./ErrorBoundary";
+export { InfoIcon, type InfoIconProps } from "./InfoIcon";
+export { Modal, type ModalProps } from "./Modal";
+

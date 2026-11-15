@@ -99,7 +99,7 @@ export function ActionInspector({
             onClick={() => setActiveTab("summary")}
             className={`border-b-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
               activeTab === "summary"
-                ? "border-teal-700 text-teal-800"
+                ? "border-ember-500 text-ember-600 font-bold"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
@@ -110,7 +110,7 @@ export function ActionInspector({
             onClick={() => setActiveTab("evidence")}
             className={`border-b-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
               activeTab === "evidence"
-                ? "border-teal-700 text-teal-800"
+                ? "border-ember-500 text-ember-600 font-bold"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
@@ -121,7 +121,7 @@ export function ActionInspector({
             onClick={() => setActiveTab("governance")}
             className={`border-b-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
               activeTab === "governance"
-                ? "border-teal-700 text-teal-800"
+                ? "border-ember-500 text-ember-600 font-bold"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >
@@ -132,7 +132,7 @@ export function ActionInspector({
             onClick={() => setActiveTab("activity")}
             className={`border-b-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
               activeTab === "activity"
-                ? "border-teal-700 text-teal-800"
+                ? "border-ember-500 text-ember-600 font-bold"
                 : "border-transparent text-slate-500 hover:text-slate-800"
             }`}
           >

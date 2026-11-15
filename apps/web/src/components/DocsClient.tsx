@@ -1,24 +1,38 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  BookOpen,
+  Search,
+  Copy,
+  Check,
+  ChevronRight,
+  ChevronLeft,
+  Layers,
+  Code2,
+} from "lucide-react";
 import { MermaidViewer } from "@/components/MermaidViewer";
+import { InfoIcon } from "@/components/ui/InfoIcon";
+import { Modal } from "@/components/ui/Modal";
 
 interface DocSection {
   id: string;
   title: string;
-  category: string;
+  category: "Architecture" | "Runtime" | "Governance" | "Assurance" | "Security";
   summary: string;
   mermaidChart: string;
   content: string;
+  contractSnippet?: string;
 }
+
+const CATEGORIES = ["All", "Architecture", "Runtime", "Governance", "Assurance", "Security"] as const;
 
 const DOC_SECTIONS: DocSection[] = [
   {
     id: "system-architecture",
     title: "System High-Level Architecture",
     category: "Architecture",
-    summary:
-      "Core separation of reasoning, governance, and execution across the 3 system tiers.",
+    summary: "Core separation of reasoning, governance, and execution across the 3 system tiers.",
     mermaidChart: `
 flowchart TD
     Client["Client Interfaces (Web / WhatsApp / Voice)"] --> Gateway["Runtime Gateway & Interaction Core"]
@@ -38,6 +52,19 @@ flowchart TD
     classDef comp fill:#f8fafc,stroke:#0b1f33,stroke-width:1.5px;
     class Client,Gateway,Agent,Proposal,Gov,DB,Permit,ApprovalQueue,Bank,ReceiptsChain comp;
 `,
+    contractSnippet: JSON.stringify(
+      {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        title: "SystemTierContract",
+        type: "object",
+        properties: {
+          tier: { type: "string", enum: ["agent", "gateway", "enterprise_services"] },
+          authority_level: { type: "string", enum: ["none", "evaluator", "settlement_authority"] },
+        },
+      },
+      null,
+      2
+    ),
     content: `
 ### Three-Layer Architecture
 Neolith implements a strict three-layer architecture:
@@ -50,8 +77,7 @@ Neolith implements a strict three-layer architecture:
     id: "governance-sequence",
     title: "Governance Decision & Settlement Sequence",
     category: "Runtime",
-    summary:
-      "End-to-end evaluation flow from agent proposal submission to permit-authorized banking settlement.",
+    summary: "End-to-end evaluation flow from agent proposal submission to permit-authorized banking settlement.",
     mermaidChart: `
 sequenceDiagram
     autonumber
@@ -83,6 +109,16 @@ sequenceDiagram
     end
     Agent-->>Operator: Response with GovernanceSummary
 `,
+    contractSnippet: JSON.stringify(
+      {
+        endpoint: "/api/v1/actions/evaluate",
+        method: "POST",
+        outcomes: ["allow", "review", "deny"],
+        ttl_seconds: 60,
+      },
+      null,
+      2
+    ),
     content: `
 ### Decision Sequence Specifications
 When an action proposal is submitted to \`POST /api/v1/actions/evaluate\`:
@@ -98,77 +134,75 @@ When an action proposal is submitted to \`POST /api/v1/actions/evaluate\`:
     id: "policy-profiles",
     title: "Policy Profile Model & Thresholds",
     category: "Governance",
-    summary:
-      "Object model and threshold rules for Strict, Balanced, High Autonomy, and Custom profiles.",
+    summary: "Configurable governance profiles (Strict, Balanced, High Autonomy) and custom review thresholds.",
     mermaidChart: `
-classDiagram
-    class GovernanceProfile {
-        +UUID id
-        +String name
-        +GovernanceStyle style
-        +String version
-        +Boolean is_active
-        +JSON configuration
-    }
-    class StrictControl {
-        +protected_writes_review: true
-        +allow_unregistered: false
-    }
-    class BalancedControl {
-        +approval_threshold: CategoryThreshold
-        +risk_tier_review: [R3, R4]
-    }
-    class HighAutonomy {
-        +auto_allow: [R1, R2, R3]
-        +critical_review: [R4]
-    }
-    class CustomControl {
-        +Decimal max_action_amount
-        +Decimal review_threshold
-        +List review_operations
-    }
-    GovernanceProfile <|-- StrictControl
-    GovernanceProfile <|-- BalancedControl
-    GovernanceProfile <|-- HighAutonomy
-    GovernanceProfile <|-- CustomControl
+flowchart LR
+    Profile["Active Governance Profile"] --> Strict["Strict Control\nZero Unmonitored Actions\nAll Writes -> REVIEW"]
+    Profile --> Balanced["Balanced Control (Default)\nAuto-settle within Budget\nThreshold -> REVIEW"]
+    Profile --> High["High Autonomy\nHigh Caps\nOnly R4/Violations -> REVIEW/DENY"]
 `,
+    contractSnippet: JSON.stringify(
+      {
+        profile_id: "balanced_v1",
+        name: "Balanced Control",
+        review_threshold_inr: 25000.0,
+        allowed_risk_tiers: ["R1", "R2"],
+        auto_permit: true,
+      },
+      null,
+      2
+    ),
     content: `
-### Profile Behaviors
-- **Strict Control (\`strict\`)**: All protected financial write operations mandate human operator review (\`STRICT_CONTROL_REVIEW_REQUIRED\`). Zero autonomous financial execution.
-- **Balanced Control (\`balanced\`)**: Standard enterprise baseline. Auto-allows routine operations within budget and threshold; flags high-risk tiers (R3, R4) or threshold breaches for operator review.
-- **High Autonomy (\`high_autonomy\`)**: Automates routine R1–R3 actions within approved budget limits; mandates operator review strictly for critical R4 operations.
-- **Custom Control (\`custom\`)**: Configurable thresholds including maximum action amount (\`MAX_AMOUNT_EXCEEDED\`), operator review threshold (\`CUSTOM_THRESHOLD_REACHED\`), and specific operation review lists.
+### Configurable Governance Profiles
+Neolith supports dynamic governance profiles:
+- **Strict Control**: Mandates human approval for all write operations, regardless of value or category budget.
+- **Balanced Control (Default)**: Automatically permits routine actions below approval thresholds (e.g. INR 25,000 for infrastructure), queuing larger disbursements in \`/approvals\`.
+- **High Autonomy**: Grants autonomous settlement up to high category ceilings, reserving human review strictly for R4 high-risk mutations or explicit policy exceptions.
 `,
   },
   {
     id: "governance-boundary",
-    title: "Agent-to-Governance Security Boundary",
-    category: "Security",
-    summary:
-      "Visual boundary delineating AI reasoning space from authoritative decision space.",
+    title: "Governance Boundary & Untrusted Agent Separation",
+    category: "Architecture",
+    summary: "Clear boundary ensuring untrusted agents cannot grant themselves permissions or bypass OPA.",
     mermaidChart: `
-flowchart LR
-    subgraph AgentSpace["AI Reasoning Space (Unprivileged)"]
-        A1["1. Understand User Request"] --> A2["2. Analyse Invoices & Context"]
-        A2 --> A3["3. Prepare FinancialActionProposal"]
+flowchart TB
+    subgraph UntrustedZone ["Untrusted Agent Zone"]
+        Agent["Autonomous AI Agent"]
+        LLM["Large Language Model"]
+        Memory["Working Context & Memory"]
     end
 
-    subgraph Boundary["GOVERNANCE BOUNDARY (Authoritative)"]
-        A3 ==> G1["4. Authenticate Identity & Manifest"]
-        G1 --> G2["5. Check Capability Permissions"]
-        G2 --> G3["6. Evaluate Policy Invariants"]
-        G3 --> G4["7. Verify Budget Feasibility & Threshold"]
+    subgraph Boundary ["Governance Boundary (Zero Ambient Authority)"]
+        TokenAuth["Agent Manifest Check"]
+        DigestAuth["Code & Version Digest Check"]
     end
 
-    subgraph DecisionSpace["Decision Space"]
-        G4 --> D1{"Outcome"}
-        D1 -->|ALLOW| E1["Action Permitted & Issued 60s Permit"]
-        D1 -->|REVIEW| E2["Require Human Operator Approval (/approvals)"]
-        D1 -->|DENY| E3["Hard Rejection with Reason Codes"]
+    subgraph TrustedZone ["Authoritative Execution Vault"]
+        OPA["OPA Decision Runtime"]
+        PermitService["Single-Use Permit Vault"]
+        BankSimulator["Protected Banking Core"]
+        AuditLedger[("Postgres Receipts Ledger")]
     end
 
-    style Boundary fill:#fff7ed,stroke:#f97316,stroke-width:2px;
+    Agent -->|Action Proposal Only| Boundary
+    Boundary -->|Validated Input| OPA
+    OPA -->|ALLOW| PermitService
+    PermitService -->|Debit Request| BankSimulator
+    BankSimulator -->|SHA-256 Receipt| AuditLedger
 `,
+    contractSnippet: JSON.stringify(
+      {
+        boundary_rules: [
+          "No agent-side credentials",
+          "Immutable OPA policies",
+          "Server-side budget reservation",
+          "Cryptographic token exchange",
+        ],
+      },
+      null,
+      2
+    ),
     content: `
 ### The Governance Boundary Principle
 The boundary between the agent and governance is an untrusted security perimeter:
@@ -182,8 +216,7 @@ The boundary between the agent and governance is an untrusted security perimeter
     id: "f15-assurance-lab",
     title: "F15 Security & Policy Assurance Lab",
     category: "Assurance",
-    summary:
-      "Automated evaluation service verifying 7 safety invariants including prompt injection defense and budget concurrency.",
+    summary: "Automated evaluation service verifying 7 safety invariants including prompt injection defense.",
     mermaidChart: `
 flowchart TD
     Suite["F15 Assurance Lab Runner (/evaluation/runs)"] --> S1["001: Verified Invoice within Budget -> ALLOW"]
@@ -197,6 +230,15 @@ flowchart TD
     classDef passed fill:#ecfdf5,stroke:#059669,stroke-width:1.5px;
     class S1,S2,S3,S4,S5,S6,S7 passed;
 `,
+    contractSnippet: JSON.stringify(
+      {
+        test_suite: "F15_Assurance_Lab",
+        scenarios: 7,
+        coverage: ["prompt_injection", "budget_concurrency", "permit_replay", "parameter_tampering"],
+      },
+      null,
+      2
+    ),
     content: `
 ### The 7 Canonical Assurance Scenarios
 The F15 Assurance Lab runs repeatable, deterministic test scenarios against the live Governance Runtime:
@@ -213,25 +255,23 @@ The F15 Assurance Lab runs repeatable, deterministic test scenarios against the 
     id: "system-control-killswitch",
     title: "Cluster Kill-Switch & Revocation Epoch Control",
     category: "Security",
-    summary:
-      "Cluster-wide emergency stop and agent quarantine invalidating outstanding permits via monotonic revocation epochs.",
+    summary: "Cluster-wide emergency stop and agent quarantine invalidating outstanding permits via monotonic revocation epochs.",
     mermaidChart: `
 stateDiagram-v2
     [*] --> NormalOperations : Cluster Initialized (Epoch 0)
     NormalOperations --> EmergencyStop : POST /api/v1/system/emergency-stop
-    note right of EmergencyStop
-      - Increments revocation_epoch
-      - All outstanding permits revoked
-      - OPA denies with EMERGENCY_STOP_ACTIVE
-      - Emits Audit Decision Receipt
-    end note
     EmergencyStop --> NormalOperations : POST /api/v1/system/restore
-    note left of NormalOperations
-      - System restored to normal
-      - Revocation epoch preserved
-      - Emits Restoration Audit Receipt
-    end note
 `,
+    contractSnippet: JSON.stringify(
+      {
+        endpoint: "/api/v1/system/emergency-stop",
+        method: "POST",
+        revocation_epoch_increment: 1,
+        permit_invalidation: "instantaneous",
+      },
+      null,
+      2
+    ),
     content: `
 ### Cluster Emergency Control (F09, F13, UC8)
 - **Monotonic Revocation Epoch**: Every emergency stop increments the cluster \`revocation_epoch\`. Permits minted under previous epochs fail consumption with \`REVOCATION_EPOCH_MISMATCH\`.
@@ -243,130 +283,52 @@ stateDiagram-v2
     id: "receipts-hash-chain",
     title: "Tamper-Evident Receipts Hash Chain",
     category: "Security",
-    summary:
-      "Cryptographic append-only ledger linking every decision, permit, and settlement with parent hash verification.",
+    summary: "Cryptographic append-only ledger linking every decision, permit, and settlement with parent hash verification.",
     mermaidChart: `
 flowchart LR
     R0["Receipt 0 (Genesis)\nHash: 0000..."] --> R1["Receipt 1 (Action)\nParent: 0000...\nPayload Hash: H1\nReceipt Hash: H(0, P0, H1)"]
-    R1 --> R2["Receipt 2 (Permit)\nParent: R1 Hash\nPayload Hash: H2\nReceipt Hash: H(1, R1, H2)"]
-    R2 --> R3["Receipt 3 (Settlement)\nParent: R2 Hash\nPayload Hash: H3\nReceipt Hash: H(2, R2, H3)"]
-
-    classDef block fill:#f8fafc,stroke:#0f766e,stroke-width:1.5px;
-    class R0,R1,R2,R3 block;
+    R1 --> R2["Receipt 2 (Permit)\nParent: H(R1)\nReceipt Hash: H(1, P1, H2)"]
+    R2 --> R3["Receipt 3 (Settlement)\nParent: H(R2)\nReceipt Hash: H(2, P2, H3)"]
 `,
+    contractSnippet: JSON.stringify(
+      {
+        chain_index: 3,
+        hash_algorithm: "SHA-256",
+        canonical_encoding: "RFC 8785 (JCS)",
+        parent_link_enforced: true,
+      },
+      null,
+      2
+    ),
     content: `
-### Cryptographic Receipts Specification (F13)
-Every governance decision, human approval, permit issuance, and banking settlement is permanently recorded in \`decision_receipts\`:
-1. **Hash Formula**: \`receipt_hash = sha256:{chain_index}:{previous_receipt_hash}:{payload_hash}:{event_type}\`.
-2. **Whole-Chain Verification**: The endpoint \`GET /api/v1/receipts/verify\` traverses the entire chain from genesis to head, recalculating hashes to prove zero tampering.
-3. **Interactive Visual Explorer**: Operators can inspect individual receipt payloads, parent hashes, and cryptographic signatures at \`/receipts/[id]\`.
-`,
-  },
-  {
-    id: "data-model",
-    title: "Financial Reference Application Data Model",
-    category: "Data",
-    summary:
-      "Entity relationship model representing accounts, invoices, beneficiaries, budgets, permits, and receipts.",
-    mermaidChart: `
-erDiagram
-    FinancialAccount ||--o{ FinancialTransaction : contains
-    Invoice ||--o{ FinancialTransaction : triggers
-    Beneficiary ||--o{ Invoice : bills
-    Beneficiary ||--o{ FinancialTransaction : receives
-    Budget ||--o{ FinancialTransaction : caps
-    ExecutionRequest ||--|| GovernanceDecision : evaluates
-    GovernanceDecision ||--o| Approval : requires
-    GovernanceDecision ||--o| ExecutionPermit : issues
-    ExecutionPermit ||--o| FinancialTransaction : settles
-    GovernanceDecision ||--o{ DecisionReceipt : audits
-
-    FinancialAccount {
-        UUID id PK
-        string name
-        decimal available_balance
-        string currency
-    }
-    Invoice {
-        UUID id PK
-        string invoice_number
-        decimal amount
-        string category
-        boolean is_verified_vendor
-    }
-    ExecutionPermit {
-        UUID id PK
-        UUID action_id
-        string parameter_hash
-        timestamp expires_at
-        integer revocation_epoch
-    }
-    DecisionReceipt {
-        UUID id PK
-        integer chain_index
-        string previous_receipt_hash
-        string receipt_hash
-    }
-`,
-    content: `
-### Entity Integrity
-- **FinancialAccount**: Operating treasury account tracking available balance.
-- **Invoice**: Vendor invoices with verification flags, categories, and due dates.
-- **Beneficiary**: Synthetic vendor records holding verification status.
-- **Budget**: Monthly category spending limits and operator review thresholds.
-- **ExecutionPermit**: Short-lived, single-use permit token with canonical parameter hash and epoch tracking.
-- **DecisionReceipt**: Tamper-evident hash-linked ledger records.
-`,
-  },
-  {
-    id: "cross-channel",
-    title: "Cross-Channel Interaction Architecture",
-    category: "Architecture",
-    summary:
-      "Transport-neutral core routing web, WhatsApp, and voice turns into unified governance.",
-    mermaidChart: `
-flowchart TD
-    WebUser["Web Operator (Next.js)"] -->|POST /interactions/message| Core["Interaction Core Service"]
-    WhatsAppUser["WhatsApp User (Twilio)"] -->|POST /integrations/twilio/whatsapp/webhook| Core
-    VoiceUser["Voice Caller (ElevenLabs)"] -->|POST /integrations/elevenlabs/.../chat/completions| Core
-
-    Core --> Normalise["Canonical InteractionTurn (UUID, Text, Trace)"]
-    Normalise --> AgentClient["Agent Worker Client"]
-    AgentClient --> LangGraph["Financial AI Agent (LangGraph)"]
-    LangGraph --> Proposal["Proposed Action Proposal"]
-    Proposal --> GovService["GovernanceRuntimeService.evaluate_action()"]
-    GovService --> GovSummary["GovernanceSummary (Outcome, Reasons, Risk Tier)"]
-    GovSummary --> OutboundTurn["InterfaceResponse (Message + Proposal + Governance)"]
-    OutboundTurn --> AdaptReply["Channel-Specific Formatter (JSON / TwiML / OpenAI SSE)"]
-
-    classDef node fill:#f8fafc,stroke:#0b1f33,stroke-width:1.5px;
-    class WebUser,WhatsAppUser,VoiceUser,Core,Normalise,AgentClient,LangGraph,Proposal,GovService,GovSummary,OutboundTurn,AdaptReply node;
-`,
-    content: `
-### Channel Parity Principle
-Regardless of whether an operator sends a prompt from the Next.js Web workspace, sends a WhatsApp message via Twilio, or speaks over the phone via ElevenLabs Custom LLM, the exact same \`InteractionTurn\` is created, the same LangGraph agent runs, and the exact same OPA governance evaluation is executed.
+### Cryptographic Receipts Chain
+Every operational event generates an immutable \`DecisionReceipt\`:
+- Chain index increments strictly monotonically.
+- Each receipt hashes its payload alongside the \`previous_receipt_hash\`.
+- Tampering with any historical database row breaks the cryptographic chain, enabling instant external audit detection.
 `,
   },
   {
     id: "reason-codes",
     title: "Reason Code Glossary & Outcome Reference",
     category: "Governance",
-    summary:
-      "Complete dictionary of structured reason codes emitted by package neolith.decision and the Runtime Gateway.",
+    summary: "Complete dictionary of structured reason codes emitted by package neolith.decision and the Runtime Gateway.",
     mermaidChart: `
 flowchart LR
     Outcome{"Governance Outcome"}
     Outcome -->|ALLOW| RC1["BASE_POLICY_ALLOW\nROUTINE_PAYMENT_PERMITTED"]
     Outcome -->|REVIEW| RC2["APPROVAL_REQUIRED\nAPPROVAL_THRESHOLD_REACHED\nSTRICT_CONTROL_REVIEW_REQUIRED\nHIGH_RISK_TIER_REVIEW"]
     Outcome -->|DENY| RC3["BUDGET_EXCEEDED\nUNVERIFIED_BENEFICIARY\nAGENT_INACTIVE\nEMERGENCY_STOP_ACTIVE\nPERMIT_REPLAY\nPARAMETER_HASH_MISMATCH"]
-
-    classDef allow fill:#ecfdf5,stroke:#059669,stroke-width:1.5px;
-    classDef review fill:#fffbeb,stroke:#d97706,stroke-width:1.5px;
-    classDef deny fill:#fef2f2,stroke:#dc2626,stroke-width:1.5px;
-    class RC1 allow;
-    class RC2 review;
-    class RC3 deny;
 `,
+    contractSnippet: JSON.stringify(
+      {
+        allow_codes: ["BASE_POLICY_ALLOW", "ROUTINE_PAYMENT_PERMITTED"],
+        review_codes: ["APPROVAL_REQUIRED", "REVIEW_THRESHOLD_EXCEEDED", "STRICT_CONTROL_REVIEW_REQUIRED"],
+        deny_codes: ["BUDGET_EXCEEDED", "UNVERIFIED_BENEFICIARY", "EMERGENCY_STOP_ACTIVE", "PERMIT_REPLAY"],
+      },
+      null,
+      2
+    ),
     content: `
 ### Structured Reason Codes Glossary
 Every decision emitted by Neolith attaches one or more deterministic reason codes:
@@ -386,149 +348,310 @@ Every decision emitted by Neolith attaches one or more deterministic reason code
 ];
 
 export function DocsClient() {
-  const [selectedSectionId, setSelectedSectionId] = useState<string>(
-    DOC_SECTIONS[0]?.id || ""
-  );
+  const [selectedSectionId, setSelectedSectionId] = useState<string>(DOC_SECTIONS[0]?.id || "");
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [inspectModalOpen, setInspectModalOpen] = useState(false);
 
   const filteredSections = useMemo(() => {
-    if (!searchQuery.trim()) return DOC_SECTIONS;
-    const q = searchQuery.toLowerCase();
-    return DOC_SECTIONS.filter(
-      (s) =>
-        s.title.toLowerCase().includes(q) ||
-        s.category.toLowerCase().includes(q) ||
-        s.summary.toLowerCase().includes(q)
-    );
-  }, [searchQuery]);
+    return DOC_SECTIONS.filter((sec) => {
+      const matchesCategory = selectedCategory === "All" || sec.category === selectedCategory;
+      if (!matchesCategory) return false;
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        sec.title.toLowerCase().includes(q) ||
+        sec.summary.toLowerCase().includes(q) ||
+        sec.content.toLowerCase().includes(q)
+      );
+    });
+  }, [selectedCategory, searchQuery]);
 
   const activeSection =
-    DOC_SECTIONS.find((s) => s.id === selectedSectionId) || DOC_SECTIONS[0];
+    DOC_SECTIONS.find((s) => s.id === selectedSectionId) || filteredSections[0] || DOC_SECTIONS[0];
+
+  const activeIndex = DOC_SECTIONS.findIndex((s) => s.id === activeSection?.id);
+  const prevSection = activeIndex > 0 ? DOC_SECTIONS[activeIndex - 1] : null;
+  const nextSection = activeIndex < DOC_SECTIONS.length - 1 ? DOC_SECTIONS[activeIndex + 1] : null;
+
+  const handleCopyLink = () => {
+    if (typeof window !== "undefined" && activeSection) {
+      navigator.clipboard.writeText(`${window.location.origin}/docs#${activeSection.id}`);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Docs Header */}
-      <div className="border-b border-slate-200 pb-5">
-        <div className="inline-flex items-center gap-2 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-0.5 text-xs font-semibold uppercase tracking-wider text-teal-800 mb-2">
-          Knowledge Base • Architecture & Specifications
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          Neolith Documentation Hub
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 mt-1">
-          Interactive architecture diagrams, pan/zoom visualizers, protocol sequences, and data models.
-        </p>
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-8 items-start">
-        {/* Left Navigation Sidebar */}
-        <aside className="w-full lg:w-72 shrink-0 space-y-4">
-          <div>
-            <label htmlFor="docs-search-input" className="sr-only">
-              Search documentation
-            </label>
-            <input
-              id="docs-search-input"
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search architecture..."
-              className="w-full rounded-lg border border-slate-300 bg-white p-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-teal-700 focus:outline-none"
+    <div className="space-y-8 max-w-6xl mx-auto">
+      {/* 1. HEADER WITH DUAL OPPOSITE PALETTE */}
+      <div className="rounded-3xl border border-slate-800 bg-[#070B16] p-6 sm:p-8 text-white shadow-glow-obsidian flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="space-y-2 max-w-2xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-ember-500/30 bg-ember-500/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-ember-400">
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Developer & Architecture Hub</span>
+            <InfoIcon
+              title="Documentation Hub"
+              content="All architectural diagrams, sequence flows, and policy invariants are fully grounded in the actual codebase contracts and OPA Rego policies."
+              side="bottom"
+              badge="Authoritative"
             />
           </div>
+          <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-white">
+            Neolith Architecture & Specifications
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            Technical specifications, zoomable Mermaid sequence diagrams, state machines, and contract schemas.
+          </p>
+        </div>
 
-          <nav className="rounded-xl border border-slate-200 bg-white p-2 shadow-sm space-y-1">
-            {filteredSections.map((sec) => (
-              <button
-                key={sec.id}
-                type="button"
-                onClick={() => setSelectedSectionId(sec.id)}
-                className={`w-full text-left rounded-lg px-3 py-2 text-xs transition-colors ${
-                  activeSection?.id === sec.id
-                    ? "bg-teal-50 font-bold text-teal-800 border-l-2 border-teal-700"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                }`}
-              >
-                <div className="text-[10px] uppercase font-bold text-slate-400">
-                  {sec.category}
-                </div>
-                <div className="truncate font-semibold">{sec.title}</div>
-              </button>
-            ))}
-            {filteredSections.length === 0 && (
-              <p className="p-3 text-xs text-slate-400 text-center">
-                No matching sections found.
-              </p>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setInspectModalOpen(true)}
+            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 border border-slate-700 hover:bg-slate-700 hover:text-white transition-all flex items-center gap-2"
+          >
+            <Code2 className="w-4 h-4 text-ember-400" />
+            Inspect Contract
+          </button>
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="px-4 py-2.5 rounded-xl text-xs font-bold bg-ember-500 text-white hover:bg-ember-600 transition-all shadow-glow flex items-center gap-2"
+          >
+            {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            {copiedLink ? "Link Copied!" : "Share Link"}
+          </button>
+        </div>
+      </div>
+
+      {/* 2. CATEGORY PILLS & SEARCH BAR */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+        {/* Category Pills */}
+        <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-2xl bg-slate-200/60 border border-slate-200 w-fit">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all duration-150 ${
+                selectedCategory === cat
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Search Input */}
+        <div className="relative w-full sm:w-72">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search specifications..."
+            className="w-full rounded-xl border border-slate-300 bg-white pl-10 pr-4 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-ember-500 focus:ring-1 focus:ring-ember-500 focus:outline-none"
+          />
+        </div>
+      </div>
+
+      {/* 3. MAIN WORKSPACE WITH SIDEBAR & CONTENT */}
+      <div className="flex flex-col lg:flex-row gap-8 items-start">
+        {/* Left Subpages Navigation */}
+        <aside className="w-full lg:w-72 shrink-0 space-y-2">
+          <div className="px-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+            <span>Sections ({filteredSections.length})</span>
+            {searchQuery && (
+              <span className="text-[10px] text-ember-600 font-mono font-bold">Filtered</span>
             )}
+          </div>
+
+          <nav className="rounded-2xl border border-slate-200/90 bg-white p-2 shadow-sm space-y-1">
+            {filteredSections.map((sec) => {
+              const isSelected = activeSection?.id === sec.id;
+              return (
+                <button
+                  key={sec.id}
+                  type="button"
+                  onClick={() => setSelectedSectionId(sec.id)}
+                  className={`w-full text-left rounded-xl px-3 py-2.5 text-xs transition-all duration-150 flex items-center justify-between group ${
+                    isSelected
+                      ? "bg-slate-900 text-white font-bold shadow-sm"
+                      : "text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                  }`}
+                >
+                  <div className="flex flex-col pr-2">
+                    <span className="leading-tight">{sec.title}</span>
+                    <span
+                      className={`text-[9px] font-mono uppercase mt-0.5 ${
+                        isSelected ? "text-ember-400" : "text-slate-400"
+                      }`}
+                    >
+                      {sec.category}
+                    </span>
+                  </div>
+                  <ChevronRight
+                    className={`w-3.5 h-3.5 shrink-0 transition-transform ${
+                      isSelected
+                        ? "text-ember-400 translate-x-0.5"
+                        : "text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              );
+            })}
           </nav>
         </aside>
 
-        {/* Right Content & Diagram Viewer */}
-        <div className="flex-1 min-w-0 space-y-6">
-          {activeSection && (
-            <div className="space-y-6">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-teal-700">
-                  {activeSection.category}
-                </span>
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">
+        {/* Right Content Area */}
+        <main className="flex-1 w-full space-y-6">
+          {activeSection ? (
+            <article className="rounded-3xl border border-slate-200/90 bg-white p-6 sm:p-10 shadow-sm space-y-8 animate-fade-in">
+              {/* Section Header */}
+              <div className="border-b border-slate-100 pb-6 space-y-3">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="px-3 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-slate-100 text-slate-800 border border-slate-200">
+                    {activeSection.category}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {activeSection.contractSnippet && (
+                      <button
+                        type="button"
+                        onClick={() => setInspectModalOpen(true)}
+                        className="text-xs font-bold text-ember-600 hover:text-ember-700 flex items-center gap-1 transition-colors"
+                      >
+                        <Code2 className="w-3.5 h-3.5" />
+                        Contract Schema
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                   {activeSection.title}
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-600 mt-1">
+
+                <p className="text-sm text-slate-600 leading-relaxed font-medium">
                   {activeSection.summary}
                 </p>
               </div>
 
-              {/* Interactive Mermaid Diagram Viewer */}
-              <MermaidViewer
-                chart={activeSection.mermaidChart}
-                title={activeSection.title}
-              />
-
-              {/* Explanatory Content */}
-              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
-                <div className="prose prose-sm max-w-none text-slate-700">
-                  {activeSection.content
-                    .trim()
-                    .split("\n\n")
-                    .map((paragraph, index) => {
-                      if (paragraph.startsWith("### ")) {
-                        return (
-                          <h3
-                            key={index}
-                            className="text-sm font-bold text-slate-900 mt-4 mb-2"
-                          >
-                            {paragraph.replace("### ", "")}
-                          </h3>
-                        );
-                      }
-                      if (paragraph.startsWith("1. ") || paragraph.startsWith("- ")) {
-                        const items = paragraph.split("\n");
-                        return (
-                          <ul
-                            key={index}
-                            className="list-inside list-disc space-y-1.5 my-2"
-                          >
-                            {items.map((item, idx) => (
-                              <li key={idx}>
-                                {item.replace(/^(\d+\.\s*|-\s*)/, "")}
-                              </li>
-                            ))}
-                          </ul>
-                        );
-                      }
-                      return (
-                        <p key={index} className="my-2">
-                          {paragraph}
-                        </p>
-                      );
-                    })}
+              {/* Interactive Zoomable Mermaid Architecture Diagram */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-ember-500" />
+                    Interactive Architectural Visualizer
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">Pan & zoom enabled</span>
                 </div>
+                <MermaidViewer chart={activeSection.mermaidChart} />
               </div>
+
+              {/* Detailed Markdown Content */}
+              <div className="prose prose-slate max-w-none text-xs sm:text-sm text-slate-700 leading-relaxed space-y-4 pt-4 border-t border-slate-100">
+                {activeSection.content.split("\n\n").map((paragraph, idx) => {
+                  if (paragraph.startsWith("### ")) {
+                    return (
+                      <h3 key={idx} className="text-lg font-black text-slate-900 tracking-tight mt-6 mb-2">
+                        {paragraph.replace("### ", "")}
+                      </h3>
+                    );
+                  }
+                  if (paragraph.startsWith("1. ") || paragraph.startsWith("- ")) {
+                    const lines = paragraph.split("\n");
+                    return (
+                      <ul key={idx} className="space-y-2 pl-4 list-disc text-slate-700 font-normal">
+                        {lines.map((line, lIdx) => (
+                          <li key={lIdx} className="leading-relaxed">
+                            {line.replace(/^(\d+\.\s*|-\s*)/, "")}
+                          </li>
+                        ))}
+                      </ul>
+                    );
+                  }
+                  return (
+                    <p key={idx} className="leading-relaxed font-normal">
+                      {paragraph}
+                    </p>
+                  );
+                })}
+              </div>
+
+              {/* Previous / Next Pagination Footer */}
+              <div className="pt-6 border-t border-slate-100 flex items-center justify-between gap-4">
+                {prevSection ? (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSectionId(prevSection.id)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <div className="text-left">
+                      <div className="text-[10px] text-slate-400 uppercase font-mono">Previous</div>
+                      <div>{prevSection.title}</div>
+                    </div>
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                {nextSection && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSectionId(nextSection.id)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors"
+                  >
+                    <div className="text-right">
+                      <div className="text-[10px] text-slate-400 uppercase font-mono">Next</div>
+                      <div>{nextSection.title}</div>
+                    </div>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </article>
+          ) : (
+            <div className="p-12 text-center rounded-3xl border border-dashed border-slate-300 bg-white text-slate-500">
+              No matching specifications found for &quot;{searchQuery}&quot;.
             </div>
           )}
-        </div>
+        </main>
       </div>
+
+      {/* 4. CONTRACT SCHEMA INSPECTION MODAL */}
+      {inspectModalOpen && activeSection?.contractSnippet && (
+        <Modal
+          isOpen={true}
+          onClose={() => setInspectModalOpen(false)}
+          title={`Contract Schema: ${activeSection.title}`}
+          subtitle={`Specification Category: ${activeSection.category}`}
+          maxWidth="2xl"
+          accentColor="ember"
+        >
+          <div className="space-y-4">
+            <p className="text-xs text-slate-600 leading-relaxed">
+              This contract is enforced by the Governance Runtime Gateway to guarantee zero authority bypass.
+            </p>
+            <pre className="p-4 rounded-xl bg-slate-950 text-slate-200 text-xs font-mono overflow-x-auto border border-slate-800 leading-relaxed">
+              <code>{activeSection.contractSnippet}</code>
+            </pre>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setInspectModalOpen(false)}
+                className="px-4 py-2 text-xs font-bold rounded-lg bg-slate-100 text-slate-800 hover:bg-slate-200 transition-colors"
+              >
+                Close Schema
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
