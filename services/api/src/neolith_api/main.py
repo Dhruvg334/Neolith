@@ -9,12 +9,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from neolith_api.api.v1.actions import router as actions_router
 from neolith_api.api.v1.approvals import router as approvals_router
 from neolith_api.api.v1.elevenlabs import router as elevenlabs_router
+from neolith_api.api.v1.evaluation import router as evaluation_router
 from neolith_api.api.v1.financial import router as financial_router
 from neolith_api.api.v1.governance import router as governance_router
 from neolith_api.api.v1.health import router as health_router
 from neolith_api.api.v1.interactions import router as interactions_router
+from neolith_api.api.v1.permits import router as permits_router
 from neolith_api.api.v1.receipts import router as receipts_router
 from neolith_api.api.v1.registry import router as registry_router
+from neolith_api.api.v1.system import router as system_router
 from neolith_api.api.v1.twilio import router as twilio_router
 from neolith_api.core.config import Settings, get_settings
 from neolith_api.core.errors import register_exception_handlers
@@ -71,8 +74,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(interactions_router, prefix="/api/v1")
     app.include_router(actions_router, prefix="/api/v1")
     app.include_router(approvals_router, prefix="/api/v1")
+    app.include_router(permits_router, prefix="/api/v1")
+    app.include_router(system_router, prefix="/api/v1")
     app.include_router(governance_router, prefix="/api/v1")
     app.include_router(receipts_router, prefix="/api/v1")
+    app.include_router(evaluation_router, prefix="/api/v1")
     app.include_router(twilio_router, prefix="/api/v1")
     app.include_router(elevenlabs_router)
     return app

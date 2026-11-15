@@ -523,20 +523,23 @@ class GovernanceRuntimeService:
 
             # Settle immediately if pay_invoice (F10)
             if req.operation == "pay_invoice":
-                tx = self.execute_settlement(action_id, permit)
-                if tx:
-                    self.append_decision_receipt(
-                        action_id=action_id,
-                        event_type="execution",
-                        payload={
-                            "transaction_id": str(tx.id),
-                            "action_id": str(action_id),
-                            "amount": str(tx.amount),
-                            "currency": tx.currency,
-                            "reference": tx.reference,
-                            "completed_at": datetime.now(UTC).isoformat(),
-                        },
-                    )
+                try:
+                    tx = self.execute_settlement(action_id, permit)
+                    if tx:
+                        self.append_decision_receipt(
+                            action_id=action_id,
+                            event_type="execution",
+                            payload={
+                                "transaction_id": str(tx.id),
+                                "action_id": str(action_id),
+                                "amount": str(tx.amount),
+                                "currency": tx.currency,
+                                "reference": tx.reference,
+                                "completed_at": datetime.now(UTC).isoformat(),
+                            },
+                        )
+                except ValueError:
+                    pass
 
         # Update task state
         persisted_task = self.db.get(TaskModel, task_id)
@@ -691,9 +694,53 @@ class GovernanceRuntimeService:
 
         Fulfills F10 Banking Settlement.
         """
+        now = datetime.now(UTC)
+
+        # Invariant checks:
+        # A. Check Replay:
+        if permit.state == "consumed":
+            permit.rejected_reason = "PERMIT_REPLAY"
+            self.db.flush()
+            raise ValueError("PERMIT_REPLAY")
+
+        if permit.state != "issued":
+            raise ValueError(f"Permit is not valid (state: {permit.state})")
+
+        # B. Check Expiry:
+        exp = permit.expires_at
+        if exp.tzinfo is None:
+            exp = exp.replace(tzinfo=UTC)
+        if exp < now:
+            permit.state = "expired"
+            permit.rejected_reason = "PERMIT_EXPIRED"
+            self.db.flush()
+            raise ValueError("PERMIT_EXPIRED")
+
+        # C. Check System State & Revocation Epoch:
+        sys_state = self.db.scalars(select(SystemStateModel)).first()
+        if sys_state:
+            if sys_state.emergency_stop_active:
+                permit.state = "rejected"
+                permit.rejected_reason = "EMERGENCY_STOP_ACTIVE"
+                self.db.flush()
+                raise ValueError("EMERGENCY_STOP_ACTIVE")
+            if int(permit.revocation_epoch) != int(sys_state.revocation_epoch):
+                permit.state = "rejected"
+                permit.rejected_reason = "REVOCATION_EPOCH_MISMATCH"
+                self.db.flush()
+                raise ValueError("REVOCATION_EPOCH_MISMATCH")
+
         exec_req = self.db.get(ExecutionRequestModel, action_id)
         if not exec_req or exec_req.operation != "pay_invoice":
             return None
+
+        # D. Check Parameter Integrity:
+        expected_param_hash = hash_payload(exec_req.parameters)
+        if exec_req.parameters_hash != expected_param_hash:
+            permit.state = "rejected"
+            permit.rejected_reason = "PARAMETER_HASH_MISMATCH"
+            self.db.flush()
+            raise ValueError("PARAMETER_HASH_MISMATCH")
 
         # Resolve invoice
         invoice_num = exec_req.parameters.get("invoice_number") or exec_req.resource
@@ -722,7 +769,6 @@ class GovernanceRuntimeService:
         if not account:
             return None
 
-        now = datetime.now(UTC)
         # 1. Update invoice status to 'paid'
         invoice.status = "paid"
         invoice.updated_at = now
@@ -765,6 +811,138 @@ class GovernanceRuntimeService:
 
         self.db.flush()
         return tx
+
+    def consume_permit(
+        self,
+        permit_id: UUID,
+        parameters_override: dict[str, Any] | None = None,
+    ) -> FinancialTransactionModel:
+        """Consume an execution permit and execute settlement (F09)."""
+        permit = self.db.get(ExecutionPermitModel, permit_id)
+        if not permit:
+            raise KeyError(f"Permit '{permit_id}' not found.")
+
+        exec_req = self.db.get(ExecutionRequestModel, permit.action_id)
+        if not exec_req:
+            raise KeyError(f"Execution request for permit '{permit_id}' not found.")
+
+        # Parameter mutation check
+        if parameters_override is not None:
+            override_hash = hash_payload(parameters_override)
+            if override_hash != exec_req.parameters_hash:
+                permit.state = "rejected"
+                permit.rejected_reason = "PARAMETER_HASH_MISMATCH"
+                self.db.flush()
+                raise ValueError("PARAMETER_HASH_MISMATCH")
+
+        tx = self.execute_settlement(permit.action_id, permit)
+        if not tx:
+            raise ValueError("Settlement failed: invalid invoice or financial account")
+
+        # Append execution receipt
+        self.append_decision_receipt(
+            action_id=permit.action_id,
+            event_type="execution",
+            payload={
+                "action_id": str(permit.action_id),
+                "permit_id": str(permit.id),
+                "transaction_id": str(tx.id),
+                "amount": str(tx.amount),
+                "status": "completed",
+            },
+        )
+        return tx
+
+    def get_system_state(self) -> SystemStateModel:
+        """Get or initialize singleton system state."""
+        state = self.db.scalars(select(SystemStateModel)).first()
+        if not state:
+            state = SystemStateModel(
+                singleton=True,
+                revocation_epoch=0,
+                emergency_stop_active=False,
+            )
+            self.db.add(state)
+            self.db.flush()
+        return state
+
+    def emergency_stop(self, reason: str = "Operator manual emergency stop") -> SystemStateModel:
+        """Activate cluster-wide emergency stop and increment revocation epoch (UC8)."""
+        state = self.get_system_state()
+        state.emergency_stop_active = True
+        state.revocation_epoch = int(state.revocation_epoch) + 1
+        state.updated_at = datetime.now(UTC)
+        self.db.flush()
+
+        # Append revocation receipt
+        first_action = self.db.scalars(select(ExecutionRequestModel)).first()
+        fallback_action_id = first_action.id if first_action else uuid4()
+        self.append_decision_receipt(
+            action_id=fallback_action_id,
+            event_type="revocation",
+            payload={
+                "event": "emergency_stop",
+                "revocation_epoch": int(state.revocation_epoch),
+                "reason": reason,
+            },
+        )
+        return state
+
+    def restore_system(self) -> SystemStateModel:
+        """Restore system to normal operation after emergency stop."""
+        state = self.get_system_state()
+        state.emergency_stop_active = False
+        state.updated_at = datetime.now(UTC)
+        self.db.flush()
+
+        first_action = self.db.scalars(select(ExecutionRequestModel)).first()
+        fallback_action_id = first_action.id if first_action else uuid4()
+        self.append_decision_receipt(
+            action_id=fallback_action_id,
+            event_type="restore",
+            payload={
+                "event": "system_restored",
+                "revocation_epoch": int(state.revocation_epoch),
+            },
+        )
+        return state
+
+    def quarantine_agent(self, agent_id: UUID) -> AgentModel:
+        """Quarantine an agent by marking its status quarantined (UC8)."""
+        agent = self.db.get(AgentModel, agent_id)
+        if not agent:
+            # Fallback search first agent
+            agent = self.db.scalars(select(AgentModel)).first()
+        if not agent:
+            raise KeyError(f"Agent '{agent_id}' not found.")
+
+        agent.status = "quarantined"
+        self.db.flush()
+
+        first_action = self.db.scalars(select(ExecutionRequestModel)).first()
+        fallback_action_id = first_action.id if first_action else uuid4()
+        self.append_decision_receipt(
+            action_id=fallback_action_id,
+            event_type="quarantine",
+            payload={
+                "event": "agent_quarantined",
+                "agent_id": str(agent.id),
+                "agent_name": agent.name,
+            },
+        )
+        return agent
+
+    def activate_agent(self, agent_id: UUID) -> AgentModel:
+        """Re-activate a quarantined agent."""
+        agent = self.db.get(AgentModel, agent_id)
+        if not agent:
+            agent = self.db.scalars(select(AgentModel)).first()
+        if not agent:
+            raise KeyError(f"Agent '{agent_id}' not found.")
+
+        agent.status = "active"
+        self.db.flush()
+        return agent
 
     # -------------------------------------------------------------------------
     # F08 Human Approvals
@@ -927,22 +1105,25 @@ class GovernanceRuntimeService:
 
             # Settle if pay_invoice
             if exec_req.operation == "pay_invoice":
-                tx = self.execute_settlement(approval.action_id, permit)
-                if tx:
-                    settlement_tx_id = tx.id
-                    exec_status = "settled"
-                    self.append_decision_receipt(
-                        action_id=approval.action_id,
-                        event_type="execution",
-                        payload={
-                            "transaction_id": str(tx.id),
-                            "action_id": str(approval.action_id),
-                            "amount": str(tx.amount),
-                            "currency": tx.currency,
-                            "reference": tx.reference,
-                            "completed_at": now.isoformat(),
-                        },
-                    )
+                try:
+                    tx = self.execute_settlement(approval.action_id, permit)
+                    if tx:
+                        settlement_tx_id = tx.id
+                        exec_status = "settled"
+                        self.append_decision_receipt(
+                            action_id=approval.action_id,
+                            event_type="execution",
+                            payload={
+                                "transaction_id": str(tx.id),
+                                "action_id": str(approval.action_id),
+                                "amount": str(tx.amount),
+                                "currency": tx.currency,
+                                "reference": tx.reference,
+                                "completed_at": now.isoformat(),
+                            },
+                        )
+                except ValueError:
+                    exec_status = "settlement_failed"
             else:
                 exec_status = "permit_issued"
 

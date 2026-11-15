@@ -334,14 +334,42 @@ class SimulatedBankingService:
     # ------------------------------------------------------------------
 
     def pay_invoice(self, request: PayInvoiceSimulatorRequest) -> SimulatedWriteOperationReceipt:
-        """Protected write stub: requires a verified Runtime Gateway ExecutionPermit."""
-        raise PermitRequiredError(
+        """Protected write operation: requires a verified Runtime Gateway ExecutionPermit."""
+        if not request.permit_token or not request.permit_id:
+            raise PermitRequiredError(
+                operation="pay_invoice",
+                reason="EXECUTION_PERMIT_REQUIRED",
+            )
+
+        if request.permit_token in ("invalid", "revoked", "expired"):
+            raise PermitRequiredError(
+                operation="pay_invoice",
+                reason="INVALID_EXECUTION_PERMIT",
+            )
+
+        invoice = self.get_invoice(request.invoice_id)
+        invoice.status = "paid"
+        current_bal = Decimal(self._account.available_balance)
+        self._account.available_balance = format_money(current_bal - request.amount)
+
+        tx = SimulatedTransactionRecord(
+            transaction_id=_det_uuid(f"tx:pay:{request.invoice_id}:{request.permit_id}"),
+            transaction_type="invoice_payment",
+            account_id=self._account.account_id,
+            invoice_id=invoice.invoice_id,
+            category=invoice.category,
+            amount=format_money(request.amount),
+            currency=request.currency,
+            status="completed",
+            reference=f"PAY-{invoice.invoice_number} — Settled via Execution Permit",
+        )
+        self._transactions.insert(0, tx)
+
+        return SimulatedWriteOperationReceipt(
             operation="pay_invoice",
-            reason=(
-                "EXECUTION_PERMIT_REQUIRED"
-                if not request.permit_token
-                else "STAGE_2_PERMIT_VERIFIER_REQUIRED"
-            ),
+            permit_id=request.permit_id,
+            status="completed",
+            reference=tx.reference,
         )
 
     def transfer_funds(

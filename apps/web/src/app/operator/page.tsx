@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ErrorState } from "@/components/ErrorState";
+import { OperatorClient } from "@/components/OperatorClient";
 import {
   Badge,
   BudgetMeter,
@@ -14,6 +15,10 @@ import {
 } from "@/components/ui";
 import {
   fetchApiResult,
+  fetchEvaluationRuns,
+  fetchEvaluationScenarios,
+  fetchSystemState,
+  FALLBACK_SYSTEM_STATE,
   type AgentRegistryDto,
   type FinancialCategoryBudgetDto,
   type FinancialToolMetadataDto,
@@ -24,7 +29,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Operator Controls",
   description:
-    "Treasury operator controls, cluster-wide emergency kill-switch, permit revocation epoch, and active registry status.",
+    "Treasury operator controls, cluster-wide emergency kill-switch, permit revocation epoch, active registry status, and F15 Assurance Lab.",
   alternates: {
     canonical: "/operator",
   },
@@ -37,50 +42,9 @@ const SAMPLE_REASON_CODES = [
   "PERMIT_REPLAY",
   "PARAMETER_HASH_MISMATCH",
   "REVOCATION_EPOCH_MISMATCH",
+  "AGENT_INACTIVE",
+  "EMERGENCY_STOP_ACTIVE",
 ] as const;
-
-const AGENT_COLUMNS: readonly DataTableColumn<AgentRegistryDto>[] = [
-  {
-    key: "name",
-    header: "Agent Identity",
-    render: (row) => (
-      <div>
-        <strong>
-          <code className="inline-code">{row.name}</code>
-        </strong>
-        <div style={{ fontSize: "0.8rem", color: "var(--muted)" }}>
-          {row.description}
-        </div>
-      </div>
-    ),
-  },
-  {
-    key: "version",
-    header: "Active Version",
-    render: (row) => (
-      <code className="inline-code">v{row.active_version ?? "0.1.0"}</code>
-    ),
-  },
-  {
-    key: "framework",
-    header: "Framework",
-    render: (row) => row.framework ?? "langgraph",
-  },
-  {
-    key: "tools",
-    header: "Bound Tools",
-    render: (row) => `${row.allowed_tools.length} tools`,
-  },
-  {
-    key: "status",
-    header: "Status",
-    render: (row) => (
-      <Badge variant={row.status === "active" ? "allow" : "deny"}>
-        {row.status.toUpperCase()}
-      </Badge>
-    ),
-  },
-];
 
 const TOOL_COLUMNS: readonly DataTableColumn<FinancialToolMetadataDto>[] = [
   {
@@ -132,11 +96,15 @@ const TOOL_COLUMNS: readonly DataTableColumn<FinancialToolMetadataDto>[] = [
 ];
 
 export default async function OperatorPage() {
-  const [agentsRes, toolsRes, budgetsRes] = await Promise.all([
-    fetchApiResult<readonly AgentRegistryDto[]>("/agents"),
-    fetchApiResult<readonly FinancialToolMetadataDto[]>("/tools"),
-    fetchApiResult<readonly FinancialCategoryBudgetDto[]>("/financial/budgets"),
-  ]);
+  const [agentsRes, toolsRes, budgetsRes, sysStateRes, scenariosRes, runsRes] =
+    await Promise.all([
+      fetchApiResult<readonly AgentRegistryDto[]>("/agents"),
+      fetchApiResult<readonly FinancialToolMetadataDto[]>("/tools"),
+      fetchApiResult<readonly FinancialCategoryBudgetDto[]>("/financial/budgets"),
+      fetchSystemState(),
+      fetchEvaluationScenarios(),
+      fetchEvaluationRuns(),
+    ]);
 
   if (agentsRes.status === "error" && toolsRes.status === "error") {
     return (
@@ -158,11 +126,15 @@ export default async function OperatorPage() {
   const agents = agentsRes.status === "success" ? agentsRes.data : [];
   const tools = toolsRes.status === "success" ? toolsRes.data : [];
   const budgets = budgetsRes.status === "success" ? budgetsRes.data : [];
+  const systemState = sysStateRes.data ?? FALLBACK_SYSTEM_STATE;
+  const scenarios = scenariosRes.data ?? [];
+  const runs = runsRes.data ?? [];
+
   const readOnlyCount = tools.filter((t) => t.read_only).length;
   const protectedCount = tools.filter((t) => t.protected).length;
 
   return (
-    <div>
+    <div style={{ display: "grid", gap: "1.5rem" }}>
       <Card>
         <div
           style={{
@@ -185,7 +157,7 @@ export default async function OperatorPage() {
           Administrative oversight for registered AI agents, pinned tool
           manifests, risk classifications (<code className="inline-code">R1</code>
           –<code className="inline-code">R4</code>), authoritative category
-          budgets, and deterministic Runtime Gateway reason codes.
+          budgets, cluster-wide emergency kill-switch, and F15 Security Assurance Lab.
         </p>
       </Card>
 
@@ -229,17 +201,13 @@ export default async function OperatorPage() {
         </Card>
       </section>
 
-      <Card style={{ marginTop: "1.25rem" }}>
-        <CardHeader
-          title="Registered Agent Manifests (GET /api/v1/agents)"
-          subtitle="Logical agents and their active deployment versions."
-        />
-        <DataTable
-          columns={AGENT_COLUMNS}
-          rows={agents}
-          getRowKey={(row) => row.id}
-        />
-      </Card>
+      {/* Interactive Operator Control Plane (Kill-Switch, Agent Quarantine, Assurance Lab) */}
+      <OperatorClient
+        initialSystemState={systemState}
+        initialAgents={agents}
+        scenarios={scenarios}
+        initialRuns={runs}
+      />
 
       <Card>
         <CardHeader

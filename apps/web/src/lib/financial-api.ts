@@ -983,3 +983,218 @@ export async function fetchReceipt(
 export async function verifyReceiptChain(): Promise<ApiResult<ReceiptVerificationDto | null>> {
   return fetchApiWithFallback<ReceiptVerificationDto | null>("/receipts/verify", null);
 }
+
+// ---------------------------------------------------------------------------
+// System Control & Emergency Kill-Switch (F09 / F13 / UC8)
+// ---------------------------------------------------------------------------
+
+export interface SystemStateDto {
+  readonly emergency_stop_active: boolean;
+  readonly revocation_epoch: number;
+  readonly updated_at: string;
+}
+
+export const FALLBACK_SYSTEM_STATE: SystemStateDto = {
+  emergency_stop_active: false,
+  revocation_epoch: 0,
+  updated_at: "2026-11-15T00:00:00Z",
+};
+
+/**
+ * Fetch current cluster-wide system state (emergency stop status & revocation epoch).
+ */
+export async function fetchSystemState(): Promise<ApiResult<SystemStateDto>> {
+  return fetchApiWithFallback<SystemStateDto>("/system/state", FALLBACK_SYSTEM_STATE);
+}
+
+/**
+ * Trigger cluster-wide emergency kill-switch.
+ * Revokes all outstanding permits immediately and increments revocation epoch.
+ */
+export async function triggerEmergencyStop(
+  reason: string = "Manual operator kill-switch activated"
+): Promise<{ success: boolean; data: SystemStateDto | null; error?: string }> {
+  const url = buildApiUrl("/system/emergency-stop");
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      return { success: false, data: null, error: `HTTP ${res.status}: ${errText}` };
+    }
+    const data = (await res.json()) as SystemStateDto;
+    return { success: true, data };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error during emergency stop";
+    return { success: false, data: null, error: msg };
+  }
+}
+
+/**
+ * Restore normal cluster-wide operation following emergency stop.
+ */
+export async function restoreSystem(
+  reason: string = "Manual operator restore confirmed"
+): Promise<{ success: boolean; data: SystemStateDto | null; error?: string }> {
+  const url = buildApiUrl("/system/restore");
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      return { success: false, data: null, error: `HTTP ${res.status}: ${errText}` };
+    }
+    const data = (await res.json()) as SystemStateDto;
+    return { success: true, data };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error during system restore";
+    return { success: false, data: null, error: msg };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Agent Quarantine & Lifecycle Control (UC8)
+// ---------------------------------------------------------------------------
+
+/**
+ * Quarantine an agent instance, immediately revoking all action permissions.
+ */
+export async function quarantineAgent(
+  agentId: string
+): Promise<{ success: boolean; data: AgentRegistryDto | null; error?: string }> {
+  const url = buildApiUrl(`/agents/${encodeURIComponent(agentId)}/quarantine`);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      return { success: false, data: null, error: `HTTP ${res.status}: ${errText}` };
+    }
+    const data = (await res.json()) as AgentRegistryDto;
+    return { success: true, data };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error during agent quarantine";
+    return { success: false, data: null, error: msg };
+  }
+}
+
+/**
+ * Reactivate a quarantined agent instance.
+ */
+export async function activateAgent(
+  agentId: string
+): Promise<{ success: boolean; data: AgentRegistryDto | null; error?: string }> {
+  const url = buildApiUrl(`/agents/${encodeURIComponent(agentId)}/activate`);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      return { success: false, data: null, error: `HTTP ${res.status}: ${errText}` };
+    }
+    const data = (await res.json()) as AgentRegistryDto;
+    return { success: true, data };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error during agent activation";
+    return { success: false, data: null, error: msg };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Evaluation & Security Assurance Lab (F15)
+// ---------------------------------------------------------------------------
+
+export interface EvaluationScenarioSummaryDto {
+  readonly id: string;
+  readonly title: string;
+  readonly scenario_file: string;
+  readonly expected_decision: string;
+  readonly description: string;
+}
+
+export interface EvaluationCaseResultDto {
+  readonly external_id: string;
+  readonly title: string;
+  readonly passed: boolean;
+  readonly latency_ms: number;
+  readonly expected_decision: string;
+  readonly actual_decision: string;
+  readonly actual_reason_codes: readonly string[];
+  readonly failure_reason?: string | null;
+  readonly details?: Record<string, unknown>;
+}
+
+export interface EvaluationRunDto {
+  readonly run_id: string;
+  readonly suite_id: string;
+  readonly suite_name: string;
+  readonly state: "running" | "completed" | "failed";
+  readonly scenarios_total: number;
+  readonly scenarios_passed: number;
+  readonly scenarios_failed: number;
+  readonly results: readonly EvaluationCaseResultDto[];
+  readonly created_at: string;
+}
+
+/**
+ * List all available canonical evaluation scenarios from evaluation/scenarios/.
+ */
+export async function fetchEvaluationScenarios(): Promise<
+  ApiResult<readonly EvaluationScenarioSummaryDto[]>
+> {
+  return fetchApiWithFallback<readonly EvaluationScenarioSummaryDto[]>(
+    "/evaluation/scenarios",
+    []
+  );
+}
+
+/**
+ * List recent evaluation runs from the database.
+ */
+export async function fetchEvaluationRuns(): Promise<ApiResult<readonly EvaluationRunDto[]>> {
+  return fetchApiWithFallback<readonly EvaluationRunDto[]>("/evaluation/runs", []);
+}
+
+/**
+ * Trigger an execution of the F15 Security & Policy Assurance Lab suite.
+ */
+export async function runEvaluationSuite(
+  suiteName: string = "Neolith Assurance Lab Core"
+): Promise<{ success: boolean; data: EvaluationRunDto | null; error?: string }> {
+  const url = buildApiUrl("/evaluation/runs");
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ suite_name: suiteName }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      return { success: false, data: null, error: `HTTP ${res.status}: ${errText}` };
+    }
+    const data = (await res.json()) as EvaluationRunDto;
+    return { success: true, data };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Network error during evaluation suite run";
+    return { success: false, data: null, error: msg };
+  }
+}

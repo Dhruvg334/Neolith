@@ -259,3 +259,108 @@ def get_budgets_registry(
         )
         for row in rows
     ]
+
+
+class EffectivePermissionsResponse(BaseModel):
+    """Effective capability assignments and policies for a subject (F04)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    subject_type: str
+    subject_id: str
+    capabilities: list[str]
+    status: str
+
+
+@router.get(
+    "/permissions/effective",
+    response_model=EffectivePermissionsResponse,
+    status_code=status.HTTP_200_OK,
+    operation_id="getEffectivePermissions",
+)
+def get_effective_permissions(
+    session: Annotated[Session, Depends(get_db_session)],
+    subject_type: str = "agent",
+    subject_id: str = "financial-ai-agent",
+) -> EffectivePermissionsResponse:
+    """Retrieve effective capabilities and permission bindings for an agent or user."""
+    tools = list_financial_tools(session)
+    capabilities = [t.required_capability for t in tools if t.required_capability]
+    return EffectivePermissionsResponse(
+        subject_type=subject_type,
+        subject_id=subject_id,
+        capabilities=sorted(list(set(capabilities))),
+        status="active",
+    )
+
+
+class AgentQuarantineResponse(BaseModel):
+    """Response after updating an agent's quarantine or active status."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: UUID
+    name: str
+    status: str
+
+
+@router.post(
+    "/agents/{agent_id}/quarantine",
+    response_model=AgentQuarantineResponse,
+    status_code=status.HTTP_200_OK,
+    operation_id="quarantineAgent",
+)
+def quarantine_agent_endpoint(
+    agent_id: UUID,
+    session: Annotated[Session, Depends(get_db_session)],
+) -> AgentQuarantineResponse:
+    """Quarantine an agent, immediately revoking all action proposal authority (UC8)."""
+    from neolith_api.governance.service import GovernanceRuntimeService
+
+    service = GovernanceRuntimeService(session)
+    try:
+        agent = service.quarantine_agent(agent_id)
+        session.commit()
+        return AgentQuarantineResponse(
+            id=agent.id,
+            name=agent.name,
+            status=agent.status,
+        )
+    except KeyError as exc:
+        raise NeolithAPIError(
+            status=status.HTTP_404_NOT_FOUND,
+            title="Agent not found",
+            detail=str(exc),
+            reason_code="AGENT_NOT_FOUND",
+        ) from exc
+
+
+@router.post(
+    "/agents/{agent_id}/activate",
+    response_model=AgentQuarantineResponse,
+    status_code=status.HTTP_200_OK,
+    operation_id="activateAgent",
+)
+def activate_agent_endpoint(
+    agent_id: UUID,
+    session: Annotated[Session, Depends(get_db_session)],
+) -> AgentQuarantineResponse:
+    """Restore a quarantined agent to active status."""
+    from neolith_api.governance.service import GovernanceRuntimeService
+
+    service = GovernanceRuntimeService(session)
+    try:
+        agent = service.activate_agent(agent_id)
+        session.commit()
+        return AgentQuarantineResponse(
+            id=agent.id,
+            name=agent.name,
+            status=agent.status,
+        )
+    except KeyError as exc:
+        raise NeolithAPIError(
+            status=status.HTTP_404_NOT_FOUND,
+            title="Agent not found",
+            detail=str(exc),
+            reason_code="AGENT_NOT_FOUND",
+        ) from exc

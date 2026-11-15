@@ -65,3 +65,24 @@ def get_receipt(
             detail=f"Decision receipt '{receipt_id}' not found.",
         )
     return record
+
+
+@router.post(
+    "/{receipt_id}/verify",
+    response_model=ReceiptVerificationResponse,
+    status_code=status.HTTP_200_OK,
+    operation_id="verifyReceipt",
+)
+def verify_specific_receipt(
+    receipt_id: UUID,
+    session: Annotated[Session, Depends(get_db_session)],
+) -> ReceiptVerificationResponse:
+    """Verify cryptographic integrity of the receipt chain including the specified receipt."""
+    service = GovernanceRuntimeService(session)
+    record = service.get_receipt(receipt_id)
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Decision receipt '{receipt_id}' not found.",
+        )
+    return service.verify_receipt_chain()

@@ -92,3 +92,61 @@ def decide_approval(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+
+
+@router.post(
+    "/{approval_id}/approve",
+    response_model=ApprovalDecisionResponse,
+    status_code=status.HTTP_200_OK,
+    operation_id="approveAction",
+)
+def approve_action(
+    approval_id: UUID,
+    session: Annotated[Session, Depends(get_db_session)],
+) -> ApprovalDecisionResponse:
+    """Approve a pending human checkpoint and issue execution permit."""
+    service = GovernanceRuntimeService(session)
+    try:
+        response = service.decide_approval(
+            approval_id=approval_id,
+            decision="approve",
+            note="Approved via operator shortcut",
+            decided_by="operator@neolith.local",
+        )
+        session.commit()
+        return response
+    except ValueError as exc:
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post(
+    "/{approval_id}/reject",
+    response_model=ApprovalDecisionResponse,
+    status_code=status.HTTP_200_OK,
+    operation_id="rejectAction",
+)
+def reject_action(
+    approval_id: UUID,
+    session: Annotated[Session, Depends(get_db_session)],
+) -> ApprovalDecisionResponse:
+    """Reject a pending human checkpoint without execution."""
+    service = GovernanceRuntimeService(session)
+    try:
+        response = service.decide_approval(
+            approval_id=approval_id,
+            decision="reject",
+            note="Rejected via operator shortcut",
+            decided_by="operator@neolith.local",
+        )
+        session.commit()
+        return response
+    except ValueError as exc:
+        session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc

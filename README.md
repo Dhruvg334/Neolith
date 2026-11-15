@@ -41,8 +41,14 @@ Instead of giving the AI direct authority to move money or modify company system
 
 <h2 align="center">Current Build Status</h2>
 
-The repository contains **Phase 0 (Foundation)**, **Phase 1 (Financial Sandbox & Domain Reference)**, **Phase 2 (Financial AI Agent & Multi-Channel Interaction Core)**, **Phase 3 (Policy-Driven Governance Runtime & Cloud Deployment)**, and **Phase 4 (Human Checkpoints, Execution Permits, Banking Settlement & Receipts Chain)** fully implemented, tested, and verified.
+The repository contains **Phase 0 (Foundation)**, **Phase 1 (Financial Sandbox & Domain Reference)**, **Phase 2 (Financial AI Agent & Multi-Channel Interaction Core)**, **Phase 3 (Policy-Driven Governance Runtime & Cloud Deployment)**, **Phase 4 (Human Checkpoints, Execution Permits, Banking Settlement & Receipts Chain)**, and **Phase 5 (Cluster-Wide Emergency Stop, Agent Quarantine, Direct Permit Consumption & F15 Assurance Lab)** fully implemented, tested, and verified.
 
+- **Cluster-Wide Emergency Stop & Revocation Epoch (F09, F13, UC8)**: Immediate administrative kill-switch (`POST /api/v1/system/emergency-stop` and `POST /api/v1/system/restore`) tracking a monotonically incrementing `revocation_epoch`. When engaged, all financial execution permits are invalidated and OPA policies reject mutating financial operations with `EMERGENCY_STOP_ACTIVE`.
+- **Operator Agent Quarantine & Authority Controls (UC8)**: One-click quarantine and reactivation (`POST /api/v1/agents/{id}/quarantine` and `/activate`). Quarantined agents produce deterministic `AGENT_INACTIVE` denials at the Runtime Gateway.
+- **Effective Capabilities Exploration (F04)**: Introspection endpoint `GET /api/v1/permissions/effective` returning active roles and bound capabilities for calling entities.
+- **Direct Permit Consumption & Anti-Tampering (F09, F10)**: Single-use permit settlement endpoint `POST /api/v1/permits/{id}/consume`. Enforces single-use (`PERMIT_REPLAY`), expiration (`PERMIT_EXPIRED`), revocation epoch match (`REVOCATION_EPOCH_MISMATCH`), and canonical SHA-256 parameter digest verification (`PARAMETER_HASH_MISMATCH`).
+- **F15 Security & Policy Assurance Lab (`/evaluation`)**: Automated execution service and API endpoints (`GET /api/v1/evaluation/scenarios`, `POST /api/v1/evaluation/runs`, `GET /api/v1/evaluation/runs`) running all 7 canonical safety scenarios (`001_procurement_happy_path` through `007_emergency_stop`) against the authoritative Governance Runtime with 100% pass rate.
+- **Interactive Operator Control Plane (`/operator`)**: Interactive dashboard featuring live Emergency Kill-Switch banner with Revocation Epoch display, Agent Quarantine/Activation buttons, and real-time F15 Assurance Lab runner.
 - **Human Checkpoints Subsystem (`/approvals` & `/api/v1/approvals`)**: Dedicated human approval queue for proposed actions classified as `review` (such as `INV-002` Nova Compute INR 35,000.00, strict governance mode, or custom threshold breaches). Approvers review canonical parameter SHA-256 hashes, attached audit notes, and can either execute (`approve`) or discard (`reject`) with an authoritative decision note.
 - **Execution Permit Service (F09) & Banking Settlement (F10)**: Dynamic issuance of short-lived, single-use Execution Permits (`execution_permits` table) bound to operation name, canonical parameter SHA-256 hash, and 60-second expiration. Upon approval, automated banking settlement atomically updates financial account balances, marks invoices `paid`, records audited ledger transactions, and consumes the execution permit.
 - **Tamper-Evident Decision Receipts Chain (F13 & `/receipts/[id]`)**: Append-only SHA-256 cryptographic hash-linked receipt chain (`decision_receipts` table) where each receipt hashes `previous_receipt_hash`, `chain_index`, `payload_hash`, and `event_type`. Provides real-time whole-chain verification via `GET /api/v1/receipts/verify` and an interactive visual cryptography explorer.
@@ -448,6 +454,14 @@ curl http://localhost:8000/api/v1/approvals
 
 :: Verify SHA-256 cryptographic integrity of decision receipts chain
 curl http://localhost:8000/api/v1/receipts/verify
+
+:: Inspect cluster system state and emergency stop status
+curl http://localhost:8000/api/v1/system/state
+
+:: Run F15 Security & Policy Assurance Lab canonical scenarios
+curl -X POST http://localhost:8000/api/v1/evaluation/runs ^
+  -H "Content-Type: application/json" ^
+  -d "{\"suite_name\": \"Neolith Assurance Lab Core\"}"
 ```
 
 ### 5. Frontend Setup & Verification (`apps/web`)
