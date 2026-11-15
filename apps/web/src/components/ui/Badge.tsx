@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Check, X, AlertTriangle, Info } from "lucide-react";
 import type { DecisionOutcome } from "@neolith/contracts";
 
 export type BadgeVariant = "neutral" | "allow" | "deny" | "review" | "info";
@@ -6,26 +7,26 @@ export type RiskTier = "R0" | "R1" | "R2" | "R3" | "R4";
 
 interface BadgeProps {
   readonly variant?: BadgeVariant;
-  readonly icon?: string;
+  readonly icon?: ReactNode;
   readonly children: ReactNode;
 }
-
-const VARIANT_ICONS: Record<BadgeVariant, string> = {
-  neutral: "•",
-  allow: "✓",
-  deny: "✕",
-  review: "!",
-  info: "i",
-};
 
 export function Badge({ variant = "neutral", icon, children }: BadgeProps) {
   const variantClass =
     variant === "neutral" ? "ui-badge" : `ui-badge ui-badge-${variant}`;
-  const glyph = icon ?? VARIANT_ICONS[variant];
+
+  const renderIcon = () => {
+    if (icon) return icon;
+    if (variant === "allow") return <Check className="w-2.5 h-2.5 inline" />;
+    if (variant === "deny") return <X className="w-2.5 h-2.5 inline" />;
+    if (variant === "review") return <AlertTriangle className="w-2.5 h-2.5 inline" />;
+    if (variant === "info") return <Info className="w-2.5 h-2.5 inline" />;
+    return <span className="w-1.5 h-1.5 rounded-full bg-current inline-block" />;
+  };
 
   return (
     <span className={variantClass}>
-      <span aria-hidden="true">{glyph}</span>
+      <span aria-hidden="true" className="inline-flex items-center">{renderIcon()}</span>
       <span>{children}</span>
     </span>
   );

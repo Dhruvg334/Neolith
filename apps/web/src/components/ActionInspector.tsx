@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Check, X } from "lucide-react";
 import type {
   ExecutionRequestDto,
   GovernanceDecisionDto,
@@ -88,7 +89,7 @@ export function ActionInspector({
             className="rounded p-1 text-slate-300 hover:bg-white/10 hover:text-white"
             aria-label="Close inspector drawer"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -231,8 +232,18 @@ export function ActionInspector({
                     </div>
                     <div>
                       <span className="text-slate-500">Verified Vendor:</span>{" "}
-                      <span className="font-medium">
-                        {invoice.is_verified_vendor ? "✓ Verified" : "✗ Unverified"}
+                      <span className="font-medium inline-flex items-center gap-1">
+                        {invoice.is_verified_vendor ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Verified</span>
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-3.5 h-3.5 text-rose-600" />
+                            <span>Unverified</span>
+                          </>
+                        )}
                       </span>
                     </div>
                     <div>
@@ -340,13 +351,23 @@ export function ActionInspector({
                     <div>
                       <span className="text-slate-500">Feasible:</span>{" "}
                       <span
-                        className={`font-bold ${
+                        className={`font-bold inline-flex items-center gap-1 ${
                           decision.budget_check.is_feasible
                             ? "text-emerald-700"
                             : "text-red-700"
                         }`}
                       >
-                        {decision.budget_check.is_feasible ? "✓ YES" : "✗ NO"}
+                        {decision.budget_check.is_feasible ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            <span>YES</span>
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-3.5 h-3.5" />
+                            <span>NO</span>
+                          </>
+                        )}
                       </span>
                     </div>
                     <div>

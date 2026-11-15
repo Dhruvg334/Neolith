@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "./ui/Button";
 
 export interface ErrorStateProps {
@@ -58,11 +59,13 @@ export function ErrorState({
           alignItems: "center",
           justifyContent: "center",
           margin: "0 auto 1rem auto",
-          fontSize: "1.25rem",
-          fontWeight: 700,
         }}
       >
-        {isStarting ? "⏳" : "⚠️"}
+        {isStarting ? (
+          <Loader2 className="w-5 h-5 animate-spin text-amber-600" />
+        ) : (
+          <AlertTriangle className="w-5 h-5 text-rose-600" />
+        )}
       </div>
 
       <h3

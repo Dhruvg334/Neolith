@@ -55,8 +55,107 @@ class DeterministicMockLLMProvider:
             is_injection = True
 
         # Check for ambiguity: "Pay the invoice" without an invoice number
-        invoice_matches = re.findall(r"INV-\d{3}", text, re.IGNORECASE)
-        has_pay_verb = any(word in lower for word in ["pay", "payment", "settle"])
+        invoice_matches = re.findall(r"INV-\d{3,4}", text, re.IGNORECASE)
+        has_pay_verb = any(
+            word in lower for word in ["pay", "payment", "settle", "transfer", "disburse"]
+        )
+
+        # Extract explicit monetary amount if present (e.g. INR 45,000, Rs. 15000, ₹8,000, 25000)
+        amount_match = re.search(
+            r"(?:inr|rs\.?|₹|\$)\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?|\d+(?:\.\d{2})?)|(\b\d{4,7}(?:\.\d{2})?\b)",
+            text,
+            re.IGNORECASE,
+        )
+        extracted_amount: str | None = None
+        if amount_match:
+            raw_amt = (amount_match.group(1) or amount_match.group(2) or "").replace(",", "")
+            try:
+                extracted_amount = f"{float(raw_amt):.2f}"
+            except ValueError:
+                extracted_amount = None
+
+        # Detect category dynamically
+        detected_category = "software"
+        if any(
+            k in lower
+            for k in ["infra", "server", "compute", "cluster", "gpu", "host", "datacenter"]
+        ):
+            detected_category = "infrastructure"
+        elif any(k in lower for k in ["soft", "saas", "license", "cloud", "api", "sub", "tool"]):
+            detected_category = "software"
+        elif any(
+            k in lower
+            for k in ["misc", "supplies", "office", "travel", "logistics", "shipping", "consulting"]
+        ):
+            detected_category = "miscellaneous"
+
+        # Detect vendor dynamically
+        detected_vendor = "Enterprise Beneficiary"
+        for v_name in [
+            "Acme Cloud Services",
+            "Acme Cloud",
+            "Nova Compute Systems",
+            "Nova Compute",
+            "Quantum Hosting Labs",
+            "Quantum Labs",
+            "AWS",
+            "Amazon Web Services",
+            "Google Cloud",
+            "Microsoft Azure",
+            "Logistics Corp",
+            "Unknown Supplies",
+        ]:
+            if v_name.lower() in lower:
+                detected_vendor = v_name
+                break
+
+        # Dynamic invoice pay intents
+        if invoice_matches or (has_pay_verb and extracted_amount is not None):
+            inv_id = (
+                invoice_matches[0].upper()
+                if invoice_matches
+                else f"INV-{abs(hash(text)) % 900 + 100}"
+            )
+
+            # Known canonical baseline presets (can be overridden by explicit user prompt amounts)
+            if inv_id == "INV-001":
+                amount = extracted_amount or "8000.00"
+                category = "software"
+                vendor = "Acme Cloud"
+            elif inv_id == "INV-002":
+                amount = extracted_amount or "35000.00"
+                category = "infrastructure"
+                vendor = "Nova Compute Systems"
+            elif inv_id == "INV-003":
+                amount = extracted_amount or "65000.00"
+                category = "infrastructure"
+                vendor = "Quantum Hosting Labs"
+            else:
+                amount = extracted_amount or "15000.00"
+                category = detected_category
+                vendor = detected_vendor
+
+            return {
+                "intent": "pay_invoice",
+                "needs_clarification": False,
+                "clarification_message": None,
+                "target_id": inv_id,
+                "amount": amount,
+                "currency": "INR",
+                "category": category,
+                "vendor_name": vendor,
+                "justification": (
+                    f"Payment proposal dynamically formulated for {inv_id} ({vendor}) "
+                    f"under {category} monthly allocation."
+                ),
+                "evidence_refs": [
+                    f"invoice:{inv_id}",
+                    f"beneficiary:{vendor}",
+                    f"budget:{category}",
+                    "account:Operations Account",
+                ],
+                "is_injection": is_injection,
+            }
 
         if (
             has_pay_verb
@@ -68,84 +167,14 @@ class DeterministicMockLLMProvider:
                 "intent": "clarification_required",
                 "needs_clarification": True,
                 "clarification_message": (
-                    "Multiple invoices are available in the financial sandbox. "
-                    "Please specify which invoice you would like to inspect or pay "
-                    "(e.g. INV-001, INV-002, or INV-003)."
+                    "Please specify an invoice number (e.g. INV-001 or custom INV-###) "
+                    "or an amount and vendor for payment evaluation."
                 ),
                 "target_id": None,
                 "amount": None,
                 "currency": "INR",
                 "category": None,
                 "vendor_name": None,
-                "is_injection": is_injection,
-            }
-
-        # Specific invoice pay intents
-        if "inv-001" in lower:
-            return {
-                "intent": "pay_invoice",
-                "needs_clarification": False,
-                "clarification_message": None,
-                "target_id": "INV-001",
-                "amount": "8000.00",
-                "currency": "INR",
-                "category": "software",
-                "vendor_name": "Acme Cloud",
-                "justification": (
-                    "Payment requested for verified invoice INV-001 "
-                    "from Acme Cloud within software budget."
-                ),
-                "evidence_refs": [
-                    "invoice:INV-001",
-                    "beneficiary:Acme Cloud",
-                    "budget:software",
-                    "account:Operations Account",
-                ],
-                "is_injection": is_injection,
-            }
-
-        if "inv-002" in lower:
-            return {
-                "intent": "pay_invoice",
-                "needs_clarification": False,
-                "clarification_message": None,
-                "target_id": "INV-002",
-                "amount": "35000.00",
-                "currency": "INR",
-                "category": "infrastructure",
-                "vendor_name": "Nova Compute",
-                "justification": (
-                    "Payment requested for invoice INV-002 from Nova Compute "
-                    "(exceeds approval threshold of INR 25,000.00 within infrastructure budget)."
-                ),
-                "evidence_refs": [
-                    "invoice:INV-002",
-                    "beneficiary:Nova Compute",
-                    "budget:infrastructure",
-                    "account:Operations Account",
-                ],
-                "is_injection": is_injection,
-            }
-
-        if "inv-003" in lower:
-            return {
-                "intent": "pay_invoice",
-                "needs_clarification": False,
-                "clarification_message": None,
-                "target_id": "INV-003",
-                "amount": "75000.00",
-                "currency": "INR",
-                "category": "miscellaneous",
-                "vendor_name": "Unknown Supplies",
-                "justification": (
-                    "Payment requested for invoice INV-003 from unverified vendor Unknown Supplies."
-                ),
-                "evidence_refs": [
-                    "invoice:INV-003",
-                    "beneficiary:Unknown Supplies",
-                    "budget:miscellaneous",
-                    "account:Operations Account",
-                ],
                 "is_injection": is_injection,
             }
 

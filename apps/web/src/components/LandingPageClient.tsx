@@ -7,6 +7,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
+  Check,
+  X,
   ArrowRight,
   CheckSquare,
   BookOpen,
@@ -192,15 +194,15 @@ export function LandingPageClient() {
             </div>
             <ul className="space-y-3 text-xs text-slate-700 list-none p-0 m-0 leading-relaxed">
               <li className="flex items-start gap-2">
-                <span className="text-red-500 font-bold shrink-0">✕</span>
-                <span><strong>Hallucinations & Prompt Injection:</strong> Poisoned invoice text or unexpected prompt responses can trick an LLM into sending money to attacker accounts.</span>
+                <X className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
+                <span><strong>Hallucinations &amp; Prompt Injection:</strong> Poisoned invoice text or unexpected prompt responses can trick an LLM into sending money to attacker accounts.</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-red-500 font-bold shrink-0">✕</span>
+                <X className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
                 <span><strong>Runaway Spending Loops:</strong> In a recursive loop or duplicate run, the agent can drain treasury balances beyond intended budgets.</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-red-500 font-bold shrink-0">✕</span>
+                <X className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
                 <span><strong>No Human Verification:</strong> High-value wire transfers execute unilaterally without financial manager oversight.</span>
               </li>
             </ul>
@@ -214,16 +216,16 @@ export function LandingPageClient() {
             </div>
             <ul className="space-y-3 text-xs text-slate-700 list-none p-0 m-0 leading-relaxed">
               <li className="flex items-start gap-2">
-                <span className="text-emerald-600 font-bold shrink-0">✓</span>
+                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                 <span><strong>Separation of Powers:</strong> The AI can freely research and propose payments, but holds zero execution authority or banking credentials.</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-emerald-600 font-bold shrink-0">✓</span>
+                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                 <span><strong>Hard Category Budgets:</strong> Spending caps are mathematically enforced. The agent physically cannot overspend even if it hallucinates.</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-emerald-600 font-bold shrink-0">✓</span>
-                <span><strong>Manager Approvals & Audit Trail:</strong> High-value transactions pause for human sign-off, and every decision produces an immutable audit receipt.</span>
+                <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                <span><strong>Manager Approvals &amp; Audit Trail:</strong> High-value transactions pause for human sign-off, and every decision produces an immutable audit receipt.</span>
               </li>
             </ul>
           </div>

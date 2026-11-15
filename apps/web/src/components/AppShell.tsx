@@ -18,6 +18,7 @@ import {
   ExternalLink,
   Lock,
   PanelLeft,
+  Users,
 } from "lucide-react";
 import { checkBackendHealth } from "@/lib/financial-api";
 import { InfoIcon } from "@/components/ui/InfoIcon";
@@ -53,6 +54,7 @@ const CONTROL_NAV: readonly NavItem[] = [
 const KNOWLEDGE_NAV: readonly NavItem[] = [
   { href: "/docs", label: "System Documentation Hub", icon: BookOpen },
   { href: "/adopt", label: "Organization Adoption Guide", icon: Compass },
+  { href: "/about", label: "About Team & Project", icon: Users },
 ];
 
 export function AppShell({ children }: AppShellProps) {
@@ -479,6 +481,11 @@ export function AppShell({ children }: AppShellProps) {
                 Trust & Verification
               </span>
               <ul className="space-y-2 text-xs list-none p-0 m-0">
+                <li>
+                  <Link href="/about" className="hover:text-ember-600 transition-colors font-medium">
+                    About Team &amp; Major Project
+                  </Link>
+                </li>
                 <li>
                   <Link href="/docs" className="hover:text-ember-600 transition-colors">
                     Architecture Documentation

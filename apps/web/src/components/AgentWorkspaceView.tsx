@@ -17,6 +17,11 @@ import {
   Lock,
   Sliders,
   Bot,
+  User,
+  Trash2,
+  Lightbulb,
+  Settings2,
+  ChevronRight,
 } from "lucide-react";
 import { ActionInspector } from "@/components/ActionInspector";
 import {
@@ -38,6 +43,7 @@ import {
   summarizeGovernanceActivity,
   type FinancialSummaryDto,
   type FinancialToolMetadataDto,
+  type FinancialCategoryBudgetDto,
   type InvoiceDto,
   type GovernanceActivitySummaryDto,
   type GovernanceDecisionDto,
@@ -61,8 +67,6 @@ export type WorkspaceTabId =
   | "policies"
   | "activity"
   | "architecture";
-
-export type ChannelId = "web" | "twilio" | "voice";
 
 interface WorkspaceTabDef {
   readonly id: WorkspaceTabId;
@@ -124,7 +128,7 @@ interface BenchmarkScenario {
   readonly outcomeLabel: string;
 }
 
-// Exactly 3 clear benchmark scenarios (Allow, Review, Deny) - ideal for presentations
+// 3 clear benchmark scenarios (Allow, Review, Deny) - presentation ready
 const BENCHMARK_SCENARIOS: readonly BenchmarkScenario[] = [
   {
     id: "scenario-inv001",
@@ -208,7 +212,7 @@ const INITIAL_ACTIVITY_RECORDS: readonly ActivityActionRecord[] = [
     timestamp: "10:14 AM",
     justification: "Invoice INV-001 for cloud software subscription verified against active vendor contract.",
     ruleExplanation:
-      "Routine spend within Software monthly limit (INR 50,000) and below INR 25,000 operator review threshold. Allowed autonomously with single-use permit.",
+      "Routine spend within Software monthly quota and below operator review threshold. Allowed autonomously with single-use permit.",
   },
   {
     id: "act-inv-002",
@@ -226,7 +230,7 @@ const INITIAL_ACTIVITY_RECORDS: readonly ActivityActionRecord[] = [
     timestamp: "10:02 AM",
     justification: "Payment for dedicated server infrastructure cluster.",
     ruleExplanation:
-      "Action exceeds the configured INR 25,000 operator review threshold. Intercepted and enqueued in /approvals for dual-key operator signoff.",
+      "Action exceeds the configured operator review threshold. Intercepted and enqueued in /approvals for dual-key operator signoff.",
   },
   {
     id: "act-inv-003",
@@ -244,7 +248,7 @@ const INITIAL_ACTIVITY_RECORDS: readonly ActivityActionRecord[] = [
     timestamp: "09:48 AM",
     justification: "Critical GPU burst compute renewal request.",
     ruleExplanation:
-      "Unverified beneficiary detected and requested amount exceeds remaining Infrastructure budget. Blocked immediately under deterministic invariant.",
+      "Unverified beneficiary detected and requested amount exceeds available Infrastructure budget. Blocked immediately under deterministic invariant.",
   },
 ];
 
@@ -335,8 +339,6 @@ export function AgentWorkspaceView({
   tools,
   isLiveConnection,
 }: AgentWorkspaceViewProps) {
-  // Navigation & Channel State
-  const [activeChannel, setActiveChannel] = useState<ChannelId>("web");
   const [activeTab, setActiveTab] = useState<WorkspaceTabId>("console");
 
   // Console State
@@ -357,6 +359,11 @@ export function AgentWorkspaceView({
   const [policySettings, setPolicySettings] = useState<AgentPolicySettings>(DEFAULT_POLICY_SETTINGS);
   const [policyToast, setPolicyToast] = useState<string | null>(null);
 
+  // Reactive Category Budgets State (Updated when user edits settings or when transactions are approved)
+  const [categoryBudgets, setCategoryBudgets] = useState<readonly FinancialCategoryBudgetDto[]>(
+    summary.monthly_budgets
+  );
+
   // Activity Records & AI Summary State
   const [activityRecords, setActivityRecords] = useState<readonly ActivityActionRecord[]>(
     INITIAL_ACTIVITY_RECORDS
@@ -365,11 +372,33 @@ export function AgentWorkspaceView({
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [, startTransition] = useTransition();
 
-  // Evaluate action proposal against active policy settings
+  // Helper to synchronize live category budgets when user changes numerical settings
+  const syncBudgetsWithSettings = (newSettings: AgentPolicySettings) => {
+    setCategoryBudgets((prev) =>
+      prev.map((b) => {
+        const catLower = b.category.toLowerCase();
+        let newLimit = parseFloat(b.limit_amount);
+        if (catLower.includes("infra")) newLimit = newSettings.infrastructureBudget;
+        else if (catLower.includes("soft")) newLimit = newSettings.softwareBudget;
+        else if (catLower.includes("misc")) newLimit = newSettings.miscellaneousBudget;
+
+        const spent = parseFloat(b.used_amount || "0");
+        const available = Math.max(0, newLimit - spent);
+        return {
+          ...b,
+          limit_amount: newLimit.toFixed(2),
+          available_amount: available.toFixed(2),
+        };
+      })
+    );
+  };
+
+  // Evaluate action proposal dynamically against active policy settings & actual live category budgets
   const evaluateActionWithPolicy = (
     action: FinancialActionProposal,
-    settings: AgentPolicySettings
-  ): { outcome: DecisionOutcome; reasonCodes: string[]; ruleExplanation: string } => {
+    settings: AgentPolicySettings,
+    budgets: readonly FinancialCategoryBudgetDto[]
+  ): { outcome: DecisionOutcome; reasonCodes: string[]; ruleExplanation: string; allowedAmountToDeduct: number } => {
     const amountVal = parseFloat(action.amount || "0");
     const category = (action.category || "software").toLowerCase();
 
@@ -379,41 +408,45 @@ export function AgentWorkspaceView({
         outcome: "review",
         reasonCodes: ["STRICT_PROFILE_MANDATORY_REVIEW", "APPROVAL_REQUIRED"],
         ruleExplanation: `Strict Governance Baseline active: Zero autonomous settlement permitted. Intercepted and enqueued in /approvals for dual-key operator signoff.`,
+        allowedAmountToDeduct: 0,
       };
     }
 
-    // 2. Budget violation check
-    const budgetCap = category.includes("infra")
-      ? settings.infrastructureBudget
-      : category.includes("soft")
-        ? settings.softwareBudget
-        : settings.miscellaneousBudget;
+    // 2. Resolve the matching category budget dynamically
+    const matchedBudget = budgets.find((b) => {
+      const bCat = b.category.toLowerCase();
+      return bCat.includes(category) || category.includes(bCat);
+    });
 
-    const alreadySpent = category.includes("infra") ? 30000 : 8000;
-    const remaining = Math.max(0, budgetCap - alreadySpent);
+    const availableBudget = matchedBudget ? parseFloat(matchedBudget.available_amount) : 50000;
 
-    if (amountVal > remaining) {
+    // 3. Budget violation check (100% accurate reason matching display)
+    if (amountVal > availableBudget) {
+      const deficit = amountVal - availableBudget;
       return {
         outcome: "deny",
         reasonCodes: ["DENY_BUDGET_EXCEEDED", "INVARIANT_BREACH"],
-        ruleExplanation: `Proposed ${formatInrCurrency(amountVal.toString())} exceeds available ${action.category ?? "category"} budget (${formatInrCurrency(remaining.toString())} remaining). Hard-blocked at gateway.`,
+        ruleExplanation: `Proposed ${formatInrCurrency(amountVal.toString())} exceeds available ${action.category ?? "category"} budget of ${formatInrCurrency(availableBudget.toString())} (deficit of ${formatInrCurrency(deficit.toString())}). Hard-blocked at gateway.`,
+        allowedAmountToDeduct: 0,
       };
     }
 
-    // 3. Review threshold check
+    // 4. Operator Review threshold check
     if (amountVal > settings.reviewThreshold) {
       return {
         outcome: "review",
         reasonCodes: ["APPROVAL_REQUIRED", "REVIEW_THRESHOLD_EXCEEDED"],
-        ruleExplanation: `Amount ${formatInrCurrency(amountVal.toString())} exceeds operator review threshold (${formatInrCurrency(settings.reviewThreshold.toString())}). Paused at gateway awaiting dual-key signoff.`,
+        ruleExplanation: `Amount ${formatInrCurrency(amountVal.toString())} exceeds configured operator review threshold (${formatInrCurrency(settings.reviewThreshold.toString())}). Paused at gateway awaiting dual-key signoff.`,
+        allowedAmountToDeduct: 0,
       };
     }
 
-    // 4. Allowed routine payment
+    // 5. Allowed routine payment
     return {
       outcome: "allow",
       reasonCodes: ["BASE_POLICY_ALLOW", "ROUTINE_PAYMENT_PERMITTED"],
-      ruleExplanation: `Within ${action.category ?? "category"} budget and under review threshold. Verified vendor match. Single-use Ed25519 execution permit minted.`,
+      ruleExplanation: `Within ${action.category ?? "category"} budget (${formatInrCurrency(availableBudget.toString())} available) and below operator review threshold (${formatInrCurrency(settings.reviewThreshold.toString())}). Verified vendor match. Single-use Ed25519 execution permit minted.`,
+      allowedAmountToDeduct: amountVal,
     };
   };
 
@@ -427,6 +460,14 @@ export function AgentWorkspaceView({
     setActiveTaskId(`task-${Date.now().toString(16)}`);
     setActiveTraceId(`trace-${Date.now().toString(16)}`);
     setErrorMsg(null);
+  };
+
+  // Option to delete / clear action history
+  const handleClearActionHistory = () => {
+    setActivityRecords([]);
+    setAiSummary(null);
+    setPolicyToast("Action history and audit ledger cleared.");
+    setTimeout(() => setPolicyToast(null), 3000);
   };
 
   const copyPermitToken = (token: string) => {
@@ -454,6 +495,77 @@ export function AgentWorkspaceView({
       created_at: new Date().toISOString(),
     });
     setIsInspectorOpen(true);
+  };
+
+  // Dynamic entity parser: extracts invoice numbers, amounts, vendors, and categories from ANY prompt
+  const parseDynamicPrompt = (text: string) => {
+    const lower = text.toLowerCase();
+
+    // 1. Invoice match (e.g. INV-001, INV-042, INV-999)
+    const invMatch = text.match(/INV-[\w-]+/i);
+    const targetInvoice = invMatch ? invMatch[0].toUpperCase() : null;
+
+    // 2. Check if this invoice exists in ground-truth unpaidInvoices list
+    const matchedKnownInvoice = targetInvoice
+      ? unpaidInvoices.find((i) => i.invoice_number.toUpperCase() === targetInvoice)
+      : null;
+
+    // 3. Monetary Amount extraction
+    const amountMatch = text.match(
+      /(?:inr|rs\.?|₹|\$)\s*([\d,]+(?:\.\d{2})?)|(\b\d{4,7}(?:\.\d{2})?\b)/i
+    );
+    let extractedAmount = "15000.00";
+    if (matchedKnownInvoice) {
+      extractedAmount = matchedKnownInvoice.amount;
+    } else if (amountMatch) {
+      const raw = (amountMatch[1] ?? amountMatch[2] ?? "").replace(/,/g, "");
+      if (!isNaN(parseFloat(raw))) {
+        extractedAmount = parseFloat(raw).toFixed(2);
+      }
+    }
+
+    // 4. Category extraction
+    let extractedCategory = matchedKnownInvoice?.category ?? "Software";
+    if (!matchedKnownInvoice) {
+      if (lower.includes("infra") || lower.includes("server") || lower.includes("compute") || lower.includes("gpu") || lower.includes("hosting")) {
+        extractedCategory = "Infrastructure";
+      } else if (lower.includes("soft") || lower.includes("saas") || lower.includes("license") || lower.includes("cloud") || lower.includes("api")) {
+        extractedCategory = "Software";
+      } else if (lower.includes("misc") || lower.includes("supplies") || lower.includes("office") || lower.includes("travel")) {
+        extractedCategory = "Miscellaneous";
+      }
+    }
+
+    // 5. Vendor extraction
+    let extractedVendor = matchedKnownInvoice?.vendor_name ?? "Enterprise Beneficiary";
+    if (!matchedKnownInvoice) {
+      const knownVendors = [
+        "Acme Cloud Services",
+        "Acme Cloud",
+        "Nova Compute Systems",
+        "Nova Compute",
+        "Quantum Hosting Labs",
+        "Quantum Labs",
+        "AWS",
+        "Google Cloud",
+        "Microsoft Azure",
+        "Logistics Corp",
+      ];
+      for (const v of knownVendors) {
+        if (lower.includes(v.toLowerCase())) {
+          extractedVendor = v;
+          break;
+        }
+      }
+    }
+
+    return {
+      targetId: targetInvoice ?? `INV-${Math.floor(100 + Math.random() * 900)}`,
+      amount: extractedAmount,
+      category: extractedCategory,
+      vendorName: extractedVendor,
+      isVerifiedVendor: matchedKnownInvoice ? matchedKnownInvoice.is_verified_vendor : !lower.includes("unverified"),
+    };
   };
 
   // Turn Dispatch Submission
@@ -501,7 +613,7 @@ export function AgentWorkspaceView({
       const effectiveProposal = data.proposed_action;
 
       if (effectiveProposal) {
-        const policyResult = evaluateActionWithPolicy(effectiveProposal, policySettings);
+        const policyResult = evaluateActionWithPolicy(effectiveProposal, policySettings, categoryBudgets);
         effectiveGovernance = {
           action_id: effectiveGovernance?.action_id || `act-${Date.now()}`,
           outcome: policyResult.outcome,
@@ -513,6 +625,27 @@ export function AgentWorkspaceView({
           budget_remaining_after: effectiveGovernance?.budget_remaining_after || "22000.00",
           summary_text: policyResult.ruleExplanation,
         };
+
+        // Deduct from live budgets if permitted
+        if (policyResult.allowedAmountToDeduct > 0) {
+          const cat = (effectiveProposal.category || "software").toLowerCase();
+          setCategoryBudgets((prev) =>
+            prev.map((b) => {
+              if (b.category.toLowerCase().includes(cat) || cat.includes(b.category.toLowerCase())) {
+                const currAvail = parseFloat(b.available_amount);
+                const currSpent = parseFloat(b.used_amount || "0");
+                const newAvail = Math.max(0, currAvail - policyResult.allowedAmountToDeduct);
+                const newSpent = currSpent + policyResult.allowedAmountToDeduct;
+                return {
+                  ...b,
+                  available_amount: newAvail.toFixed(2),
+                  used_amount: newSpent.toFixed(2),
+                };
+              }
+              return b;
+            })
+          );
+        }
 
         const newRecord: ActivityActionRecord = {
           id: effectiveGovernance.action_id,
@@ -547,65 +680,52 @@ export function AgentWorkspaceView({
       };
       setTurns((prev) => [...prev, agentTurn]);
     } catch {
-      // Resilient Simulation Engine
+      // Dynamic Resilient Simulation Engine
       const promptLower = trimmed.toLowerCase();
-      let simProposal: FinancialActionProposal | null = null;
-      let agentMessage = "I have reviewed your financial instruction against authoritative ledger data.";
-      let evidenceRefs: string[] = ["account:operations:100000"];
+      const isBalanceQuery =
+        promptLower.includes("balance") ||
+        promptLower.includes("how much") ||
+        promptLower.includes("funds available") ||
+        promptLower.includes("quota");
 
-      if (promptLower.includes("balance") || promptLower.includes("quota") || promptLower.includes("account")) {
-        agentMessage =
-          "The Operations Account currently holds an available balance of INR 100,000.00. Software monthly quota is INR 50,000.00 (INR 31,600.00 remaining), Infrastructure quota is INR 30,000.00 (INR 0.00 remaining), and Miscellaneous quota is INR 20,000.00. All accounts are in good standing.";
-        evidenceRefs = ["account:operations:balance", "budget:software:50000", "budget:infrastructure:30000"];
-      } else if (promptLower.includes("inv-001")) {
-        simProposal = {
-          action_type: "pay_invoice",
-          target_id: "INV-001",
-          amount: "8000.00",
-          currency: "INR",
-          category: "Software",
-          vendor_name: "Acme Cloud Services",
-          justification: "Invoice INV-001 matches active SaaS contract. Software budget holds INR 31,600.00 available.",
-          evidence_refs: ["invoice:INV-001:verified", "vendor:Acme Cloud Services", "budget:software:31600"],
+      if (isBalanceQuery) {
+        const agentMessage = `The Operations Account available balance is INR ${summary.total_available_balance}. Active monthly allocations: Software (INR ${categoryBudgets.find((b) => b.category.toLowerCase().includes("soft"))?.available_amount ?? "25,000.00"} available), Infrastructure (INR ${categoryBudgets.find((b) => b.category.toLowerCase().includes("infra"))?.available_amount ?? "50,000.00"} available), and Miscellaneous (INR ${categoryBudgets.find((b) => b.category.toLowerCase().includes("misc"))?.available_amount ?? "10,000.00"} available).`;
+
+        const simTurn: ChatTurn = {
+          id: `turn-agent-${Date.now()}`,
+          role: "agent",
+          text: agentMessage,
+          status: "completed",
+          proposed_action: null,
+          evidence_refs: ["account:Operations Account:balance", "ledger:category_budgets"],
+          governance: null,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
         };
-        agentMessage =
-          "I retrieved invoice INV-001 for Acme Cloud Services (INR 8,000.00) and verified the software budget balance. I have formulated a payment proposal for authoritative gateway evaluation.";
-        evidenceRefs = ["invoice:INV-001:verified", "vendor:Acme Cloud Services", "budget:software:31600"];
-      } else if (promptLower.includes("inv-002")) {
-        simProposal = {
-          action_type: "pay_invoice",
-          target_id: "INV-002",
-          amount: "35000.00",
-          currency: "INR",
-          category: "Infrastructure",
-          vendor_name: "Nova Compute Systems",
-          justification: "Critical server infrastructure cluster scaling expansion.",
-          evidence_refs: ["invoice:INV-002:verified", "vendor:Nova Compute Systems", "threshold:review:25000"],
-        };
-        agentMessage =
-          "I retrieved invoice INV-002 for Nova Compute Systems (INR 35,000.00). This proposed amount exceeds routine thresholds. I have submitted the proposal to the gateway checkpoint.";
-        evidenceRefs = ["invoice:INV-002:verified", "vendor:Nova Compute Systems", "threshold:review:25000"];
+        setTurns((prev) => [...prev, simTurn]);
       } else {
-        simProposal = {
+        // Dynamic financial action formulation
+        const parsed = parseDynamicPrompt(trimmed);
+        const simProposal: FinancialActionProposal = {
           action_type: "pay_invoice",
-          target_id: "INV-003",
-          amount: "65000.00",
+          target_id: parsed.targetId,
+          amount: parsed.amount,
           currency: "INR",
-          category: "Infrastructure",
-          vendor_name: "Quantum Hosting Labs",
-          justification: "Urgent infrastructure overdraft settlement request.",
-          evidence_refs: ["invoice:INV-003:unverified", "vendor:Quantum Hosting Labs", "budget:infrastructure:depleted"],
+          category: parsed.category,
+          vendor_name: parsed.vendorName,
+          justification: `Payment evaluation requested for invoice ${parsed.targetId} from ${parsed.vendorName} under ${parsed.category} category.`,
+          evidence_refs: [
+            `invoice:${parsed.targetId}`,
+            `beneficiary:${parsed.vendorName}`,
+            `budget:${parsed.category.toLowerCase()}`,
+            "account:Operations Account",
+          ],
         };
-        agentMessage =
-          "I retrieved invoice INV-003 for Quantum Hosting Labs (INR 65,000.00). Vendor verification is missing and infrastructure quota is depleted. I have presented the proposal to the governance gateway.";
-        evidenceRefs = ["invoice:INV-003:unverified", "vendor:Quantum Hosting Labs", "budget:infrastructure:depleted"];
-      }
 
-      let simGovernance: GovernanceSummary | null = null;
-      if (simProposal) {
-        const policyResult = evaluateActionWithPolicy(simProposal, policySettings);
-        const resolvedRisk: RiskTier = simProposal.amount === "8000.00" ? "R2" : simProposal.amount === "35000.00" ? "R3" : "R4";
-        simGovernance = {
+        const policyResult = evaluateActionWithPolicy(simProposal, policySettings, categoryBudgets);
+        const amtNum = parseFloat(parsed.amount);
+        const resolvedRisk: RiskTier = amtNum < 15000 ? "R2" : amtNum < 50000 ? "R3" : "R4";
+
+        const simGovernance: GovernanceSummary = {
           action_id: `act-${Date.now().toString(16)}`,
           outcome: policyResult.outcome,
           reason_codes: policyResult.reasonCodes,
@@ -613,16 +733,37 @@ export function AgentWorkspaceView({
           profile_name: policySettings.profileName,
           profile_style: policySettings.profileStyle,
           requires_approval: policyResult.outcome === "review",
-          budget_remaining_after: "23600.00",
+          budget_remaining_after: (Math.max(0, 50000 - amtNum)).toFixed(2),
           summary_text: policyResult.ruleExplanation,
         };
+
+        // Deduct from live budgets if permitted
+        if (policyResult.allowedAmountToDeduct > 0) {
+          const cat = parsed.category.toLowerCase();
+          setCategoryBudgets((prev) =>
+            prev.map((b) => {
+              if (b.category.toLowerCase().includes(cat) || cat.includes(b.category.toLowerCase())) {
+                const currAvail = parseFloat(b.available_amount);
+                const currSpent = parseFloat(b.used_amount || "0");
+                const newAvail = Math.max(0, currAvail - policyResult.allowedAmountToDeduct);
+                const newSpent = currSpent + policyResult.allowedAmountToDeduct;
+                return {
+                  ...b,
+                  available_amount: newAvail.toFixed(2),
+                  used_amount: newSpent.toFixed(2),
+                };
+              }
+              return b;
+            })
+          );
+        }
 
         const newRecord: ActivityActionRecord = {
           id: simGovernance.action_id,
           targetId: simProposal.target_id,
           actionType: simProposal.action_type,
           vendorName: simProposal.vendor_name || "Enterprise Vendor",
-          isVerifiedVendor: simProposal.target_id !== "INV-003",
+          isVerifiedVendor: parsed.isVerifiedVendor,
           amount: simProposal.amount || "0.00",
           currency: simProposal.currency || "INR",
           category: simProposal.category || "Software",
@@ -636,20 +777,26 @@ export function AgentWorkspaceView({
         };
 
         setActivityRecords((prev) => [newRecord, ...prev]);
+
+        const agentMessage = `I retrieved records for invoice ${parsed.targetId} (${parsed.vendorName}, INR ${formatInrCurrency(parsed.amount)}) and cross-referenced with ${parsed.category} budget allocations. I have formulated a structured proposal for authoritative gateway evaluation.`;
+
+        const simAgentTurn: ChatTurn = {
+          id: `turn-agent-${Date.now()}`,
+          role: "agent",
+          text: agentMessage,
+          status: "proposal_ready",
+          proposed_action: simProposal,
+          evidence_refs: [
+            `invoice:${parsed.targetId}`,
+            `vendor:${parsed.vendorName}`,
+            `budget:${parsed.category.toLowerCase()}:active`,
+          ],
+          governance: simGovernance,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        };
+
+        setTurns((prev) => [...prev, simAgentTurn]);
       }
-
-      const simAgentTurn: ChatTurn = {
-        id: `turn-agent-${Date.now()}`,
-        role: "agent",
-        text: agentMessage,
-        status: simProposal ? "proposal_ready" : "completed",
-        proposed_action: simProposal,
-        evidence_refs: evidenceRefs,
-        governance: simGovernance,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-      };
-
-      setTurns((prev) => [...prev, simAgentTurn]);
     } finally {
       setSubmitting(false);
     }
@@ -705,9 +852,9 @@ export function AgentWorkspaceView({
           currency: "INR",
         },
         key_observations: [
-          "Routine Software SaaS payment (INV-001, ₹8,000) was verified against contract and minted a single-use permit.",
-          "High-value infrastructure surge (INV-002, ₹35,000) exceeded review threshold and was intercepted for human authorization.",
-          "Over-budget unverified payment (INV-003, ₹65,000) was deterministically blocked, safeguarding against treasury overdraft.",
+          "Routine Software SaaS payments were verified against contract and minted single-use permits.",
+          "High-value infrastructure surges exceeded review threshold and were intercepted for human authorization.",
+          "Over-budget or unverified disbursements were deterministically blocked, safeguarding treasury capital.",
         ],
         invariant_findings: [
           {
@@ -730,7 +877,7 @@ export function AgentWorkspaceView({
 
   return (
     <div className="space-y-6">
-      {/* 1. MASTER WORKSPACE HEADER */}
+      {/* 1. MASTER WORKSPACE HEADER (Clean, focused, no channel distraction) */}
       <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
           <div>
@@ -753,148 +900,64 @@ export function AgentWorkspaceView({
               Financial Agent Workspace
             </h1>
             <p className="text-sm text-slate-600 m-0 mt-1 max-w-3xl leading-relaxed">
-              Operations flight deck for financial AI agents. Agents research balances and propose transactions,
+              Operations flight deck for financial AI agents. Agents research balances and formulate proposals,
               while money movement requires independent, deterministic governance approval.
             </p>
           </div>
 
-          {/* Multi-Channel Segmented Switcher */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 self-start md:self-center">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-600 sm:hidden">
-              Interface Channel:
-            </span>
-            <div
-              role="tablist"
-              aria-label="Interface Channel Switcher"
-              className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200"
+          <div className="flex items-center gap-2">
+            <Link
+              href="/about"
+              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-xs font-bold transition-colors inline-flex items-center gap-1.5"
             >
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeChannel === "web"}
-                onClick={() => setActiveChannel("web")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  activeChannel === "web"
-                    ? "bg-white text-slate-900 shadow-xs border border-slate-200"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <span>💻</span>
-                <span>Web Console</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeChannel === "twilio"}
-                onClick={() => setActiveChannel("twilio")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  activeChannel === "twilio"
-                    ? "bg-white text-slate-900 shadow-xs border border-slate-200"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <span>💬</span>
-                <span>Mobile Dispatch</span>
-                <span className="text-[9px] font-bold px-1 rounded bg-amber-100 text-amber-800">In Dev</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={activeChannel === "voice"}
-                onClick={() => setActiveChannel("voice")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  activeChannel === "voice"
-                    ? "bg-white text-slate-900 shadow-xs border border-slate-200"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <span>🎙️</span>
-                <span>Conversational Agent</span>
-                <span className="text-[9px] font-bold px-1 rounded bg-amber-100 text-amber-800">In Dev</span>
-              </button>
-            </div>
+              <span>Project &amp; Team Details</span>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            </Link>
           </div>
         </div>
 
-        {/* 2. SUB AGENT CONSOLE NAVBAR (TABS) - Only shown for Web Console */}
-        {activeChannel === "web" && (
-          <div className="pt-4 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-            {WORKSPACE_TABS.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border ${
-                    isActive
-                      ? "bg-slate-900 text-white border-slate-900 shadow-sm"
-                      : "bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-950 border-slate-200"
-                  }`}
-                >
-                  {tab.id === "console" && <Terminal className="w-3.5 h-3.5" />}
-                  {tab.id === "context" && <Wallet className="w-3.5 h-3.5" />}
-                  {tab.id === "policies" && <Sliders className="w-3.5 h-3.5" />}
-                  {tab.id === "activity" && <Sparkles className="w-3.5 h-3.5" />}
-                  {tab.id === "architecture" && <Layers className="w-3.5 h-3.5" />}
-                  <span>{tab.label}</span>
-                  {tab.badge && (
-                    <span
-                      className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded ${
-                        isActive
-                          ? "bg-ember-500 text-white"
-                          : "bg-slate-200 text-slate-700"
-                      }`}
-                    >
-                      {tab.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* EXTERNAL CHANNEL IN-DEVELOPMENT VIEWS */}
-      {activeChannel !== "web" && (
-        <Card>
-          <div className="py-12 px-6 text-center max-w-lg mx-auto space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 mx-auto flex items-center justify-center text-2xl shadow-xs">
-              {activeChannel === "twilio" ? "💬" : "🎙️"}
-            </div>
-            <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold mb-2">
-                <span>🔒 In Active Development</span>
-              </div>
-              <h3 className="text-xl font-bold text-slate-900 m-0">
-                {activeChannel === "twilio"
-                  ? "Twilio Mobile & Messaging Dispatch"
-                  : "Conversational Financial Agent"}
-              </h3>
-              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                {activeChannel === "twilio"
-                  ? "Direct SMS and WhatsApp inbound adapter for mobile transaction dispatch under Neolith governance. External channel access will be unlocked soon."
-                  : "Real-time speech-to-action financial agent interface. Conversational voice channels will be unlocked soon."}
-              </p>
-            </div>
-            <div className="pt-2">
-              <Button
+        {/* 2. SUB AGENT CONSOLE NAVBAR (TABS) */}
+        <div className="pt-4 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+          {WORKSPACE_TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
                 type="button"
-                variant="primary"
-                onClick={() => setActiveChannel("web")}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border ${
+                  isActive
+                    ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                    : "bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-950 border-slate-200"
+                }`}
               >
-                <span>Return to Web Console</span>
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
+                {tab.id === "console" && <Terminal className="w-3.5 h-3.5" />}
+                {tab.id === "context" && <Wallet className="w-3.5 h-3.5" />}
+                {tab.id === "policies" && <Sliders className="w-3.5 h-3.5" />}
+                {tab.id === "activity" && <Sparkles className="w-3.5 h-3.5" />}
+                {tab.id === "architecture" && <Layers className="w-3.5 h-3.5" />}
+                <span>{tab.label}</span>
+                {tab.badge && (
+                  <span
+                    className={`text-[10px] font-extrabold px-1.5 py-0.2 rounded ${
+                      isActive
+                        ? "bg-ember-500 text-white"
+                        : "bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* ==================================================================== */}
       {/* SUBPAGE 1: INTERACTIVE CONSOLE (BALANCED 2-COLUMN LAYOUT)             */}
       {/* ==================================================================== */}
-      {activeChannel === "web" && activeTab === "console" && (
+      {activeTab === "console" && (
         <div className="space-y-6">
           {/* Mission Control Flight Deck Status Strip */}
           <div className="p-4 rounded-2xl bg-[#090D1A] border border-slate-800 text-white flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md">
@@ -916,8 +979,8 @@ export function AgentWorkspaceView({
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 m-0">
-                  Autonomous operational planning under authoritative{" "}
-                  <strong className="text-slate-200">{policySettings.profileName}</strong> policies.
+                  Autonomous operational planning governed under{" "}
+                  <strong className="text-slate-200">{policySettings.profileName}</strong>.
                 </p>
               </div>
             </div>
@@ -940,6 +1003,15 @@ export function AgentWorkspaceView({
                   <span>Reset Turns</span>
                 </button>
               )}
+              <button
+                type="button"
+                onClick={handleClearActionHistory}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-rose-950/50 border border-slate-700 text-xs font-bold text-slate-300 hover:text-rose-300 transition-colors"
+                title="Clear action history"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Clear History</span>
+              </button>
             </div>
           </div>
 
@@ -948,10 +1020,10 @@ export function AgentWorkspaceView({
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-ember-500" />
-                <span>Select Curated Benchmark Scenario (3 Test Cases)</span>
+                <span>Curated Benchmark Scenarios (Click to Load)</span>
               </span>
-              <span className="text-[11px] text-slate-600">
-                Click a card to auto-load instruction
+              <span className="text-[11px] text-slate-500">
+                You can also enter ANY custom prompt or amount below
               </span>
             </div>
 
@@ -1007,7 +1079,7 @@ export function AgentWorkspaceView({
 
           {/* BALANCED 2-COLUMN FLIGHT DECK (NO EMPTY SIDES!) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* LEFT COLUMN (5 cols): COMMAND DISPATCH + CONTEXT AT A GLANCE */}
+            {/* LEFT COLUMN (5 cols): COMMAND DISPATCH + TREASURY GROUND TRUTH + QUICK CONTROLS */}
             <div className="lg:col-span-5 space-y-4">
               {/* Command Form Card */}
               <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
@@ -1018,8 +1090,8 @@ export function AgentWorkspaceView({
                   >
                     Financial Objective
                   </label>
-                  <span className="text-[11px] text-slate-600">
-                    Natural language prompt
+                  <span className="text-[11px] text-slate-500">
+                    Supports any invoice, vendor or amount
                   </span>
                 </div>
 
@@ -1039,33 +1111,33 @@ export function AgentWorkspaceView({
                         }
                       }}
                       className="w-full p-3.5 rounded-xl border border-slate-300 bg-slate-50/60 text-slate-900 text-sm focus:bg-white focus:ring-2 focus:ring-ember-500 focus:border-ember-500 shadow-inner transition-all leading-relaxed"
-                      placeholder="e.g. Pay INV-001 if valid and within software budget..."
+                      placeholder="e.g. Pay INV-001 if valid, or pay AWS INR 18,000 for cloud compute..."
                     />
                   </div>
 
                   {/* Quick-Insert Tags */}
                   <div className="flex items-center gap-1.5 flex-wrap text-xs text-slate-600 pt-1">
-                    <span className="text-[11px] font-bold text-slate-600 uppercase">Insert:</span>
+                    <span className="text-[11px] font-bold text-slate-500 uppercase">Insert:</span>
                     <button
                       type="button"
-                      onClick={() => setPrompt("Pay INV-001 for Acme Cloud Services")}
+                      onClick={() => setPrompt("Pay INV-001 for Acme Cloud Services (₹8,000)")}
                       className="px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors"
                     >
-                      + INV-001 (Acme)
+                      + INV-001
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPrompt("Check Operations Account balance & software budget")}
+                      onClick={() => setPrompt("Check Operations Account balance & available budgets")}
                       className="px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors"
                     >
                       + Balance Check
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPrompt("Can we pay INV-002 for Nova Compute Systems?")}
+                      onClick={() => setPrompt("Pay INV-002 for Nova Compute Systems (₹35,000)")}
                       className="px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors"
                     >
-                      + INV-002 (Nova)
+                      + INV-002
                     </button>
                   </div>
 
@@ -1115,7 +1187,7 @@ export function AgentWorkspaceView({
                 )}
               </div>
 
-              {/* Live Context At A Glance (Fills Left Column Gracefully) */}
+              {/* Reactive Treasury Ground Truth at a Glance */}
               <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3.5">
                 <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                   <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 uppercase tracking-wider">
@@ -1134,7 +1206,7 @@ export function AgentWorkspaceView({
 
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
                   <div>
-                    <span className="text-[11px] font-bold text-slate-600 uppercase block">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase block">
                       Operations Account
                     </span>
                     <span className="text-base font-black text-slate-900 font-mono">
@@ -1145,11 +1217,15 @@ export function AgentWorkspaceView({
                 </div>
 
                 <div className="space-y-2">
-                  <span className="text-xs font-bold text-slate-700 block">
-                    Category Budgets (Monthly Quotas):
-                  </span>
-                  <div className="space-y-1.5 text-xs">
-                    {summary.monthly_budgets.map((b) => {
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700">
+                      Category Budgets (Monthly Quotas):
+                    </span>
+                    <span className="text-[10px] text-slate-400">Live Reactive State</span>
+                  </div>
+
+                  <div className="space-y-2 text-xs">
+                    {categoryBudgets.map((b) => {
                       const limit = parseFloat(b.limit_amount || "1");
                       const avail = parseFloat(b.available_amount || "0");
                       const usedPct = Math.min(100, Math.round(((limit - avail) / limit) * 100));
@@ -1158,13 +1234,13 @@ export function AgentWorkspaceView({
                         <div key={b.id} className="p-2.5 rounded-lg bg-slate-50 border border-slate-100">
                           <div className="flex items-center justify-between font-medium mb-1">
                             <span className="font-bold text-slate-800">{b.category}</span>
-                            <span className="font-mono text-slate-600">
+                            <span className="font-mono text-slate-700 font-bold">
                               {formatInrCurrency(b.available_amount, b.currency)} avail
                             </span>
                           </div>
                           <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                             <div
-                              className={`h-full rounded-full ${
+                              className={`h-full rounded-full transition-all duration-300 ${
                                 usedPct > 90 ? "bg-rose-500" : usedPct > 60 ? "bg-amber-500" : "bg-emerald-500"
                               }`}
                               style={{ width: `${usedPct}%` }}
@@ -1176,15 +1252,44 @@ export function AgentWorkspaceView({
                   </div>
                 </div>
 
-                <div className="pt-2 text-[11px] text-slate-600 flex items-center justify-between border-t border-slate-100">
-                  <span>Pending Invoices: <strong>{unpaidInvoices.length} unpaid</strong></span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("policies")}
-                    className="font-bold text-slate-600 hover:text-slate-900"
-                  >
-                    Adjust Budget Rules →
-                  </button>
+                {/* Quick In-Screen Policy Tweaker (Reflects immediately!) */}
+                <div className="pt-2.5 border-t border-slate-100 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-700 flex items-center gap-1">
+                      <Settings2 className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Review Threshold:</span>
+                    </span>
+                    <span className="font-mono font-bold text-ember-600">
+                      {formatInrCurrency(policySettings.reviewThreshold.toString())}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100000"
+                    step="5000"
+                    value={policySettings.reviewThreshold}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      setPolicySettings((prev) => ({
+                        ...prev,
+                        reviewThreshold: val,
+                      }));
+                      setPolicyToast(`Review threshold set to ${formatInrCurrency(val.toString())}`);
+                      setTimeout(() => setPolicyToast(null), 2000);
+                    }}
+                    className="w-full accent-ember-500"
+                  />
+                  <div className="flex items-center justify-between text-[11px] text-slate-500">
+                    <span>Active: <strong>{policySettings.profileName}</strong></span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("policies")}
+                      className="font-bold text-ember-600 hover:text-ember-700"
+                    >
+                      All Budget Settings →
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1197,13 +1302,25 @@ export function AgentWorkspaceView({
                     <h3 className="text-sm font-bold text-slate-900 m-0">
                       Live Execution &amp; Gateway Decision Stream
                     </h3>
-                    <p className="text-xs text-slate-600 m-0 mt-0.5">
+                    <p className="text-xs text-slate-500 m-0 mt-0.5">
                       Verifiable record of unprivileged AI reasoning and authoritative governance evaluation.
                     </p>
                   </div>
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
-                    {turns.length} {turns.length === 1 ? "turn" : "turns"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
+                      {turns.length} {turns.length === 1 ? "turn" : "turns"}
+                    </span>
+                    {activityRecords.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearActionHistory}
+                        className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-slate-100 transition-colors"
+                        title="Delete action history"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {turns.length === 0 ? (
@@ -1216,9 +1333,9 @@ export function AgentWorkspaceView({
                       <h4 className="text-sm font-bold text-slate-800 m-0">
                         Flight Deck Ready
                       </h4>
-                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                        Pick one of the 3 benchmark scenarios above or submit an objective on the left.
-                        You will see how Neolith separates AI reasoning from actual money movement.
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                        Pick a scenario above or enter ANY custom financial objective on the left.
+                        Observe how Neolith separates intelligent planning from real money execution.
                       </p>
                     </div>
                     <Button
@@ -1247,9 +1364,9 @@ export function AgentWorkspaceView({
                           >
                             <div className="flex items-center justify-between text-xs pb-1.5 border-b border-slate-800">
                               <div className="flex items-center gap-2">
-                                <span className="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-[10px]">
-                                  👤
-                                </span>
+                                <div className="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-slate-300">
+                                  <User className="w-3 h-3" />
+                                </div>
                                 <span className="font-bold text-slate-200">Requester</span>
                                 <span className="text-[10px] text-slate-400 font-mono">
                                   (unprivileged prompt)
@@ -1278,8 +1395,8 @@ export function AgentWorkspaceView({
                           {/* Turn Header */}
                           <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                             <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-lg bg-ember-500 text-white flex items-center justify-center text-xs font-bold">
-                                🤖
+                              <div className="w-6 h-6 rounded-lg bg-ember-500 text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                                <Bot className="w-3.5 h-3.5" />
                               </div>
                               <span className="font-bold text-xs text-slate-900">
                                 Financial AI Agent
@@ -1288,7 +1405,7 @@ export function AgentWorkspaceView({
                                 Grounded
                               </span>
                             </div>
-                            <span className="text-[11px] text-slate-600 font-mono">{turn.timestamp}</span>
+                            <span className="text-[11px] text-slate-500 font-mono">{turn.timestamp}</span>
                           </div>
 
                           {/* Message Content */}
@@ -1299,7 +1416,7 @@ export function AgentWorkspaceView({
                           {/* Evidence Grounding */}
                           {turn.evidence_refs && turn.evidence_refs.length > 0 && (
                             <div className="p-2.5 rounded-xl bg-white border border-slate-200 space-y-1">
-                              <span className="text-[11px] font-bold text-slate-600 block">
+                              <span className="text-[11px] font-bold text-slate-500 block">
                                 Grounded Ledger Evidence:
                               </span>
                               <div className="flex flex-wrap gap-1">
@@ -1329,21 +1446,21 @@ export function AgentWorkspaceView({
 
                               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                                 <div className="p-2 rounded bg-slate-50 border border-slate-100">
-                                  <span className="text-[10px] text-slate-600 uppercase block font-bold">Target</span>
+                                  <span className="text-[10px] text-slate-400 uppercase block font-bold">Target</span>
                                   <strong className="font-mono text-slate-900">{turn.proposed_action.target_id}</strong>
                                 </div>
                                 <div className="p-2 rounded bg-slate-50 border border-slate-100">
-                                  <span className="text-[10px] text-slate-600 uppercase block font-bold">Amount</span>
+                                  <span className="text-[10px] text-slate-400 uppercase block font-bold">Amount</span>
                                   <strong className="font-mono text-ember-600">
                                     {formatInrCurrency(turn.proposed_action.amount ?? "0", turn.proposed_action.currency)}
                                   </strong>
                                 </div>
                                 <div className="p-2 rounded bg-slate-50 border border-slate-100">
-                                  <span className="text-[10px] text-slate-600 uppercase block font-bold">Vendor</span>
+                                  <span className="text-[10px] text-slate-400 uppercase block font-bold">Vendor</span>
                                   <strong className="text-slate-800 truncate block">{turn.proposed_action.vendor_name ?? "N/A"}</strong>
                                 </div>
                                 <div className="p-2 rounded bg-slate-50 border border-slate-100">
-                                  <span className="text-[10px] text-slate-600 uppercase block font-bold">Category</span>
+                                  <span className="text-[10px] text-slate-400 uppercase block font-bold">Category</span>
                                   <strong className="text-slate-800 block">{turn.proposed_action.category ?? "N/A"}</strong>
                                 </div>
                               </div>
@@ -1366,7 +1483,7 @@ export function AgentWorkspaceView({
                                       {isDenied && <XCircle className="w-4 h-4 text-rose-600" />}
                                       <span>
                                         Gateway Decision:{" "}
-                                        {isAllowed ? "✓ ALLOWED (Permit Minted)" : isReview ? "⏸️ REVIEW REQUIRED" : "✕ BLOCKED BY SAFEGUARD"}
+                                        {isAllowed ? "ALLOWED (Permit Minted)" : isReview ? "REVIEW REQUIRED" : "BLOCKED BY SAFEGUARD"}
                                       </span>
                                     </div>
                                     <button
@@ -1416,9 +1533,10 @@ export function AgentWorkspaceView({
                                       </span>
                                       <Link
                                         href="/approvals"
-                                        className="px-2 py-0.5 rounded bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold"
+                                        className="px-2 py-0.5 rounded bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold inline-flex items-center gap-1"
                                       >
-                                        Open /approvals →
+                                        <span>Open /approvals</span>
+                                        <ArrowRight className="w-3 h-3" />
                                       </Link>
                                     </div>
                                   )}
@@ -1440,13 +1558,13 @@ export function AgentWorkspaceView({
       {/* ==================================================================== */}
       {/* SUBPAGE 2: TREASURY CONTEXT (ACCOUNTS, BUDGETS, INVOICES)            */}
       {/* ==================================================================== */}
-      {activeChannel === "web" && activeTab === "context" && (
+      {activeTab === "context" && (
         <div className="space-y-6">
           {/* Top KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   Operating Treasury
                 </span>
                 <Badge variant="allow">Active</Badge>
@@ -1454,14 +1572,14 @@ export function AgentWorkspaceView({
               <div className="text-2xl font-black text-slate-900 font-mono">
                 {formatInrCurrency(summary.total_available_balance, summary.currency)}
               </div>
-              <p className="text-xs text-slate-600 mt-1 mb-0">
+              <p className="text-xs text-slate-500 mt-1 mb-0">
                 Primary Account: {summary.primary_account?.name ?? "Operations Account"}
               </p>
             </Card>
 
             <Card>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   Unpaid Invoices
                 </span>
                 <Badge variant="review">{unpaidInvoices.length} Pending</Badge>
@@ -1469,14 +1587,14 @@ export function AgentWorkspaceView({
               <div className="text-2xl font-black text-slate-900 font-mono">
                 {formatInrCurrency(summary.unpaid_invoice_value, summary.currency)}
               </div>
-              <p className="text-xs text-slate-600 mt-1 mb-0">
-                Ready for AI agent validation &amp; proposal
+              <p className="text-xs text-slate-500 mt-1 mb-0">
+                Ground truth invoices ready for AI inspection
               </p>
             </Card>
 
             <Card>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   Active Guardrail Mode
                 </span>
                 <Badge variant="info">OPA Enforced</Badge>
@@ -1484,7 +1602,7 @@ export function AgentWorkspaceView({
               <div className="text-xl font-bold text-slate-900">
                 {policySettings.profileName}
               </div>
-              <p className="text-xs text-slate-600 mt-1 mb-0">
+              <p className="text-xs text-slate-500 mt-1 mb-0">
                 Review threshold: {formatInrCurrency(policySettings.reviewThreshold.toString())}
               </p>
             </Card>
@@ -1497,7 +1615,7 @@ export function AgentWorkspaceView({
               subtitle="The AI agent checks these limits before submitting payment proposals. Overdrafts are deterministically rejected."
             />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
-              {summary.monthly_budgets.map((b) => {
+              {categoryBudgets.map((b) => {
                 const limit = parseFloat(b.limit_amount || "1");
                 const avail = parseFloat(b.available_amount || "0");
                 const used = limit - avail;
@@ -1519,7 +1637,7 @@ export function AgentWorkspaceView({
                           {formatInrCurrency(b.available_amount, b.currency)}
                         </strong>
                       </div>
-                      <div className="flex justify-between text-xs text-slate-600">
+                      <div className="flex justify-between text-xs text-slate-500">
                         <span>Total Limit:</span>
                         <span className="font-mono">{formatInrCurrency(b.limit_amount, b.currency)}</span>
                       </div>
@@ -1527,7 +1645,7 @@ export function AgentWorkspaceView({
 
                     <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${
+                        className={`h-full rounded-full transition-all duration-300 ${
                           usedPct > 90 ? "bg-rose-500" : usedPct > 60 ? "bg-amber-500" : "bg-emerald-500"
                         }`}
                         style={{ width: `${usedPct}%` }}
@@ -1548,7 +1666,7 @@ export function AgentWorkspaceView({
             <div className="overflow-x-auto mt-2">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
+                  <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                     <th className="py-2.5 px-3">Invoice #</th>
                     <th className="py-2.5 px-3">Vendor</th>
                     <th className="py-2.5 px-3">Category</th>
@@ -1575,7 +1693,7 @@ export function AgentWorkspaceView({
                       <td className="py-3 px-3 font-mono font-bold text-ember-600">
                         {formatInrCurrency(inv.amount, inv.currency)}
                       </td>
-                      <td className="py-3 px-3 text-slate-600">
+                      <td className="py-3 px-3 text-slate-500">
                         {inv.due_date}
                       </td>
                       <td className="py-3 px-3">
@@ -1607,7 +1725,7 @@ export function AgentWorkspaceView({
       {/* ==================================================================== */}
       {/* SUBPAGE 3: POLICIES & BUDGETS (GOVERNANCE SETTINGS)                   */}
       {/* ==================================================================== */}
-      {activeChannel === "web" && activeTab === "policies" && (
+      {activeTab === "policies" && (
         <div className="space-y-6">
           <Card>
             <CardHeader
@@ -1653,12 +1771,14 @@ export function AgentWorkspaceView({
                     key={prof.id}
                     type="button"
                     onClick={() => {
-                      setPolicySettings((prev) => ({
-                        ...prev,
+                      const updated: AgentPolicySettings = {
+                        ...policySettings,
                         profileStyle: prof.id,
                         profileName: prof.name,
                         reviewThreshold: prof.reviewThreshold,
-                      }));
+                      };
+                      setPolicySettings(updated);
+                      syncBudgetsWithSettings(updated);
                       setPolicyToast(`Switched active profile to ${prof.name}`);
                       setTimeout(() => setPolicyToast(null), 3000);
                     }}
@@ -1709,7 +1829,7 @@ export function AgentWorkspaceView({
             <Card>
               <CardHeader
                 title="Spending Limits & Dual-Key Thresholds"
-                subtitle="Configure exact numerical bounds enforced by the Runtime Gateway."
+                subtitle="Configure exact numerical bounds enforced by the Runtime Gateway. Changes immediately sync with all panels."
               />
               <div className="space-y-4 mt-2">
                 <div>
@@ -1725,15 +1845,15 @@ export function AgentWorkspaceView({
                     max="100000"
                     step="5000"
                     value={policySettings.reviewThreshold}
-                    onChange={(e) =>
-                      setPolicySettings((prev) => ({
-                        ...prev,
-                        reviewThreshold: parseInt(e.target.value, 10),
-                      }))
-                    }
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      const updated = { ...policySettings, reviewThreshold: val };
+                      setPolicySettings(updated);
+                      syncBudgetsWithSettings(updated);
+                    }}
                     className="w-full accent-ember-500"
                   />
-                  <p className="text-[11px] text-slate-600 mt-1 m-0">
+                  <p className="text-[11px] text-slate-500 mt-1 m-0">
                     Proposals exceeding this amount are automatically enqueued in /approvals.
                   </p>
                 </div>
@@ -1751,12 +1871,12 @@ export function AgentWorkspaceView({
                     max="100000"
                     step="5000"
                     value={policySettings.softwareBudget}
-                    onChange={(e) =>
-                      setPolicySettings((prev) => ({
-                        ...prev,
-                        softwareBudget: parseInt(e.target.value, 10),
-                      }))
-                    }
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      const updated = { ...policySettings, softwareBudget: val };
+                      setPolicySettings(updated);
+                      syncBudgetsWithSettings(updated);
+                    }}
                     className="w-full accent-ember-500"
                   />
                 </div>
@@ -1774,12 +1894,12 @@ export function AgentWorkspaceView({
                     max="100000"
                     step="5000"
                     value={policySettings.infrastructureBudget}
-                    onChange={(e) =>
-                      setPolicySettings((prev) => ({
-                        ...prev,
-                        infrastructureBudget: parseInt(e.target.value, 10),
-                      }))
-                    }
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      const updated = { ...policySettings, infrastructureBudget: val };
+                      setPolicySettings(updated);
+                      syncBudgetsWithSettings(updated);
+                    }}
                     className="w-full accent-ember-500"
                   />
                 </div>
@@ -1789,12 +1909,13 @@ export function AgentWorkspaceView({
                     type="button"
                     variant="primary"
                     onClick={() => {
-                      setPolicyToast("Policy parameters successfully updated & enforced!");
+                      syncBudgetsWithSettings(policySettings);
+                      setPolicyToast("Policy parameters successfully synchronized with all panels!");
                       setTimeout(() => setPolicyToast(null), 3000);
                     }}
                     className="w-full"
                   >
-                    <span>Save &amp; Apply Policies</span>
+                    <span>Synchronize &amp; Apply Policies</span>
                   </Button>
                 </div>
               </div>
@@ -1804,14 +1925,14 @@ export function AgentWorkspaceView({
             <Card>
               <CardHeader
                 title="Real-Time Policy Impact Simulator"
-                subtitle="How the currently configured policies will govern our benchmark scenarios."
+                subtitle="How the currently configured policies govern benchmark and custom scenarios."
               />
               <div className="space-y-3 mt-2 text-xs">
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                   <div className="flex items-center justify-between font-bold">
                     <span>INV-001 (Acme SaaS · ₹8,000)</span>
                     <span className="font-bold text-emerald-700 uppercase">
-                      {policySettings.profileStyle === "strict" ? "⏸️ REVIEW" : "✓ ALLOW"}
+                      {policySettings.profileStyle === "strict" ? "REVIEW REQUIRED" : "ALLOW"}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-600 m-0">
@@ -1825,7 +1946,7 @@ export function AgentWorkspaceView({
                   <div className="flex items-center justify-between font-bold">
                     <span>INV-002 (Nova Infra · ₹35,000)</span>
                     <span className="font-bold text-amber-700 uppercase">
-                      {35000 > policySettings.reviewThreshold ? "⏸️ REVIEW" : "✓ ALLOW"}
+                      {35000 > policySettings.reviewThreshold ? "REVIEW REQUIRED" : "ALLOW"}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-600 m-0">
@@ -1839,7 +1960,7 @@ export function AgentWorkspaceView({
                   <div className="flex items-center justify-between font-bold">
                     <span>INV-003 (Quantum Labs · ₹65,000)</span>
                     <span className="font-bold text-rose-700 uppercase">
-                      ✕ HARD BLOCKED
+                      HARD BLOCKED
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-600 m-0">
@@ -1847,8 +1968,11 @@ export function AgentWorkspaceView({
                   </p>
                 </div>
 
-                <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-medium">
-                  💡 <strong>Live Tip:</strong> Switch to the <strong>Interactive Console</strong> tab to test instructions against these exact rules.
+                <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-xs font-medium flex items-start gap-2">
+                  <Lightbulb className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Live Tip:</strong> Switch to the <strong>Interactive Console</strong> tab to test instructions against these exact rules.
+                  </span>
                 </div>
               </div>
             </Card>
@@ -1859,7 +1983,7 @@ export function AgentWorkspaceView({
       {/* ==================================================================== */}
       {/* SUBPAGE 4: ACTIVITY & AI SUMMARY (LLM BRIEFING & AUDIT LEDGER)       */}
       {/* ==================================================================== */}
-      {activeChannel === "web" && activeTab === "activity" && (
+      {activeTab === "activity" && (
         <div className="space-y-6">
           {/* Executive LLM Summary Banner */}
           <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
@@ -1871,21 +1995,33 @@ export function AgentWorkspaceView({
                     AI Governance Executive Briefing
                   </h3>
                 </div>
-                <p className="text-xs text-slate-600 m-0">
+                <p className="text-xs text-slate-500 m-0">
                   Automated LLM synthesis summarizing agent proposals, allowed disbursements, and intercepted risks.
                 </p>
               </div>
 
-              <Button
-                type="button"
-                variant="primary"
-                isLoading={isSummarizing}
-                onClick={handleGenerateSummary}
-                className="self-start sm:self-auto font-bold"
-              >
-                <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-                <span>Generate Executive Briefing</span>
-              </Button>
+              <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+                {activityRecords.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearActionHistory}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-slate-600 hover:text-rose-700 text-xs font-bold transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Clear History</span>
+                  </button>
+                )}
+                <Button
+                  type="button"
+                  variant="primary"
+                  isLoading={isSummarizing}
+                  onClick={handleGenerateSummary}
+                  className="font-bold"
+                >
+                  <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                  <span>Generate Executive Briefing</span>
+                </Button>
+              </div>
             </div>
 
             {aiSummary ? (
@@ -1943,7 +2079,7 @@ export function AgentWorkspaceView({
                 )}
               </div>
             ) : (
-              <div className="py-6 text-center text-xs text-slate-600">
+              <div className="py-6 text-center text-xs text-slate-500">
                 Click <strong>Generate Executive Briefing</strong> to synthesize session governance telemetry into an executive summary.
               </div>
             )}
@@ -1958,7 +2094,7 @@ export function AgentWorkspaceView({
             <div className="overflow-x-auto mt-2">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
+                  <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
                     <th className="py-2.5 px-3">Target</th>
                     <th className="py-2.5 px-3">Vendor</th>
                     <th className="py-2.5 px-3">Amount</th>
@@ -1994,10 +2130,10 @@ export function AgentWorkspaceView({
                           }
                         >
                           {r.outcome === "allow"
-                            ? "✓ ALLOWED"
+                            ? "ALLOWED"
                             : r.outcome === "review"
-                              ? "⏸️ REVIEW"
-                              : "✕ DENIED"}
+                              ? "REVIEW"
+                              : "DENIED"}
                         </Badge>
                       </td>
                       <td className="py-3 px-3 text-slate-600 max-w-xs truncate" title={r.ruleExplanation}>
@@ -2024,7 +2160,7 @@ export function AgentWorkspaceView({
       {/* ==================================================================== */}
       {/* SUBPAGE 5: ARCHITECTURE & SAFETY TOOLS                               */}
       {/* ==================================================================== */}
-      {activeChannel === "web" && activeTab === "architecture" && (
+      {activeTab === "architecture" && (
         <div className="space-y-6">
           <Card>
             <CardHeader

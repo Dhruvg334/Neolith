@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 export default function RootError({
@@ -44,11 +45,9 @@ export default function RootError({
           alignItems: "center",
           justifyContent: "center",
           margin: "0 auto 1.25rem auto",
-          fontSize: "1.25rem",
-          fontWeight: 700,
         }}
       >
-        ⚠️
+        <AlertTriangle className="w-6 h-6 text-rose-600" />
       </div>
 
       <h1

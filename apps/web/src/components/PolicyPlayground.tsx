@@ -6,6 +6,7 @@ import {
   ShieldCheck,
   Play,
   RotateCcw,
+  Check,
   CheckCircle2,
   AlertTriangle,
   XCircle,
@@ -532,7 +533,10 @@ export function PolicyPlayground() {
                 {result?.permitPreview ? (
                   <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/20 space-y-3 font-mono text-xs">
                     <div className="flex items-center justify-between text-emerald-400 border-b border-emerald-900/50 pb-2">
-                      <span className="font-bold">✓ Ed25519 Cryptographic Permit Granted</span>
+                      <span className="font-bold inline-flex items-center gap-1.5">
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Ed25519 Cryptographic Permit Granted</span>
+                      </span>
                       <span>TTL: {result.permitPreview.ttlSeconds}s</span>
                     </div>
 

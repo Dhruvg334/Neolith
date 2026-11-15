@@ -1,6 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import {
+  Terminal,
+  MessageSquare,
+  Mic,
+  Lock,
+  ShieldCheck,
+  Bell,
+  FileText,
+  Scale,
+} from "lucide-react";
 import { AgentTaskConsole } from "./AgentTaskConsole";
 import { Badge, Card } from "./ui";
 
@@ -38,7 +48,7 @@ export function AgentInterfaceSwitcher({
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
           }`}
         >
-          <span>💻</span>
+          <Terminal className="w-4 h-4 text-slate-700" />
           <span>Web Console</span>
           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
             Active
@@ -56,10 +66,11 @@ export function AgentInterfaceSwitcher({
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
           }`}
         >
-          <span>💬</span>
+          <MessageSquare className="w-4 h-4 text-amber-600" />
           <span>Twilio Mobile Dispatch</span>
           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 flex items-center gap-1">
-            <span>🔒</span> In Dev
+            <Lock className="w-2.5 h-2.5" />
+            <span>In Dev</span>
           </span>
         </button>
 
@@ -74,10 +85,11 @@ export function AgentInterfaceSwitcher({
               : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
           }`}
         >
-          <span>🎙️</span>
+          <Mic className="w-4 h-4 text-blue-600" />
           <span>Conversational Financial Agent</span>
           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 flex items-center gap-1">
-            <span>🔒</span> In Dev
+            <Lock className="w-2.5 h-2.5" />
+            <span>In Dev</span>
           </span>
         </button>
       </div>
@@ -96,15 +108,15 @@ export function AgentInterfaceSwitcher({
             <Card>
               <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <div className="flex items-center gap-2">
-                  <Badge variant="review">🔒 CURRENTLY IN DEVELOPMENT</Badge>
+                  <Badge variant="review">CURRENTLY IN DEVELOPMENT</Badge>
                   <Badge variant="neutral">Twilio Gateway Integration</Badge>
                 </div>
                 <span className="text-xs font-mono text-slate-500">Status: Staged Development</span>
               </div>
 
               <div className="flex items-start gap-4 mb-6">
-                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center text-2xl shrink-0">
-                  💬
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center shrink-0">
+                  <MessageSquare className="w-7 h-7 text-amber-600" />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-slate-900 mb-1">
@@ -135,7 +147,7 @@ export function AgentInterfaceSwitcher({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5">
                   <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                    <span className="text-teal-600">🛡️</span> Authenticated Messaging
+                    <ShieldCheck className="w-4 h-4 text-teal-600" /> Authenticated Messaging
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed m-0">
                     Inbound mobile interactions are authenticated via cryptographic signatures with zero ambient authority.
@@ -144,7 +156,7 @@ export function AgentInterfaceSwitcher({
 
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5">
                   <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                    <span className="text-teal-600">⚖️</span> Full Policy Parity
+                    <Scale className="w-4 h-4 text-teal-600" /> Full Policy Parity
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed m-0">
                     Mobile proposals pass through the identical OPA policy rules, budget reservations, and audit trail.
@@ -153,7 +165,7 @@ export function AgentInterfaceSwitcher({
 
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5">
                   <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                    <span className="text-teal-600">🔔</span> Real-Time Push Alerts
+                    <Bell className="w-4 h-4 text-teal-600" /> Real-Time Push Alerts
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed m-0">
                     Instant alerts dispatched to finance managers when transactions require human checkpoint verification.
@@ -172,7 +184,7 @@ export function AgentInterfaceSwitcher({
                   disabled
                   className="px-4 py-2 rounded-lg text-xs font-bold bg-slate-200 text-slate-400 cursor-not-allowed flex items-center gap-1.5"
                 >
-                  <span>🔒</span>
+                  <Lock className="w-3.5 h-3.5" />
                   <span>Channel In Development</span>
                 </button>
               </div>
@@ -198,15 +210,15 @@ export function AgentInterfaceSwitcher({
             <Card>
               <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <div className="flex items-center gap-2">
-                  <Badge variant="review">🔒 CURRENTLY IN DEVELOPMENT</Badge>
+                  <Badge variant="review">CURRENTLY IN DEVELOPMENT</Badge>
                   <Badge variant="neutral">Conversational Voice Runtime</Badge>
                 </div>
                 <span className="text-xs font-mono text-slate-500">Status: Staged Development</span>
               </div>
 
               <div className="flex items-start gap-4 mb-6">
-                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center text-2xl shrink-0">
-                  🎙️
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center shrink-0">
+                  <Mic className="w-7 h-7 text-amber-600" />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-slate-900 mb-1">
@@ -237,7 +249,7 @@ export function AgentInterfaceSwitcher({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5">
                   <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                    <span className="text-teal-600">🗣️</span> Natural Voice Dialogue
+                    <Mic className="w-4 h-4 text-teal-600" /> Natural Voice Dialogue
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed m-0">
                     Hands-free verbal inquiries for ledger balances, spending caps, and pending vendor invoices.
@@ -246,7 +258,7 @@ export function AgentInterfaceSwitcher({
 
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5">
                   <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                    <span className="text-teal-600">🛡️</span> Zero Implicit Authority
+                    <ShieldCheck className="w-4 h-4 text-teal-600" /> Zero Implicit Authority
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed m-0">
                     The conversational agent cannot execute payments directly. Single-use cryptographic permits are strictly required.
@@ -255,7 +267,7 @@ export function AgentInterfaceSwitcher({
 
                 <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5">
                   <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                    <span className="text-teal-600">📜</span> Immutable Audit Logs
+                    <FileText className="w-4 h-4 text-teal-600" /> Immutable Audit Logs
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed m-0">
                     Spoken interactions and proposed decisions are hashed and permanently recorded in the decision receipt chain.
@@ -274,7 +286,7 @@ export function AgentInterfaceSwitcher({
                   disabled
                   className="px-4 py-2 rounded-lg text-xs font-bold bg-slate-200 text-slate-400 cursor-not-allowed flex items-center gap-1.5"
                 >
-                  <span>🔒</span>
+                  <Lock className="w-3.5 h-3.5" />
                   <span>Agent In Development</span>
                 </button>
               </div>
