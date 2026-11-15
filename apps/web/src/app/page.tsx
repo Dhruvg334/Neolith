@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
-import { LandingPageClient } from "@/components/LandingPageClient";
+import { ReferenceConsoleView } from "@/components/ReferenceConsoleView";
 
 export const metadata: Metadata = {
-  title: "Neolith — AI-Powered Agentic Decision and Execution System",
+  title: "Neolith — Redesign Fleet Preview & Command Center",
   description:
-    "Deterministic governance runtime for financial AI agents separating intelligent planning from governed execution authority. OPA v1.22.2 policy invariants, short-lived permits, and cryptographic decision receipts.",
+    "Next-generation enterprise agentic AI command center separating intelligent planning from governed execution authority. OPA v1.22.2 policy invariants, execution permits, and decision receipts.",
   alternates: {
     canonical: "/",
   },
 };
 
 export default function HomePage() {
-  return <LandingPageClient />;
+  return <ReferenceConsoleView />;
 }

@@ -92,6 +92,10 @@ export function AppShell({ children }: AppShellProps) {
     }
   };
 
+  if (pathname === "/") {
+    return <>{children}</>;
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-ember-500 selection:text-white">
       {/* 1. TOP APPLICATION BAR */}
