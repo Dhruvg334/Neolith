@@ -134,7 +134,7 @@ export default async function TasksPage() {
       <Card>
         <CardHeader
           title={`Registered Tasks (${tasks.length})`}
-          subtitle="Tasks persisted in PostgreSQL via GET /api/v1/tasks and POST /api/v1/tasks."
+          subtitle="Complete audit history of financial operations and agent action tasks."
         />
         {tasks.length === 0 ? (
           <EmptyState

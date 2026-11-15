@@ -172,10 +172,10 @@ export function PolicyPlayground() {
               <Terminal className="w-4 h-4" />
             </span>
             <span className="text-xs font-bold uppercase tracking-wider text-orange-600">
-              Developer & Operator Studio
+              Policy Simulation Studio
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-              Inspired by Hexgate Architecture
+              Zero-Trust Policy Engine
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">

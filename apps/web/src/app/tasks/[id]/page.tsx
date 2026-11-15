@@ -37,9 +37,8 @@ export default async function TaskDetailPage({ params }: TaskDetailPageProps) {
           subtitle="Task state machine and governance correlation."
         />
         <p className="card-copy">
-          Detailed task state transitions, structured comparison tables, and
-          governance envelope inspection attach to PostgreSQL task records in
-          Phase 1 and Phase 2.
+          Real-time task state transitions, evaluation outcomes, and governance decision receipts
+          linked to this operational task identifier.
         </p>
       </Card>
     </div>

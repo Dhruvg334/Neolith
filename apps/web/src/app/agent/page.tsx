@@ -26,7 +26,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Financial AI Agent",
   description:
-    "Multi-channel conversational financial assistant operating with zero execution authority across Web, WhatsApp, and Voice.",
+    "Autonomous financial operations assistant operating with zero implicit authority under enterprise governance policies.",
   alternates: {
     canonical: "/agent",
   },
@@ -153,21 +153,22 @@ export default async function FinancialAgentPage() {
         >
           <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
             <Badge variant="info">Financial AI Agent</Badge>
-            <Badge variant="neutral">Multi-Channel: Web &bull; WhatsApp &bull; Voice</Badge>
-            <Badge variant="neutral">Framework: LangGraph</Badge>
+            <Badge variant="neutral">Interactive Web Console</Badge>
+            <Badge variant="neutral">Multi-Channel: In Development</Badge>
           </div>
           <Badge variant={summaryRes.status === "success" ? "allow" : "review"}>
             {summaryRes.status === "success" ? "Connected to Live Backend" : "Connecting..."}
           </Badge>
         </div>
-        <h1 className="page-title">
-          Financial Agent Workspace (<code className="inline-code">financial-ai-agent:0.1.0</code>)
-        </h1>
-        <p className="page-lead">
-          Multi-channel operations console for the Financial AI Agent. Accessible seamlessly via
-          Web, WhatsApp, and Voice (ElevenLabs). The agent evaluates accounts payable, invoices, and category
-          budgets via read-only APIs, formulating structured <code className="inline-code">FinancialActionProposal</code> envelopes.
-          All execution remains governed under the Runtime Gateway policy engine.
+        <div className="flex items-center gap-3">
+          <h1 className="page-title m-0">Financial Agent Workspace</h1>
+          <Badge variant="neutral">v0.1.0</Badge>
+        </div>
+        <p className="page-lead mt-2">
+          Operations console for the Financial AI Agent. Accessible through our interactive Web Console,
+          with external channel adapters (Twilio SMS/WhatsApp dispatch and Conversational Financial Agent) currently
+          in active development. The agent evaluates accounts payable, invoices, and category budgets via read-only APIs,
+          formulating structured proposals while execution authority remains strictly governed under the Runtime Gateway.
         </p>
       </Card>
 
@@ -187,8 +188,8 @@ export default async function FinancialAgentPage() {
         <div>
           <Card>
             <CardHeader
-              title="Live FinancialContext Snapshot (Read-Only Context)"
-              subtitle="Sandbox state consumed by FinancialContextClient (services/agent-worker/src/neolith_agent/client.py)."
+              title="Live Financial Context Snapshot (Read-Only Context)"
+              subtitle="Real-time operating balances, category budgets, and pending invoices available to the agent."
             />
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <div>
@@ -251,7 +252,7 @@ export default async function FinancialAgentPage() {
       <Card>
         <CardHeader
           title="Registered Financial Agent Tools (5 Read-Only, 4 Protected Write)"
-          subtitle="Tool metadata persisted in PostgreSQL and enforced by the Runtime Gateway."
+          subtitle="Authorized capabilities and safety boundaries enforced by the Governance Runtime."
         />
         <DataTable
           columns={TOOL_COLUMNS}

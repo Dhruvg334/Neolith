@@ -618,7 +618,7 @@ export function LandingPageClient() {
             Explore the Neolith Workspaces
           </h2>
           <p className="text-xs sm:text-sm text-slate-500">
-            Access interactive agent consoles, governance controls, cryptographic audit chains, and developer hubs.
+            Access interactive agent consoles, governance controls, cryptographic audit chains, and architecture resources.
           </p>
         </div>
 

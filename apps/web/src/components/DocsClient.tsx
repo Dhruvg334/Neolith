@@ -35,7 +35,7 @@ const DOC_SECTIONS: DocSection[] = [
     summary: "Core separation of reasoning, governance, and execution across the 3 system tiers.",
     mermaidChart: `
 flowchart TD
-    Client["Client Interfaces (Web / WhatsApp / Voice)"] --> Gateway["Runtime Gateway & Interaction Core"]
+    Client["Client Interfaces (Web / Twilio Dispatch / Conversational Agent)"] --> Gateway["Runtime Gateway & Interaction Core"]
     Gateway --> Agent["Financial AI Agent (Reasoning & Planning)"]
     Agent --> Proposal["Action Proposal (Zero Implicit Authority)"]
     Proposal --> Gov["Authoritative Governance Runtime (OPA Rego)"]
@@ -390,7 +390,7 @@ export function DocsClient() {
         <div className="space-y-2 max-w-2xl">
           <div className="inline-flex items-center gap-2 rounded-full border border-ember-500/30 bg-ember-500/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-ember-400">
             <BookOpen className="w-3.5 h-3.5" />
-            <span>Developer & Architecture Hub</span>
+            <span>Architecture & Specifications Hub</span>
             <InfoIcon
               title="Documentation Hub"
               content="All architectural diagrams, sequence flows, and policy invariants are fully grounded in the actual codebase contracts and OPA Rego policies."

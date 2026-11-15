@@ -240,7 +240,7 @@ export default async function AccountsPage() {
         {invoices.length === 0 ? (
           <EmptyState
             title="No Invoices Found"
-            description="Seed the financial reference dataset to populate INV-001, INV-002, and INV-003."
+            description="No unpaid invoices currently pending in the accounts payable ledger."
           />
         ) : (
           <DataTable

@@ -17,7 +17,7 @@ export default function SecurityPage() {
       <Card>
         <div className="flex items-center gap-2 mb-2">
           <Badge variant="allow">Defense in Depth</Badge>
-          <span className="text-xs text-slate-500 font-mono">12-Layer System Architecture</span>
+          <span className="text-xs text-slate-500 font-mono">Multi-Layer Governance Model</span>
         </div>
         <h1 className="page-title text-2xl font-bold tracking-tight text-slate-900">
           Security Architecture & Policy Invariants
@@ -84,7 +84,7 @@ export default function SecurityPage() {
             <p className="text-xs text-slate-600">
               Every decision, permit issuance, and settlement is written to an append-only receipt log with
               parent-hash linkage. The cryptographic integrity of the entire chain can be audited mathematically
-              via <code>GET /api/v1/receipts/verify</code>.
+              via cryptographic receipt verification.
             </p>
           </div>
         </div>
@@ -92,14 +92,14 @@ export default function SecurityPage() {
 
       <Card>
         <CardHeader
-          title="Layer 10: Secret Isolation & Environment Security"
-          subtitle="Credential hygiene across hosted and local deployments."
+          title="Zero-Trust Boundary & Secret Isolation"
+          subtitle="Credential hygiene and secure execution boundaries."
         />
         <div className="space-y-3 text-xs text-slate-700 leading-relaxed mt-2">
           <p>
-            Per the Agentic Web Development Handbook, no API secrets, database passwords, or Twilio tokens
-            are ever exposed to client bundles or logged in telemetry. Client-side code only receives
-            non-sensitive configuration (such as public feature flags and channel indicators).
+            Under Neolith&apos;s zero-trust security architecture, no API secrets, database credentials, or external tokens
+            are ever exposed to client bundles or logged in telemetry. Client-side interfaces receive only
+            non-sensitive operational state and cryptographically signed session tokens.
           </p>
         </div>
       </Card>

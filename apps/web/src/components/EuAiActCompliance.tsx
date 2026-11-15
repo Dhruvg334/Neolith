@@ -114,7 +114,7 @@ export function EuAiActCompliance() {
               Regulatory Governance Center
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-              Inspired by Hexgate Compliance Architecture
+              Regulation (EU) 2024/1689
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">

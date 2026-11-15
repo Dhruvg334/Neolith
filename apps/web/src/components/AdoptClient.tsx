@@ -188,7 +188,7 @@ export function AdoptClient() {
             {
               step: "06",
               title: "Multi-Channel Adapter Configuration",
-              desc: "Connect your organisation's communication endpoints (Web, WhatsApp Twilio webhook, ElevenLabs voice) to the interaction gateway.",
+              desc: "Connect your organisation's communication endpoints (Web console, with Twilio SMS/WhatsApp dispatch and Conversational Financial Agent in staged development) to the interaction gateway.",
             },
             {
               step: "07",

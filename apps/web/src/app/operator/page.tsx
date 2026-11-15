@@ -211,7 +211,7 @@ export default async function OperatorPage() {
 
       <Card>
         <CardHeader
-          title="Registered Tool Versions & Risk Classifications (GET /api/v1/tools)"
+          title="Registered Tool Capabilities & Risk Classifications"
           subtitle="Distinguishes R1 read-only context tools from R2–R4 permit-enforced write tools."
         />
         <DataTable
@@ -223,7 +223,7 @@ export default async function OperatorPage() {
 
       <Card>
         <CardHeader
-          title="Authoritative Category Budgets (GET /api/v1/financial/budgets)"
+          title="Authoritative Category Budgets & Spending Caps"
           subtitle="Monthly spend caps enforced for Neolith Finance."
         />
         <div style={{ display: "grid", gap: "1rem" }}>

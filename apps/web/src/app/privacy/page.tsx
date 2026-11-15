@@ -69,17 +69,17 @@ export default function PrivacyPage() {
 
       <Card>
         <CardHeader
-          title="3. Multi-Channel Identity & Telemetry"
-          subtitle="WhatsApp, Twilio Voice, and Web interaction handling."
+          title="3. Multi-Channel Identity & External Adapters"
+          subtitle="Interaction handling across Web and in-development channel adapters."
         />
         <div className="space-y-3 text-xs text-slate-700 leading-relaxed mt-2">
           <p>
-            Interactions via external channels (Twilio WhatsApp, Twilio Voice / ElevenLabs) are mapped to
-            ephemeral channel session tokens. Inbound requests are sanitized and verified against configured
-            webhook signatures before processing.
+            External communication adapters (such as Twilio SMS/WhatsApp dispatch and Conversational Financial Agent,
+            currently in staged development) interact through authenticated webhooks and ephemeral session tokens.
+            Inbound requests are sanitized and verified against cryptographic signatures before processing.
           </p>
           <p>
-            Distributed tracing (OpenTelemetry) propagates correlation IDs (<code>X-Trace-Id</code>) across
+            Distributed tracing propagates correlation IDs (<code>X-Trace-Id</code>) across
             all system requests without storing personally identifiable information in unencrypted application logs.
           </p>
         </div>

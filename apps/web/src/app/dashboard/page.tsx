@@ -103,14 +103,14 @@ export default async function FinancialDashboardPage() {
             gap: "0.5rem",
           }}
         >
-          <Badge variant="info">Financial Reference Application</Badge>
+          <Badge variant="info">Treasury & Accounts Operations</Badge>
           <Badge variant="allow">Connected to Live Backend</Badge>
         </div>
         <h1 className="page-title">
           Financial Dashboard — {summary.organisation_name}
         </h1>
         <p className="page-lead">
-          Synthetic enterprise treasury, accounts-payable, and category budget
+          Enterprise treasury, accounts-payable, and category budget
           telemetry governed by Neolith&apos;s Runtime Gateway. All protected
           write actions require deterministic policy evaluation, budget
           reservation, and a signed execution permit.
@@ -233,7 +233,7 @@ export default async function FinancialDashboardPage() {
       <Card>
         <CardHeader
           title="Recent Financial Ledger Transactions"
-          subtitle="Immutable ledger entries recorded in the Financial Reference Application."
+          subtitle="Immutable ledger entries recorded in the enterprise financial ledger."
         />
         {summary.recent_transactions.length === 0 ? (
           <EmptyState

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AgentTaskConsole } from "./AgentTaskConsole";
-import { Badge, Button, Card } from "./ui";
+import { Badge, Card } from "./ui";
 
 export type InterfaceMode = "web" | "whatsapp" | "voice";
 
@@ -10,33 +10,14 @@ export interface AgentInterfaceSwitcherProps {
   readonly initialMode?: InterfaceMode;
 }
 
+// Multi-channel interface locks — toggled when ready to unlock external adapters
+const IS_TWILIO_UNLOCKED = false;
+const IS_CONVERSATIONAL_AGENT_UNLOCKED = false;
+
 export function AgentInterfaceSwitcher({
   initialMode = "web",
 }: AgentInterfaceSwitcherProps) {
   const [mode, setMode] = useState<InterfaceMode>(initialMode);
-  const [copied, setCopied] = useState(false);
-  const [isVoiceActive, setIsVoiceActive] = useState(false);
-  const [voiceSimulating, setVoiceSimulating] = useState(false);
-
-  const rawWhatsApp =
-    process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "+14155238886";
-  const cleanWhatsApp = rawWhatsApp.replace(/[^0-9]/g, "");
-  const elevenLabsAgentId =
-    process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID || "";
-
-  useEffect(() => {
-    if (copied) {
-      const timer = setTimeout(() => setCopied(false), 2500);
-      return () => clearTimeout(timer);
-    }
-  }, [copied]);
-
-  const handleCopyNumber = () => {
-    if (navigator.clipboard) {
-      void navigator.clipboard.writeText(rawWhatsApp);
-      setCopied(true);
-    }
-  };
 
   return (
     <div>
@@ -44,43 +25,24 @@ export function AgentInterfaceSwitcher({
       <div
         role="tablist"
         aria-label="Agent Interaction Channels"
-        style={{
-          display: "flex",
-          gap: "0.5rem",
-          backgroundColor: "var(--bg-muted)",
-          padding: "0.35rem",
-          borderRadius: "0.5rem",
-          marginBottom: "1.25rem",
-          border: "1px solid var(--border-subtle)",
-          width: "fit-content",
-        }}
+        className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-2xl bg-slate-100 border border-slate-200 mb-5 w-fit"
       >
         <button
           type="button"
           role="tab"
           aria-selected={mode === "web"}
           onClick={() => setMode("web")}
-          style={{
-            padding: "0.5rem 1.25rem",
-            borderRadius: "0.375rem",
-            border: "none",
-            backgroundColor:
-              mode === "web" ? "var(--bg-surface)" : "transparent",
-            color:
-              mode === "web"
-                ? "var(--text-primary)"
-                : "var(--text-secondary)",
-            fontWeight: mode === "web" ? 600 : 500,
-            fontSize: "0.875rem",
-            cursor: "pointer",
-            boxShadow:
-              mode === "web" ? "0 1px 3px rgba(0, 0, 0, 0.1)" : "none",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-          }}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150 flex items-center gap-2 ${
+            mode === "web"
+              ? "bg-white text-slate-900 shadow-sm border border-slate-200"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+          }`}
         >
-          <span>💻</span> Web Interface
+          <span>💻</span>
+          <span>Web Console</span>
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+            Active
+          </span>
         </button>
 
         <button
@@ -88,27 +50,17 @@ export function AgentInterfaceSwitcher({
           role="tab"
           aria-selected={mode === "whatsapp"}
           onClick={() => setMode("whatsapp")}
-          style={{
-            padding: "0.5rem 1.25rem",
-            borderRadius: "0.375rem",
-            border: "none",
-            backgroundColor:
-              mode === "whatsapp" ? "var(--bg-surface)" : "transparent",
-            color:
-              mode === "whatsapp"
-                ? "var(--text-primary)"
-                : "var(--text-secondary)",
-            fontWeight: mode === "whatsapp" ? 600 : 500,
-            fontSize: "0.875rem",
-            cursor: "pointer",
-            boxShadow:
-              mode === "whatsapp" ? "0 1px 3px rgba(0, 0, 0, 0.1)" : "none",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-          }}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150 flex items-center gap-2 ${
+            mode === "whatsapp"
+              ? "bg-white text-slate-900 shadow-sm border border-slate-200"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+          }`}
         >
-          <span>💬</span> WhatsApp
+          <span>💬</span>
+          <span>Twilio Mobile Dispatch</span>
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 flex items-center gap-1">
+            <span>🔒</span> In Dev
+          </span>
         </button>
 
         <button
@@ -116,27 +68,17 @@ export function AgentInterfaceSwitcher({
           role="tab"
           aria-selected={mode === "voice"}
           onClick={() => setMode("voice")}
-          style={{
-            padding: "0.5rem 1.25rem",
-            borderRadius: "0.375rem",
-            border: "none",
-            backgroundColor:
-              mode === "voice" ? "var(--bg-surface)" : "transparent",
-            color:
-              mode === "voice"
-                ? "var(--text-primary)"
-                : "var(--text-secondary)",
-            fontWeight: mode === "voice" ? 600 : 500,
-            fontSize: "0.875rem",
-            cursor: "pointer",
-            boxShadow:
-              mode === "voice" ? "0 1px 3px rgba(0, 0, 0, 0.1)" : "none",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-          }}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-150 flex items-center gap-2 ${
+            mode === "voice"
+              ? "bg-white text-slate-900 shadow-sm border border-slate-200"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+          }`}
         >
-          <span>🎙️</span> Voice (ElevenLabs)
+          <span>🎙️</span>
+          <span>Conversational Financial Agent</span>
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 flex items-center gap-1">
+            <span>🔒</span> In Dev
+          </span>
         </button>
       </div>
 
@@ -147,303 +89,207 @@ export function AgentInterfaceSwitcher({
         </div>
       )}
 
-      {/* WHATSAPP CHANNEL VIEW */}
+      {/* WHATSAPP & SMS (TWILIO) CHANNEL VIEW */}
       {mode === "whatsapp" && (
-        <div role="tabpanel" aria-label="WhatsApp Interface">
-          <Card>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                flexWrap: "wrap",
-                gap: "0.5rem",
-                marginBottom: "0.75rem",
-              }}
-            >
-              <Badge variant="allow">WHATSAPP MULTI-CHANNEL</Badge>
-              <Badge variant="neutral">Twilio Webhook Bridge</Badge>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
-              <div
-                style={{
-                  width: "56px",
-                  height: "56px",
-                  borderRadius: "50%",
-                  backgroundColor: "#25D366",
-                  color: "#FFFFFF",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "1.75rem",
-                  flexShrink: 0,
-                }}
-              >
-                💬
+        <div role="tabpanel" aria-label="Twilio Mobile Dispatch Interface">
+          {!IS_TWILIO_UNLOCKED ? (
+            <Card>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <Badge variant="review">🔒 CURRENTLY IN DEVELOPMENT</Badge>
+                  <Badge variant="neutral">Twilio Gateway Integration</Badge>
+                </div>
+                <span className="text-xs font-mono text-slate-500">Status: Staged Development</span>
               </div>
-              <div>
-                <h2 className="card-title" style={{ fontSize: "1.25rem", margin: "0 0 0.35rem 0" }}>
-                  Continue this conversation in WhatsApp
-                </h2>
-                <p className="card-copy" style={{ maxWidth: "600px", margin: 0 }}>
-                  Interact with the Financial AI Agent directly on your mobile device. Inquire about
-                  account balances, inspect vendor invoices, and propose payments while every single
-                  request flows through the exact same Runtime Gateway governance policies.
+
+              <div className="flex items-start gap-4 mb-6">
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center text-2xl shrink-0">
+                  💬
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 mb-1">
+                    Twilio Multi-Channel Mobile Dispatch
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed m-0">
+                    Automated WhatsApp and SMS operational alerts, multi-channel approvals, and mobile inquiries
+                    powered by Twilio gateway integrations.
+                  </p>
+                </div>
+              </div>
+
+              {/* In Development Explanation Notice */}
+              <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-5 mb-6 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-700 font-bold text-xs uppercase tracking-wider">
+                    Feature Status • Development in Progress
+                  </span>
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed m-0">
+                  The Twilio mobile communication gateway is currently undergoing security hardening and end-to-end policy
+                  verification. Once unlocked, authorized operators will be able to review operating account balances, receive
+                  instant threshold alerts, and confirm pending invoices directly from their mobile devices.
                 </p>
               </div>
-            </div>
 
-            <div
-              style={{
-                marginTop: "1.5rem",
-                padding: "1.25rem",
-                backgroundColor: "var(--bg-muted)",
-                borderRadius: "0.5rem",
-                border: "1px solid var(--border-subtle)",
-              }}
-            >
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1rem" }}>
-                <div>
-                  <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)", fontWeight: 600 }}>
-                    OFFICIAL WHATSAPP NUMBER
-                  </span>
-                  <p
-                    style={{
-                      fontSize: "1.25rem",
-                      fontWeight: 700,
-                      fontFamily: "var(--font-mono)",
-                      margin: "0.25rem 0 0.75rem 0",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    {rawWhatsApp}
-                  </p>
-                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                    <a
-                      href={`https://wa.me/${cleanWhatsApp}?text=Hi%20Neolith%2C%20what%20is%20our%20current%20operating%20account%20balance%3F`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                        padding: "0.5rem 1rem",
-                        backgroundColor: "#25D366",
-                        color: "#FFFFFF",
-                        borderRadius: "0.375rem",
-                        fontWeight: 600,
-                        fontSize: "0.875rem",
-                        textDecoration: "none",
-                      }}
-                    >
-                      Open in WhatsApp ↗
-                    </a>
-                    <Button variant="secondary" onClick={handleCopyNumber}>
-                      {copied ? "✓ Copied!" : "Copy Number"}
-                    </Button>
+              {/* Feature Capabilities Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5">
+                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <span className="text-teal-600">🛡️</span> Authenticated Messaging
                   </div>
+                  <p className="text-xs text-slate-600 leading-relaxed m-0">
+                    Inbound mobile interactions are authenticated via cryptographic signatures with zero ambient authority.
+                  </p>
                 </div>
 
-                <div style={{ borderLeft: "1px solid var(--border-subtle)", paddingLeft: "1rem" }}>
-                  <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)", fontWeight: 600 }}>
-                    SECURITY &amp; POLICY CONTROLS
-                  </span>
-                  <ul style={{ margin: "0.35rem 0 0 1.25rem", fontSize: "0.875rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
-                    <li>All inbound messages authenticated via SHA-256 HMAC</li>
-                    <li>Vendor verification &amp; budget limits enforced identically</li>
-                    <li>Audit trail logged in PostgreSQL with session trace ID</li>
-                  </ul>
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5">
+                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <span className="text-teal-600">⚖️</span> Full Policy Parity
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed m-0">
+                    Mobile proposals pass through the identical OPA policy rules, budget reservations, and audit trail.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5">
+                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <span className="text-teal-600">🔔</span> Real-Time Push Alerts
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed m-0">
+                    Instant alerts dispatched to finance managers when transactions require human checkpoint verification.
+                  </p>
                 </div>
               </div>
-            </div>
-          </Card>
+
+              {/* Action Locked State */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-slate-100 border border-slate-200">
+                <div className="text-xs text-slate-500">
+                  <span>Channel availability: </span>
+                  <strong className="text-slate-700">Scheduled for upcoming platform update</strong>
+                </div>
+                <button
+                  type="button"
+                  disabled
+                  className="px-4 py-2 rounded-lg text-xs font-bold bg-slate-200 text-slate-400 cursor-not-allowed flex items-center gap-1.5"
+                >
+                  <span>🔒</span>
+                  <span>Channel In Development</span>
+                </button>
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <div className="flex justify-between items-center flex-wrap gap-2 mb-3">
+                <Badge variant="allow">WHATSAPP MULTI-CHANNEL</Badge>
+                <Badge variant="neutral">Twilio Mobile Gateway</Badge>
+              </div>
+              <p className="text-sm text-slate-600">
+                Mobile messaging channel unlocked.
+              </p>
+            </Card>
+          )}
         </div>
       )}
 
-      {/* VOICE CHANNEL VIEW */}
+      {/* CONVERSATIONAL FINANCIAL AGENT (VOICE) CHANNEL VIEW */}
       {mode === "voice" && (
-        <div role="tabpanel" aria-label="Voice Interface">
-          <Card>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                flexWrap: "wrap",
-                gap: "0.5rem",
-                marginBottom: "0.75rem",
-              }}
-            >
-              <Badge variant="info">VOICE INTERACTION</Badge>
-              <Badge variant="neutral">ElevenLabs Conversational AI</Badge>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
-              <div
-                style={{
-                  width: "56px",
-                  height: "56px",
-                  borderRadius: "50%",
-                  backgroundColor: "#0F766E",
-                  color: "#FFFFFF",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "1.75rem",
-                  flexShrink: 0,
-                }}
-              >
-                🎙️
+        <div role="tabpanel" aria-label="Conversational Financial Agent Interface">
+          {!IS_CONVERSATIONAL_AGENT_UNLOCKED ? (
+            <Card>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <Badge variant="review">🔒 CURRENTLY IN DEVELOPMENT</Badge>
+                  <Badge variant="neutral">Conversational Voice Runtime</Badge>
+                </div>
+                <span className="text-xs font-mono text-slate-500">Status: Staged Development</span>
               </div>
-              <div>
-                <h2 className="card-title" style={{ fontSize: "1.25rem", margin: "0 0 0.35rem 0" }}>
-                  Talk to Financial Agent
-                </h2>
-                <p className="card-copy" style={{ maxWidth: "600px", margin: 0 }}>
-                  Speak naturally. Neolith applies the same checks as Web and WhatsApp.
-                  The Voice Agent communicates in real-time through ElevenLabs with custom LLM governance
-                  routing back to Neolith&apos;s authoritative policy engine.
+
+              <div className="flex items-start gap-4 mb-6">
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center text-2xl shrink-0">
+                  🎙️
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 mb-1">
+                    Conversational Financial Agent
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed m-0">
+                    Real-time voice and conversational financial operations assistant enabling operators to review budgets,
+                    inspect invoices, and propose transactions through natural spoken dialogue.
+                  </p>
+                </div>
+              </div>
+
+              {/* In Development Explanation Notice */}
+              <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-5 mb-6 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-amber-700 font-bold text-xs uppercase tracking-wider">
+                    Feature Status • Development in Progress
+                  </span>
+                </div>
+                <p className="text-xs text-slate-700 leading-relaxed m-0">
+                  The Conversational Financial Agent is currently undergoing safety verification and voice latency optimization.
+                  When unlocked, finance teams can interact through natural conversational speech while every proposed transaction
+                  remains strictly evaluated by corporate governance policies.
                 </p>
               </div>
-            </div>
 
-            <div
-              style={{
-                marginTop: "1.5rem",
-                padding: "2rem",
-                backgroundColor: "var(--bg-muted)",
-                borderRadius: "0.5rem",
-                border: "1px solid var(--border-subtle)",
-                textAlign: "center",
-              }}
-            >
-              {elevenLabsAgentId ? (
-                <div>
-                  <div
-                    style={{
-                      width: "72px",
-                      height: "72px",
-                      borderRadius: "50%",
-                      backgroundColor: isVoiceActive ? "#10B981" : "#0F766E",
-                      color: "#FFFFFF",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      margin: "0 auto 1.25rem auto",
-                      fontSize: "2rem",
-                      boxShadow: isVoiceActive ? "0 0 0 8px rgba(16, 185, 129, 0.2)" : "none",
-                      transition: "all 0.3s ease",
-                    }}
-                  >
-                    {isVoiceActive ? "🔊" : "🎙️"}
+              {/* Feature Capabilities Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5">
+                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <span className="text-teal-600">🗣️</span> Natural Voice Dialogue
                   </div>
-
-                  <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.125rem", fontWeight: 600 }}>
-                    {isVoiceActive ? "Voice Conversation Active" : "Ready to Talk"}
-                  </h3>
-                  <p style={{ margin: "0 auto 1.25rem auto", fontSize: "0.875rem", color: "var(--text-secondary)", maxWidth: "420px" }}>
-                    {isVoiceActive
-                      ? "Listening and synthesizing replies governed by Neolith policy..."
-                      : "Click below to begin speaking with the Financial Operations AI Agent."}
+                  <p className="text-xs text-slate-600 leading-relaxed m-0">
+                    Hands-free verbal inquiries for ledger balances, spending caps, and pending vendor invoices.
                   </p>
-
-                  <div style={{ display: "flex", justifyContent: "center", gap: "0.75rem" }}>
-                    <Button
-                      variant={isVoiceActive ? "danger" : "primary"}
-                      onClick={() => setIsVoiceActive(!isVoiceActive)}
-                    >
-                      {isVoiceActive ? "End conversation" : "Start voice conversation"}
-                    </Button>
-                  </div>
-
-                  <div style={{ marginTop: "1rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                    Agent ID: <code className="inline-code">{elevenLabsAgentId}</code>
-                  </div>
                 </div>
-              ) : (
-                <div>
-                  <div
-                    style={{
-                      width: "64px",
-                      height: "64px",
-                      borderRadius: "50%",
-                      backgroundColor: "var(--bg-surface)",
-                      border: "1px solid var(--border-subtle)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      margin: "0 auto 1rem auto",
-                      fontSize: "1.75rem",
-                    }}
-                  >
-                    🎙️
-                  </div>
 
-                  <h3 style={{ margin: "0 0 0.5rem 0", fontSize: "1.125rem", fontWeight: 600 }}>
-                    Voice Calling Architecture Ready
-                  </h3>
-                  <p style={{ margin: "0 auto 1.25rem auto", fontSize: "0.875rem", color: "var(--text-secondary)", maxWidth: "480px" }}>
-                    The backend ElevenLabs Custom LLM endpoint (<code className="inline-code">/api/v1/elevenlabs/chat/completions</code>)
-                    is operational and secured by bearer token. To enable the in-browser widget, configure your Agent ID.
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5">
+                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <span className="text-teal-600">🛡️</span> Zero Implicit Authority
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed m-0">
+                    The conversational agent cannot execute payments directly. Single-use cryptographic permits are strictly required.
                   </p>
-
-                  <div
-                    style={{
-                      maxWidth: "520px",
-                      margin: "0 auto 1.25rem auto",
-                      padding: "0.875rem",
-                      backgroundColor: "var(--bg-surface)",
-                      borderRadius: "0.375rem",
-                      border: "1px solid var(--border-subtle)",
-                      textAlign: "left",
-                      fontSize: "0.8125rem",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, marginBottom: "0.35rem", color: "var(--text-primary)" }}>
-                      Configuration Setting (Vercel / .env):
-                    </div>
-                    <code className="inline-code" style={{ display: "block", padding: "0.4rem 0.6rem" }}>
-                      NEXT_PUBLIC_ELEVENLABS_AGENT_ID=your_elevenlabs_agent_id
-                    </code>
-                    <p style={{ margin: "0.5rem 0 0 0", color: "var(--text-muted)", fontSize: "0.75rem" }}>
-                      Security Notice: The Agent ID is safe for public client exposure. The backend custom LLM bearer
-                      token stays private on Render.
-                    </p>
-                  </div>
-
-                  <div style={{ display: "flex", justifyContent: "center", gap: "0.75rem" }}>
-                    <Button
-                      variant="secondary"
-                      onClick={() => setVoiceSimulating(!voiceSimulating)}
-                    >
-                      {voiceSimulating ? "Stop audio preview" : "Preview audio waveform"}
-                    </Button>
-                  </div>
-
-                  {voiceSimulating ? (
-                    <div
-                      style={{
-                        marginTop: "1.25rem",
-                        padding: "0.75rem",
-                        backgroundColor: "var(--bg-surface)",
-                        borderRadius: "0.375rem",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                        border: "1px solid var(--border-subtle)",
-                        fontSize: "0.8125rem",
-                      }}
-                    >
-                      <span style={{ animation: "pulse 1s infinite", color: "#0F766E" }}>● Live audio simulation:</span>
-                      <span>Microphone access granted &bull; Parity with Web & WhatsApp runtime</span>
-                    </div>
-                  ) : null}
                 </div>
-              )}
-            </div>
-          </Card>
+
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1.5">
+                  <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <span className="text-teal-600">📜</span> Immutable Audit Logs
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed m-0">
+                    Spoken interactions and proposed decisions are hashed and permanently recorded in the decision receipt chain.
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Locked State */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-slate-100 border border-slate-200">
+                <div className="text-xs text-slate-500">
+                  <span>Channel availability: </span>
+                  <strong className="text-slate-700">Scheduled for upcoming platform update</strong>
+                </div>
+                <button
+                  type="button"
+                  disabled
+                  className="px-4 py-2 rounded-lg text-xs font-bold bg-slate-200 text-slate-400 cursor-not-allowed flex items-center gap-1.5"
+                >
+                  <span>🔒</span>
+                  <span>Agent In Development</span>
+                </button>
+              </div>
+            </Card>
+          ) : (
+            <Card>
+              <div className="flex justify-between items-center flex-wrap gap-2 mb-3">
+                <Badge variant="info">VOICE INTERACTION</Badge>
+                <Badge variant="neutral">Conversational Voice Runtime</Badge>
+              </div>
+              <p className="text-sm text-slate-600">
+                Conversational Financial Agent unlocked.
+              </p>
+            </Card>
+          )}
         </div>
       )}
     </div>
