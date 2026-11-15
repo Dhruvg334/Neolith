@@ -175,3 +175,96 @@ def test_post_governance_summarize_with_custom_actions(client: TestClient) -> No
     assert data["breakdown"]["blocked_amount"] == "50000.00"
     assert data["breakdown"]["total_proposed_amount"] == "58000.00"
     assert "Guarded" in data["governance_posture"]
+
+
+def test_post_governance_summarize_empty_actions(client: TestClient) -> None:
+    """POST /api/v1/governance/summarize falls back to seeded history when empty."""
+    payload = {
+        "actions": [],
+        "profile_name": "Balanced Control",
+        "organization_name": "Neolith Treasury",
+    }
+    res = client.post("/api/v1/governance/summarize", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert "breakdown" in data
+    assert data["breakdown"]["currency"] == "INR"
+    assert "LLM reasoning step" in data["zero_trust_guarantee"]
+
+
+def test_post_governance_summarize_all_denied(client: TestClient) -> None:
+    """POST /api/v1/governance/summarize correctly aggregates 100% blocked actions."""
+    payload = {
+        "actions": [
+            {
+                "id": "act-deny-1",
+                "target_id": "INV-999",
+                "action_type": "pay_invoice",
+                "vendor_name": "Fraudulent Inc",
+                "is_verified_vendor": False,
+                "amount": "120000.00",
+                "currency": "INR",
+                "category": "Infrastructure",
+                "outcome": "deny",
+                "risk_tier": "R4",
+                "reason_codes": ["DENY_UNVERIFIED_BENEFICIARY", "DENY_BUDGET_EXCEEDED"],
+                "rule_explanation": "Critical security violation hard-blocked.",
+            }
+        ],
+        "profile_name": "High Autonomy",
+    }
+    res = client.post("/api/v1/governance/summarize", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["breakdown"]["blocked_count"] == 1
+    assert data["breakdown"]["blocked_amount"] == "120000.00"
+    assert data["breakdown"]["allowed_count"] == 0
+    assert data["breakdown"]["controlled_count"] == 0
+    assert "authoritative signed permit" in data["zero_trust_guarantee"]
+
+
+def test_post_governance_summarize_all_allowed(client: TestClient) -> None:
+    """POST /api/v1/governance/summarize correctly aggregates autonomous allowed actions."""
+    payload = {
+        "actions": [
+            {
+                "id": "act-allow-1",
+                "target_id": "INV-001",
+                "action_type": "pay_invoice",
+                "vendor_name": "Acme Cloud",
+                "is_verified_vendor": True,
+                "amount": "8000.00",
+                "currency": "INR",
+                "category": "Software",
+                "outcome": "allow",
+                "risk_tier": "R2",
+                "reason_codes": ["BASE_POLICY_ALLOW"],
+                "rule_explanation": "Routine payment permitted.",
+            },
+            {
+                "id": "act-allow-2",
+                "target_id": "INV-004",
+                "action_type": "pay_invoice",
+                "vendor_name": "Logistics Corp",
+                "is_verified_vendor": True,
+                "amount": "4500.00",
+                "currency": "INR",
+                "category": "Miscellaneous",
+                "outcome": "allow",
+                "risk_tier": "R1",
+                "reason_codes": ["BASE_POLICY_ALLOW"],
+                "rule_explanation": "Low risk miscellaneous expense.",
+            },
+        ],
+        "profile_name": "Balanced Control",
+    }
+    res = client.post("/api/v1/governance/summarize", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["breakdown"]["allowed_count"] == 2
+    assert data["breakdown"]["allowed_amount"] == "12500.00"
+    assert data["breakdown"]["blocked_count"] == 0
+    assert data["breakdown"]["controlled_count"] == 0
