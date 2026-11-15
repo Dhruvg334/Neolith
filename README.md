@@ -576,7 +576,7 @@ Neolith is production-ready for split cloud deployment:
 
 - **Frontend (Vercel)**: Next.js 15 App Router deployed with root directory `apps/web`.
 - **Backend (Render Free Web Service)**: Containerized FastAPI service co-locating a pinned Open Policy Agent (OPA 1.22.2) daemon on `127.0.0.1:8181` inside a single Docker container (0.1 CPU, 512 MB RAM footprint).
-- **Database (Render PostgreSQL)**: Provisioned via Blueprint (`render.yaml`) or external PostgreSQL `DATABASE_URL`.
+- **Database**: Provisioned via Blueprint (`render.yaml`), external PostgreSQL `DATABASE_URL`, or automatic embedded SQLite fallback.
 - **Multi-Channel**: Supports Web, Twilio WhatsApp, and ElevenLabs Conversational AI voice streaming through the same authoritative Runtime Gateway.
 
 For complete step-by-step instructions, environment variable configurations, and cold-start considerations, see [Deployment Guide](docs/DEPLOYMENT.md).

@@ -43,8 +43,8 @@ RUN pip install --no-deps -e services/agent-worker -e services/api -e services/t
 # Ensure startup script is executable
 RUN chmod +x scripts/start_render.sh
 
-# Create non-root user and assign ownership
-RUN useradd -m -u 1000 neolith && chown -R neolith:neolith /app
+# Create non-root user, ensure data directory exists, and assign ownership
+RUN mkdir -p /app/data && useradd -m -u 1000 neolith && chown -R neolith:neolith /app
 USER neolith
 
 EXPOSE 10000

@@ -20,7 +20,7 @@ def build_engine(database_url: str | None = None) -> Engine:
     resolved_url = database_url or get_settings().database_url
     kwargs: dict[str, Any] = {"pool_pre_ping": True}
     if resolved_url.startswith("sqlite"):
-        kwargs["connect_args"] = {"check_same_thread": False}
+        kwargs["connect_args"] = {"check_same_thread": False, "timeout": 30}
         if ":memory:" in resolved_url:
             kwargs["poolclass"] = StaticPool
     return create_engine(resolved_url, **kwargs)

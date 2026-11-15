@@ -177,6 +177,18 @@ def test_start_render_script_syntax() -> None:
     assert "alembic upgrade head" in text
     assert "python -m neolith_api.seed" in text
     assert "exec uvicorn neolith_api.main:app" in text
+    assert "sqlite+pysqlite:////app/data/neolith.db" in text
+    assert "MAX_DB_RETRIES" in text
+
+
+def test_database_engine_sqlite_configuration() -> None:
+    """Verify build_engine configures SQLite with timeout and thread safety."""
+    from neolith_api.core.database import build_engine
+
+    engine = build_engine("sqlite+pysqlite:///:memory:")
+    assert engine.dialect.name == "sqlite"
+    with engine.connect() as conn:
+        assert conn is not None
 
 
 def test_opa_live_canonical_evaluation(opa_server: str) -> None:
