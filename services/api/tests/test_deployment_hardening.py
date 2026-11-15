@@ -191,6 +191,30 @@ def test_database_engine_sqlite_configuration() -> None:
         assert conn is not None
 
 
+def test_alembic_revision_ids_within_postgres_varchar32_limit() -> None:
+    """Verify all Alembic migration revision IDs are <= 32 chars for alembic_version schema."""
+    import importlib.util
+    from pathlib import Path
+
+    versions_dir = Path(__file__).resolve().parents[1] / "migrations" / "versions"
+    assert versions_dir.exists()
+
+    migration_files = list(versions_dir.glob("*.py"))
+    assert len(migration_files) >= 5
+
+    for filepath in migration_files:
+        spec = importlib.util.spec_from_file_location(filepath.stem, filepath)
+        assert spec and spec.loader
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        rev = getattr(module, "revision", None)
+        assert rev is not None, f"Missing revision in {filepath.name}"
+        assert len(rev) <= 32, (
+            f"Revision ID '{rev}' in {filepath.name} exceeds 32 characters ({len(rev)} chars). "
+            f"PostgreSQL alembic_version table enforces VARCHAR(32)."
+        )
+
+
 def test_opa_live_canonical_evaluation(opa_server: str) -> None:
     """Verify live OPA evaluates canonical inputs correctly."""
     evaluator = OpaPolicyEvaluator(

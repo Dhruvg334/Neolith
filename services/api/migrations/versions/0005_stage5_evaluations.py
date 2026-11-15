@@ -1,7 +1,7 @@
 """Stage 5 evaluation suites, cases, runs, and results.
 
 Revision ID: 0005_stage5_evaluations
-Revises: 0004_stage4_approvals_permits_receipts
+Revises: 0004_stage4_approvals_permits
 Create Date: 2026-11-15 12:00:00
 """
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0005_stage5_evaluations"
-down_revision: str | None = "0004_stage4_approvals_permits_receipts"
+down_revision: str | None = "0004_stage4_approvals_permits"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -189,6 +189,7 @@ If `DATABASE_URL` uses `postgres://` or `postgresql://`, Neolith automatically c
 | Symptom | Cause | Resolution |
 | :--- | :--- | :--- |
 | `psycopg.OperationalError: connection to server at '127.0.0.1', port 5432 failed: Connection refused` | `DATABASE_URL` was unset or set to `localhost:5432` (e.g. copied from `.env`). Each Render container runs in isolation without a local Postgres daemon. | Neolith automatically falls back to embedded SQLite at `/app/data/neolith.db`. For production PostgreSQL persistence, attach a Render PostgreSQL instance and set `DATABASE_URL` to its **Internal Connection String**. |
+| `StringDataRightTruncation: value too long for type character varying(32)` | Alembic migration revision ID exceeded PostgreSQL `alembic_version` VARCHAR(32) column limit. | All migration revision IDs are strictly $\le 32$ characters (`0004_stage4_approvals_permits` is 29 chars). |
 | `CORS Error / Preflight 400` | Vercel domain not in `CORS_ALLOWED_ORIGINS` | Add your Vercel production and preview URLs to `CORS_ALLOWED_ORIGINS` on Render (comma-separated). |
 | `OPA_SERVICE_UNAVAILABLE` | OPA daemon failed to start on `127.0.0.1:8181` | Check Render logs. Verify pinned binary downloaded correctly during Docker build. |
 | `502 / 503 Bad Gateway` on Render | Service cold start or memory threshold exceeded | Free tier offers 512 MB. Verify workers count is set to 1. Allow 30 seconds for cold start. |

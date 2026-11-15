@@ -385,7 +385,7 @@ Neolith/
 │           └── lib/                # Typed Financial & Governance API client with offline seed snapshot fallback
 ├── services/
 │   ├── api/                        # FastAPI control plane, Governance Runtime, Approvals, Permits, Receipts, Twilio/ElevenLabs adapters, Alembic migrations & seed module
-│   │   ├── migrations/             # Alembic migration environment (revisions 0001, 0002, 0003_stage3_governance, 0004_stage4_approvals_permits_receipts)
+│   │   ├── migrations/             # Alembic migration environment (revisions 0001, 0002, 0003, 0004, 0005)
 │   │   ├── src/neolith_api/        # Core ORM models, governance runtime, approvals, permits, receipts, interactions, Twilio & ElevenLabs adapters
 │   │   └── tests/                  # 81 unit and integration tests (contracts, financial sandbox, agent, governance, stage 4 approvals/receipts, hardening, web, WhatsApp, voice)
 │   ├── agent-worker/               # Stateful LangGraph Financial AI Agent, FinancialContextClient, internal HTTP service, and mock/OpenAI providers
