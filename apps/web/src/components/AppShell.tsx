@@ -14,13 +14,14 @@ import {
   Cpu,
   BookOpen,
   Compass,
-  Menu,
   X,
   ExternalLink,
   Lock,
+  PanelLeft,
 } from "lucide-react";
 import { checkBackendHealth } from "@/lib/financial-api";
 import { InfoIcon } from "@/components/ui/InfoIcon";
+import { NeolithLogo } from "@/components/NeolithLogo";
 
 interface AppShellProps {
   readonly children: ReactNode;
@@ -37,32 +38,30 @@ interface NavItem {
 
 const ESSENTIALS_NAV: readonly NavItem[] = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/agent", label: "Financial Agent", icon: Bot, badge: "AI" },
-  { href: "/accounts", label: "Accounts & Budgets", icon: Wallet },
-  { href: "/tasks", label: "Task Trace Activity", icon: Activity },
+  { href: "/agent", label: "Financial Agent Console", icon: Bot, badge: "AI" },
+  { href: "/accounts", label: "Operating Accounts & Budgets", icon: Wallet },
+  { href: "/tasks", label: "Task Activity Ledger", icon: Activity },
 ];
 
 const CONTROL_NAV: readonly NavItem[] = [
   { href: "/governance", label: "Governance & EU AI Act", icon: ShieldCheck, badge: "Compliance" },
-  { href: "/policies", label: "Policy Studio & Playground", icon: FileCode, badge: "Simulator" },
-  { href: "/approvals", label: "Human Approvals", icon: CheckSquare, badge: "Review" },
-  { href: "/operator", label: "Operator Control", icon: Cpu, badge: "Kill-Switch" },
+  { href: "/policies", label: "Policy Studio & Simulator", icon: FileCode, badge: "Simulator" },
+  { href: "/approvals", label: "Human Approvals Queue", icon: CheckSquare, badge: "Review" },
+  { href: "/operator", label: "Operator Emergency Control", icon: Cpu, badge: "Kill-Switch" },
 ];
 
 const KNOWLEDGE_NAV: readonly NavItem[] = [
-  { href: "/docs", label: "Documentation Hub", icon: BookOpen },
-  { href: "/adopt", label: "Adopt Neolith", icon: Compass },
+  { href: "/docs", label: "System Documentation Hub", icon: BookOpen },
+  { href: "/adopt", label: "Organization Adoption Guide", icon: Compass },
 ];
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const [viewMode, setViewMode] = useState<ViewMode>("essentials");
   const [backendStatus, setBackendStatus] = useState<"healthy" | "starting" | "unreachable" | "checking">("checking");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [trayOpen, setTrayOpen] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     const saved = localStorage.getItem("neolith_view_mode");
     if (saved === "control" || saved === "essentials") {
       setViewMode(saved);
@@ -70,10 +69,21 @@ export function AppShell({ children }: AppShellProps) {
     void checkBackendHealth().then((res) => setBackendStatus(res.status));
   }, []);
 
-  // Close mobile menu on path change
+  // Close tray whenever the path changes
   useEffect(() => {
-    setMobileMenuOpen(false);
+    setTrayOpen(false);
   }, [pathname]);
+
+  // Close tray on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && trayOpen) {
+        setTrayOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [trayOpen]);
 
   const handleModeChange = (mode: ViewMode) => {
     setViewMode(mode);
@@ -84,27 +94,30 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-ember-500 selection:text-white">
-      {/* 1. TOP AUTHORITATIVE APPLICATION BAR */}
+      {/* 1. TOP APPLICATION BAR */}
       <header className="sticky top-0 z-40 bg-[#070B16] border-b border-slate-800/80 shadow-glow-obsidian text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          {/* Brand & Status */}
-          <div className="flex items-center gap-4 sm:gap-6">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <span className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm tracking-wider bg-gradient-to-br from-ember-500 to-ember-600 text-white shadow-glow group-hover:scale-105 transition-all">
-                N
-              </span>
-              <div className="flex flex-col">
-                <span className="font-extrabold text-lg leading-tight tracking-tight text-white group-hover:text-ember-400 transition-colors">
-                  Neolith
-                </span>
-                <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">
-                  Governance Runtime
-                </span>
-              </div>
+          {/* Brand & Tray Toggle */}
+          <div className="flex items-center gap-3 sm:gap-6">
+            {/* Openable / Closable Tray Trigger Button */}
+            <button
+              type="button"
+              onClick={() => setTrayOpen(!trayOpen)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700/80 hover:border-ember-500/60 text-slate-200 hover:text-white transition-all text-xs font-semibold group shadow-sm"
+              title="Open or close platform navigation tray"
+              aria-label={trayOpen ? "Close Workspaces Tray" : "Open Workspaces Tray"}
+            >
+              <PanelLeft className="w-4 h-4 text-ember-400 transition-transform group-hover:scale-110" />
+              <span className="hidden sm:inline">Workspaces</span>
+            </button>
+
+            {/* Brand Logo */}
+            <Link href="/" className="group flex items-center gap-2">
+              <NeolithLogo size="md" lightText={true} />
             </Link>
 
-            {/* Live Gateway Connection Indicator */}
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-700/80 text-xs">
+            {/* Live Gateway Health Indicator */}
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-xs">
               {backendStatus === "healthy" ? (
                 <>
                   <span className="relative flex h-2 w-2">
@@ -132,10 +145,10 @@ export function AppShell({ children }: AppShellProps) {
             </div>
           </div>
 
-          {/* Desktop Right Controls: View Switcher & Actions */}
-          <div className="hidden md:flex items-center gap-4">
-            {/* View Mode Toggle */}
-            <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
+          {/* Header Right Actions */}
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* View Mode Switcher */}
+            <div className="hidden md:flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
               <button
                 type="button"
                 onClick={() => handleModeChange("essentials")}
@@ -163,306 +176,254 @@ export function AppShell({ children }: AppShellProps) {
               </button>
               <InfoIcon
                 title="Adaptive View Mode"
-                content="Essentials mode streamlines requester activity and financial summaries. Control mode reveals deep OPA evaluation traces, human approval queues, and the operator emergency kill-switch."
+                content="Essentials mode streamlines requester activity and financial summaries. Control mode reveals deep policy evaluation traces, human approval checkpoints, and the emergency kill-switch."
                 side="bottom"
                 badge="Dual Interface"
-                className="ml-1"
+                className="ml-0.5"
               />
             </div>
 
             {/* Quick Action Button */}
             <Link
               href="/agent"
-              className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-ember-500 text-white hover:bg-ember-600 transition-all shadow-glow hover:scale-[1.02] flex items-center gap-1.5"
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-ember-500 text-white hover:bg-ember-600 transition-all shadow-glow hover:scale-[1.02] flex items-center gap-1.5"
             >
               <Bot className="w-3.5 h-3.5" />
-              Agent Console
+              <span>Agent Console</span>
             </Link>
           </div>
-
-          {/* Mobile Menu Button */}
-          <div className="flex md:hidden items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg bg-slate-900 text-slate-300 hover:text-white border border-slate-800"
-              aria-label="Toggle navigation menu"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
         </div>
-
-        {/* Mobile Dropdown Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-slate-800 bg-[#070B16] px-4 pt-3 pb-6 space-y-4 animate-slide-down">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <span className="text-xs font-semibold text-slate-400">View Mode:</span>
-              <div className="flex gap-1 bg-slate-900 p-0.5 rounded-lg border border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => handleModeChange("essentials")}
-                  className={`px-3 py-1 text-xs font-bold rounded ${
-                    viewMode === "essentials" ? "bg-slate-800 text-white" : "text-slate-400"
-                  }`}
-                >
-                  Essentials
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleModeChange("control")}
-                  className={`px-3 py-1 text-xs font-bold rounded ${
-                    viewMode === "control" ? "bg-ember-500 text-white" : "text-slate-400"
-                  }`}
-                >
-                  Control
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block px-2">
-                Workspaces
-              </span>
-              {[...ESSENTIALS_NAV, ...CONTROL_NAV, ...KNOWLEDGE_NAV].map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium ${
-                      isActive ? "bg-ember-500 text-white" : "text-slate-300 hover:bg-slate-900"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Icon className="w-4 h-4" />
-                      <span>{item.label}</span>
-                    </div>
-                    {item.badge && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
-                        {item.badge}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </header>
 
-      {/* 2. MAIN APPLICATION WORKSPACE & SIDEBAR */}
-      <div className="flex-1 flex max-w-7xl w-full mx-auto">
-        {/* Navigation Sidebar (Desktop) */}
-        <aside className="hidden md:flex w-64 shrink-0 border-r border-slate-200/80 bg-white py-6 px-4 flex-col justify-between">
-          <div className="space-y-6">
-            {/* Essentials Section */}
+      {/* 2. OPENABLE / CLOSABLE NAVIGATION TRAY (DRAWER) */}
+      {trayOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          {/* Backdrop Overlay */}
+          <div
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity"
+            onClick={() => setTrayOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Slide-Out Tray Panel */}
+          <div className="relative w-80 max-w-[85vw] bg-[#070B16] border-r border-slate-800 p-6 flex flex-col justify-between shadow-2xl z-10 overflow-y-auto">
+            {/* Tray Header */}
             <div>
-              <div className="px-3 flex items-center justify-between">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Requester Flow
-                </span>
-                {viewMode === "essentials" && (
-                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
-                    Active
-                  </span>
-                )}
+              <div className="flex items-center justify-between pb-5 border-b border-slate-800">
+                <Link href="/" onClick={() => setTrayOpen(false)}>
+                  <NeolithLogo size="sm" lightText={true} />
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setTrayOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-850 transition-colors"
+                  aria-label="Close navigation tray"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <nav className="mt-2 space-y-1" aria-label="Essentials navigation">
-                {ESSENTIALS_NAV.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-xl transition-all duration-150 ${
-                        isActive
-                          ? "bg-slate-900 text-white shadow-sm"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Icon className={`w-4 h-4 ${isActive ? "text-ember-400" : "text-slate-400"}`} />
-                        <span>{item.label}</span>
-                      </div>
-                      {item.badge && (
-                        <span
-                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                            isActive ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-600"
+
+              {/* Mode Switcher inside Tray for Mobile/Quick access */}
+              <div className="my-5 p-2 rounded-xl bg-slate-900 border border-slate-800">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2 px-1">
+                  Presentation Mode
+                </span>
+                <div className="grid grid-cols-2 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange("essentials")}
+                    className={`py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      viewMode === "essentials"
+                        ? "bg-slate-800 text-white shadow-sm"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    Essentials
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange("control")}
+                    className={`py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${
+                      viewMode === "control"
+                        ? "bg-ember-500 text-white shadow-glow"
+                        : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    <Lock className="w-3 h-3" />
+                    Control
+                  </button>
+                </div>
+              </div>
+
+              {/* Workspaces Navigation Groups */}
+              <div className="space-y-6">
+                {/* Section 1: Requester Flow */}
+                <div>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 block px-2 mb-1.5">
+                    Requester Workspaces
+                  </span>
+                  <nav className="space-y-1" aria-label="Requester navigation">
+                    {ESSENTIALS_NAV.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = pathname === item.href;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setTrayOpen(false)}
+                          className={`flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-xl transition-all ${
+                            isActive
+                              ? "bg-ember-500 text-white shadow-glow"
+                              : "text-slate-300 hover:bg-slate-900 hover:text-white"
                           }`}
                         >
-                          {item.badge}
-                        </span>
-                      )}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
+                          <div className="flex items-center gap-2.5">
+                            <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-slate-400"}`} />
+                            <span>{item.label}</span>
+                          </div>
+                          {item.badge && (
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                isActive ? "bg-ember-600 text-white" : "bg-slate-800 text-slate-300"
+                              }`}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </nav>
+                </div>
 
-            {/* Control Section */}
-            <div>
-              <div className="px-3 flex items-center justify-between">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Governance Control
-                </span>
-                {viewMode === "control" && (
-                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-ember-500 text-white shadow-glow">
-                    Active
+                {/* Section 2: Governance & Control */}
+                <div>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 block px-2 mb-1.5">
+                    Governance & Control
                   </span>
-                )}
-              </div>
-              <nav className="mt-2 space-y-1" aria-label="Control navigation">
-                {CONTROL_NAV.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-xl transition-all duration-150 ${
-                        isActive
-                          ? "bg-ember-500 text-white shadow-glow"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-slate-400"}`} />
-                        <span>{item.label}</span>
-                      </div>
-                      {item.badge && (
-                        <span
-                          className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                            isActive ? "bg-ember-600 text-white" : "bg-amber-50 text-amber-700"
+                  <nav className="space-y-1" aria-label="Control navigation">
+                    {CONTROL_NAV.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = pathname === item.href;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setTrayOpen(false)}
+                          className={`flex items-center justify-between px-3 py-2 text-xs font-semibold rounded-xl transition-all ${
+                            isActive
+                              ? "bg-ember-500 text-white shadow-glow"
+                              : "text-slate-300 hover:bg-slate-900 hover:text-white"
                           }`}
                         >
-                          {item.badge}
-                        </span>
-                      )}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
+                          <div className="flex items-center gap-2.5">
+                            <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-slate-400"}`} />
+                            <span>{item.label}</span>
+                          </div>
+                          {item.badge && (
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                isActive ? "bg-ember-600 text-white" : "bg-slate-800 text-slate-300"
+                              }`}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
+                        </Link>
+                      );
+                    })}
+                  </nav>
+                </div>
 
-            {/* Knowledge Section */}
-            <div>
-              <span className="px-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 block">
-                Resources
-              </span>
-              <nav className="mt-2 space-y-1" aria-label="Knowledge navigation">
-                {KNOWLEDGE_NAV.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all duration-150 ${
-                        isActive
-                          ? "bg-slate-100 text-slate-900 border-l-2 border-slate-900"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                      }`}
-                    >
-                      <Icon className="w-4 h-4 text-slate-400" />
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
-          </div>
-
-          {/* Sidebar Status Pill Card */}
-          <div className="pt-4 border-t border-slate-100 space-y-2">
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600 space-y-1.5">
-              <div className="flex items-center justify-between font-bold text-slate-800">
-                <span className="flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-ember-500" />
-                  Mode: <span className="capitalize font-mono text-ember-600">{mounted ? viewMode : "essentials"}</span>
-                </span>
-                <span className="text-[10px] uppercase font-mono px-1 rounded bg-slate-200 text-slate-700">
-                  Enforced
-                </span>
+                {/* Section 3: Resources */}
+                <div>
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 block px-2 mb-1.5">
+                    Resources & Architecture
+                  </span>
+                  <nav className="space-y-1" aria-label="Knowledge navigation">
+                    {KNOWLEDGE_NAV.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = pathname === item.href;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={() => setTrayOpen(false)}
+                          className={`flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition-all ${
+                            isActive
+                              ? "bg-slate-800 text-white"
+                              : "text-slate-300 hover:bg-slate-900 hover:text-white"
+                          }`}
+                        >
+                          <Icon className="w-4 h-4 text-slate-400" />
+                          <span>{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </nav>
+                </div>
               </div>
-              <p className="text-[10px] text-slate-500 leading-normal m-0">
-                Zero implicit authority. Agents hold no direct payment keys.
-              </p>
+            </div>
+
+            {/* Tray Bottom Status Box */}
+            <div className="pt-6 border-t border-slate-800 space-y-2 mt-6">
+              <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-[11px] text-slate-400 space-y-1">
+                <div className="flex items-center justify-between font-bold text-slate-300">
+                  <span className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-ember-500" />
+                    <span>Zero Implicit Authority</span>
+                  </span>
+                  <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">
+                    Enforced
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 leading-relaxed m-0">
+                  AI agents hold no direct banking keys or payment authority.
+                </p>
+              </div>
             </div>
           </div>
-        </aside>
+        </div>
+      )}
 
-        {/* Content View */}
+      {/* 3. MAIN APPLICATION WORKSPACE (SPACIOUS FULL-WIDTH VIEW) */}
+      <div className="flex-1 w-full max-w-7xl mx-auto flex flex-col">
         <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0">{children}</main>
       </div>
 
-      {/* 3. SEMANTIC ENTERPRISE FOOTER */}
+      {/* 4. WORLD-CLASS ENTERPRISE FOOTER */}
       <footer className="border-t border-slate-200 bg-white text-slate-600 text-xs mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-            {/* Col 1: Brand & Mental Model */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2.5">
-                <span className="w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs text-white bg-ember-500 shadow-glow">
-                  N
-                </span>
-                <span className="font-extrabold text-slate-900 tracking-tight text-base">Neolith</span>
-              </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-10">
+            {/* Col 1: Brand & Purpose */}
+            <div className="space-y-4">
+              <Link href="/" className="inline-block group">
+                <NeolithLogo size="md" lightText={false} />
+              </Link>
               <p className="text-slate-500 text-xs leading-relaxed m-0">
-                Separating intelligent planning from governed execution authority. Deterministic OPA policy runtime,
-                single-use execution permits, and SHA-256 decision receipts.
+                Separating autonomous AI reasoning from real-world financial execution authority.
+                Deterministic policy verification, single-use execution permits, and immutable audit receipts.
               </p>
-              <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500">
+              <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500 font-medium">
                 <span className="h-2 w-2 rounded-full bg-emerald-500" />
                 <span>Deterministic Invariants Enforced</span>
               </div>
             </div>
 
             {/* Col 2: Platform Workspaces */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
-                Workspaces
+            <div className="space-y-3">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-900 block">
+                Platform Workspaces
               </span>
-              <ul className="space-y-1.5 text-xs list-none p-0 m-0">
+              <ul className="space-y-2 text-xs list-none p-0 m-0">
                 <li>
                   <Link href="/agent" className="hover:text-ember-600 transition-colors">
                     Financial AI Agent Console
                   </Link>
                 </li>
                 <li>
-                  <Link href="/dashboard" className="hover:text-ember-600 transition-colors">
-                    Treasury Dashboard
-                  </Link>
-                </li>
-                <li>
                   <Link href="/accounts" className="hover:text-ember-600 transition-colors">
-                    Operating Accounts & Invoices
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/tasks" className="hover:text-ember-600 transition-colors">
-                    Task Activity Logs
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Col 3: Governance & Control */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
-                Governance & Control
-              </span>
-              <ul className="space-y-1.5 text-xs list-none p-0 m-0">
-                <li>
-                  <Link href="/governance" className="hover:text-ember-600 transition-colors">
-                    Governance Runtime Gateway
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/policies" className="hover:text-ember-600 transition-colors">
-                    OPA Rego Policy Rules
+                    Operating Accounts & Budgets
                   </Link>
                 </li>
                 <li>
@@ -471,53 +432,93 @@ export function AppShell({ children }: AppShellProps) {
                   </Link>
                 </li>
                 <li>
+                  <Link href="/tasks" className="hover:text-ember-600 transition-colors">
+                    Task Activity Ledger
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/dashboard" className="hover:text-ember-600 transition-colors">
+                    Treasury Operations
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 3: Governance & Assurance */}
+            <div className="space-y-3">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-900 block">
+                Governance & Control
+              </span>
+              <ul className="space-y-2 text-xs list-none p-0 m-0">
+                <li>
+                  <Link href="/governance" className="hover:text-ember-600 transition-colors">
+                    Governance Runtime Gateway
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/policies" className="hover:text-ember-600 transition-colors">
+                    Policy Studio & Simulator
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/governance" className="hover:text-ember-600 transition-colors">
+                    EU AI Act Compliance Matrix
+                  </Link>
+                </li>
+                <li>
                   <Link href="/operator" className="hover:text-ember-600 transition-colors">
-                    Operator Control & Kill-Switch
+                    Emergency Kill-Switch
                   </Link>
                 </li>
               </ul>
             </div>
 
             {/* Col 4: Trust, Architecture & Legal */}
-            <div className="space-y-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">
+            <div className="space-y-3">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-900 block">
                 Trust & Verification
               </span>
-              <ul className="space-y-1.5 text-xs list-none p-0 m-0">
+              <ul className="space-y-2 text-xs list-none p-0 m-0">
                 <li>
                   <Link href="/docs" className="hover:text-ember-600 transition-colors">
-                    System Documentation Hub
+                    Architecture Documentation
                   </Link>
                 </li>
                 <li>
                   <Link href="/adopt" className="hover:text-ember-600 transition-colors">
-                    Organization Adoption Guide
+                    Enterprise Adoption Guide
                   </Link>
                 </li>
                 <li>
                   <Link href="/security" className="hover:text-ember-600 transition-colors">
-                    Security Architecture & Invariants
+                    Security Invariants
                   </Link>
                 </li>
                 <li>
-                  <Link href="/llms.txt" className="hover:text-ember-600 transition-colors">
-                    Machine-Readable llms.txt
+                  <Link href="/privacy" className="hover:text-ember-600 transition-colors">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/terms" className="hover:text-ember-600 transition-colors">
+                    Terms of Service
                   </Link>
                 </li>
               </ul>
             </div>
           </div>
 
-          <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-400">
+          {/* Bottom Bar */}
+          <div className="pt-8 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-400">
             <div>
               © {new Date().getFullYear()} Neolith. Enterprise Agentic Governance System.
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
               <Link href="/privacy" className="hover:text-slate-600 transition-colors">
-                Privacy Policy
+                Privacy
               </Link>
               <Link href="/terms" className="hover:text-slate-600 transition-colors">
-                Terms of Service
+                Terms
               </Link>
               <Link href="/security" className="hover:text-slate-600 transition-colors">
                 Security
@@ -526,7 +527,7 @@ export function AppShell({ children }: AppShellProps) {
                 href="https://github.com/Dhruvg334/Neolith"
                 target="_blank"
                 rel="noreferrer"
-                className="hover:text-slate-600 transition-colors flex items-center gap-1"
+                className="hover:text-slate-600 transition-colors flex items-center gap-1 font-semibold"
               >
                 GitHub
                 <ExternalLink className="w-3 h-3" />

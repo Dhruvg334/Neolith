@@ -1,5 +1,63 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
-  <rect width="128" height="128" rx="24" fill="#0B1F33"/>
-  <rect x="16" y="16" width="96" height="96" rx="16" fill="#0F766E"/>
-  <path d="M40 36 V92 H52 L76 56 V92 H88 V36 H76 L52 72 V36 Z" fill="#FFFFFF"/>
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#040711"/>
+      <stop offset="100%" stop-color="#0B1222"/>
+    </linearGradient>
+    
+    <!-- Primary Ember Flame Gradient -->
+    <linearGradient id="emberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF6B00"/>
+      <stop offset="50%" stop-color="#F97316"/>
+      <stop offset="100%" stop-color="#EA580C"/>
+    </linearGradient>
+
+    <!-- Secondary Cyan/Teal Luminous Accent -->
+    <linearGradient id="tealGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0D9488"/>
+      <stop offset="100%" stop-color="#14B8A6"/>
+    </linearGradient>
+
+    <!-- Shield Border Gradient -->
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F97316" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#334155" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#0F172A" stop-opacity="0.9"/>
+    </linearGradient>
+    
+    <!-- Glow Filter -->
+    <filter id="emberGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Container Base: Rounded Monolith Vault -->
+  <rect width="128" height="128" rx="28" fill="url(#bgGrad)"/>
+  <rect x="1.5" y="1.5" width="125" height="125" rx="26.5" fill="none" stroke="url(#borderGrad)" stroke-width="2"/>
+
+  <!-- Subtle Core Shield Silhouette -->
+  <path d="M64 16 L102 32 V68 C102 89 85 106 64 112 C43 106 26 89 26 68 V32 Z" 
+        fill="#070B16" 
+        stroke="#1E293B" 
+        stroke-width="1.5"/>
+
+  <!-- Faceted Monolith "N" Emblem with High-Precision Angular Geometry -->
+  <!-- Left Pillar -->
+  <path d="M38 38 L50 34 V92 L38 88 Z" fill="#F1F5F9"/>
+  <path d="M50 34 L54 36 V90 L50 92 Z" fill="#94A3B8"/>
+
+  <!-- Dynamic Diagonal Crossbar (The Core Execution Bridge) -->
+  <path d="M50 38 L90 82 V92 L50 48 Z" fill="url(#emberGrad)" filter="url(#emberGlow)"/>
+
+  <!-- Right Pillar -->
+  <path d="M78 36 L90 32 V90 L78 86 Z" fill="#E2E8F0"/>
+  <path d="M74 38 L78 36 V86 L74 88 Z" fill="#64748B"/>
+
+  <!-- Cryptographic Authority Checkpoint Gem (Top Center) -->
+  <polygon points="64,24 70,30 64,36 58,30" fill="url(#tealGrad)"/>
+  
+  <!-- Single-Use Permit Core Dot (Bottom Center Accent) -->
+  <circle cx="64" cy="98" r="3" fill="#F97316"/>
 </svg>
