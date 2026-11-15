@@ -595,78 +595,104 @@ def seed_demo_data(session: Session, *, reset: bool = False) -> dict[str, int]:
             ctx = {"source": "seed_demo_data"}
             ctx_hash = hash_payload(ctx)
 
-            exec_req = ExecutionRequestModel(
-                id=action_id,
-                trace_id="trace-seed-inv-002",
-                task_id=sample_task.id,
-                user_id=user.id,
-                agent_version_id=DEMO_AGENT_VERSION_ID,
-                tool_version_id=deterministic_uuid("tool_version:pay_invoice:0.1.0"),
-                operation="pay_invoice",
-                resource="INV-002",
-                category="infrastructure",
-                amount=inv_002.amount,
-                currency="INR",
-                parameters=params,
-                parameters_hash=params_hash,
-                context_payload=ctx,
-                context_hash=ctx_hash,
-                nonce="nonce-seed-inv-002",
-                state="review",
-                requested_at=now,
-                created_at=now,
+            pay_tool_ver = session.scalars(
+                select(ToolVersionModel)
+                .join(ToolModel, ToolVersionModel.tool_id == ToolModel.id)
+                .where(ToolModel.name == "pay_invoice")
+            ).first()
+            tool_ver_id = (
+                pay_tool_ver.id
+                if pay_tool_ver
+                else deterministic_uuid("tool_version:pay_invoice:1.0.0")
             )
-            session.add(exec_req)
 
-            gov_dec = GovernanceDecisionModel(
-                id=deterministic_uuid("decision:seed:INV-002"),
-                action_id=action_id,
-                outcome="review",
-                permission_result={"allowed": True, "capability": "financial:invoice:pay"},
-                reason_codes=["REVIEW_THRESHOLD_EXCEEDED"],
-                risk_tier="R3",
-                policy_version_ids=["policy:neolith-core:v1"],
-                policy_bundle_digest="digest:neolith-policy-bundle-sha256",
-                input_hash=hash_payload({"action_id": str(action_id), "outcome": "review"}),
-                created_at=now,
-            )
-            session.add(gov_dec)
+            exec_req = session.get(ExecutionRequestModel, action_id)
+            if exec_req is None:
+                exec_req = ExecutionRequestModel(
+                    id=action_id,
+                    trace_id="trace-seed-inv-002",
+                    task_id=sample_task.id,
+                    user_id=user.id,
+                    agent_version_id=DEMO_AGENT_VERSION_ID,
+                    tool_version_id=tool_ver_id,
+                    operation="pay_invoice",
+                    resource="INV-002",
+                    category="infrastructure",
+                    amount=inv_002.amount,
+                    currency="INR",
+                    parameters=params,
+                    parameters_hash=params_hash,
+                    context_payload=ctx,
+                    context_hash=ctx_hash,
+                    nonce="nonce-seed-inv-002",
+                    state="review",
+                    requested_at=now,
+                    created_at=now,
+                )
+                session.add(exec_req)
+                session.flush()
 
-            appr = ApprovalModel(
-                id=deterministic_uuid("approval:seed:INV-002"),
-                action_id=action_id,
-                action_hash=params_hash,
-                required_role="approver",
-                state="pending",
-                expires_at=now + timedelta(days=1),
-                created_at=now,
-            )
-            session.add(appr)
+            dec_id = deterministic_uuid("decision:seed:INV-002")
+            gov_dec = session.get(GovernanceDecisionModel, dec_id)
+            if gov_dec is None:
+                gov_dec = GovernanceDecisionModel(
+                    id=dec_id,
+                    action_id=action_id,
+                    outcome="review",
+                    permission_result={"allowed": True, "capability": "financial:invoice:pay"},
+                    reason_codes=["REVIEW_THRESHOLD_EXCEEDED"],
+                    risk_tier="R3",
+                    policy_version_ids=["policy:neolith-core:v1"],
+                    policy_bundle_digest="digest:neolith-policy-bundle-sha256",
+                    input_hash=hash_payload({"action_id": str(action_id), "outcome": "review"}),
+                    created_at=now,
+                )
+                session.add(gov_dec)
+                session.flush()
+
+            appr_id = deterministic_uuid("approval:seed:INV-002")
+            appr = session.get(ApprovalModel, appr_id)
+            if appr is None:
+                appr = ApprovalModel(
+                    id=appr_id,
+                    action_id=action_id,
+                    action_hash=params_hash,
+                    required_role="approver",
+                    state="pending",
+                    expires_at=now + timedelta(days=1),
+                    created_at=now,
+                )
+                session.add(appr)
+                session.flush()
 
             # Genesis Decision Receipt (F13)
-            receipt_payload = {
-                "action_id": str(action_id),
-                "outcome": "review",
-                "reason_codes": ["REVIEW_THRESHOLD_EXCEEDED"],
-                "risk_tier": "R3",
-                "operation": "pay_invoice",
-                "amount": str(inv_002.amount),
-                "currency": "INR",
-            }
-            p_digest = hash_payload(receipt_payload)
-            r_digest = compute_receipt_hash(None, 1, p_digest, "decision")
-            receipt = DecisionReceiptModel(
-                id=deterministic_uuid("receipt:seed:genesis"),
-                chain_index=1,
-                action_id=action_id,
-                event_type="decision",
-                payload=receipt_payload,
-                payload_hash=p_digest,
-                previous_receipt_hash=None,
-                receipt_hash=r_digest,
-                created_at=now,
-            )
-            session.add(receipt)
+            receipt_id = deterministic_uuid("receipt:seed:genesis")
+            receipt = session.get(DecisionReceiptModel, receipt_id)
+            if receipt is None:
+                receipt_payload = {
+                    "action_id": str(action_id),
+                    "outcome": "review",
+                    "reason_codes": ["REVIEW_THRESHOLD_EXCEEDED"],
+                    "risk_tier": "R3",
+                    "operation": "pay_invoice",
+                    "amount": str(inv_002.amount),
+                    "currency": "INR",
+                }
+                p_digest = hash_payload(receipt_payload)
+                r_digest = compute_receipt_hash(None, 1, p_digest, "decision")
+                receipt = DecisionReceiptModel(
+                    id=receipt_id,
+                    chain_index=1,
+                    action_id=action_id,
+                    event_type="decision",
+                    payload=receipt_payload,
+                    payload_hash=p_digest,
+                    previous_receipt_hash=None,
+                    receipt_hash=r_digest,
+                    created_at=now,
+                )
+                session.add(receipt)
+                session.flush()
 
     session.commit()
     return {

@@ -413,3 +413,30 @@ def test_no_ungoverned_payment_bypass(stage1_client: TestClient) -> None:
         ],
     )
     assert ctx.available_balance == Decimal("100000.00")
+
+
+def test_seed_demo_data_foreign_key_integrity() -> None:
+    """Verify seed_demo_data succeeds with strict foreign key enforcement and is idempotent."""
+    from sqlalchemy import event
+
+    from neolith_api.core.database import Base, build_engine, build_session_factory
+    from neolith_api.seed import seed_demo_data
+
+    engine = build_engine("sqlite+pysqlite:///:memory:")
+
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):  # type: ignore[no-untyped-def]
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+    Base.metadata.create_all(bind=engine)
+    factory = build_session_factory(engine)
+    with factory() as session:
+        counts = seed_demo_data(session)
+        assert counts["invoices"] == 3
+        assert counts["beneficiaries"] == 3
+
+        # Test idempotency under foreign_keys=ON
+        counts_idempotent = seed_demo_data(session, reset=False)
+        assert counts_idempotent["invoices"] == 3
