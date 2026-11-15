@@ -43,8 +43,8 @@ const ESSENTIALS_NAV: readonly NavItem[] = [
 ];
 
 const CONTROL_NAV: readonly NavItem[] = [
-  { href: "/governance", label: "Governance Engine", icon: ShieldCheck },
-  { href: "/policies", label: "OPA Policies", icon: FileCode },
+  { href: "/governance", label: "Governance & EU AI Act", icon: ShieldCheck, badge: "Compliance" },
+  { href: "/policies", label: "Policy Studio & Playground", icon: FileCode, badge: "Simulator" },
   { href: "/approvals", label: "Human Approvals", icon: CheckSquare, badge: "Review" },
   { href: "/operator", label: "Operator Control", icon: Cpu, badge: "Kill-Switch" },
 ];

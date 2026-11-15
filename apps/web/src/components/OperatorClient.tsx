@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Badge, Button, Card, CardHeader } from "@/components/ui";
+import { SecurityPostureHub } from "@/components/SecurityPostureHub";
 import {
   activateAgent,
   quarantineAgent,
@@ -116,6 +117,11 @@ export function OperatorClient({
 
   return (
     <div style={{ display: "grid", gap: "1.5rem" }}>
+      <SecurityPostureHub
+        emergencyStopActive={systemState.emergency_stop_active}
+        revocationEpoch={systemState.revocation_epoch}
+      />
+
       {/* 1. Cluster-Wide Emergency Kill-Switch & Revocation Epoch (F09 / F13 / UC8) */}
       <Card
         as="section"

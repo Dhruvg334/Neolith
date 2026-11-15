@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ActionInspector } from "@/components/ActionInspector";
 import { ErrorState } from "@/components/ErrorState";
+import { EuAiActCompliance } from "@/components/EuAiActCompliance";
 import type {
-  DecisionOutcome,
   GovernanceDecisionDto,
   GovernanceProfileDto,
 } from "@/lib/financial-api";
@@ -13,8 +13,10 @@ import {
   getActiveGovernanceProfile,
   getGovernanceDecisions,
 } from "@/lib/financial-api";
+import { BookOpen, Layers } from "lucide-react";
 
 export function GovernanceClient() {
+  const [viewMode, setViewMode] = useState<"decisions" | "eu_ai_act">("decisions");
   const [activeProfile, setActiveProfile] = useState<GovernanceProfileDto | null>(null);
   const [decisions, setDecisions] = useState<GovernanceDecisionDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,13 +70,42 @@ export function GovernanceClient() {
             Control Mode Workspace
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Governance Decision Runtime
+            Governance Decision Runtime & Compliance
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
             Real-time policy invariant enforcement, active baseline profile, and authoritative decision telemetry.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+
+        {/* View Switcher Tabs */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-200/80 border border-slate-300">
+            <button
+              type="button"
+              onClick={() => setViewMode("decisions")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === "decisions"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5 text-teal-700" />
+              <span>Decisions Stream</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("eu_ai_act")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === "eu_ai_act"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5 text-blue-700" />
+              <span>EU AI Act Compliance</span>
+            </button>
+          </div>
+
           <Link
             href="/policies"
             className="rounded-lg px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:opacity-90"
@@ -102,209 +133,197 @@ export function GovernanceClient() {
         />
       ) : null}
 
-      {/* Active Profile Banner */}
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <span className="text-xs uppercase font-bold tracking-wider text-slate-400">
-              Active Policy Baseline
-            </span>
-            <span
-              className="px-2 py-0.5 text-[10px] font-bold uppercase rounded text-white"
-              style={{ backgroundColor: "#0F766E" }}
-            >
-              {activeProfile?.style || "balanced"}
-            </span>
-            <span className="text-xs font-mono text-slate-400">
-              v{activeProfile?.version || "1.0.0"}
-            </span>
-          </div>
-          <h2 className="text-lg font-bold text-slate-900">
-            {activeProfile?.name || "Balanced Control Profile"}
-          </h2>
-          <p className="text-xs text-slate-600 max-w-2xl">
-            {activeProfile?.description ||
-              "Authoritative balanced control: auto-allows verified payments within threshold and budget, mandates review for large payments or high-risk tiers."}
-          </p>
-        </div>
-        <Link
-          href="/policies"
-          className="shrink-0 rounded-lg border border-slate-300 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 text-center"
-        >
-          Switch Profile
-        </Link>
-      </div>
+      {/* VIEW 1: DECISIONS STREAM */}
+      {viewMode === "decisions" && (
+        <div className="space-y-8">
+          {/* Active Profile Banner */}
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-1">
+              <div className="flex items-center gap-3">
+                <span className="text-xs uppercase font-bold tracking-wider text-slate-400">
+                  Active Policy Baseline
+                </span>
+                <span
+                  className="px-2 py-0.5 text-[10px] font-bold uppercase rounded text-white"
+                  style={{ backgroundColor: "#0F766E" }}
+                >
+                  {activeProfile?.style || "balanced"}
+                </span>
+                <span className="text-xs font-mono text-slate-400">
+                  v{activeProfile?.version || "1.0.0"}
+                </span>
+              </div>
+              <h2 className="text-lg font-bold text-slate-900">
+                {activeProfile?.name || "Balanced Control"}
+              </h2>
+              <p className="text-xs text-slate-500 max-w-2xl leading-relaxed">
+                {activeProfile?.description ||
+                  "Enterprise balanced control: auto-allows routine verified payments within threshold and budget, mandates review for large payments or high-risk tiers."}
+              </p>
+            </div>
 
-      {/* Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Evaluations
-          </span>
-          <p className="text-2xl font-black text-slate-900 mt-1">{totalDecisions}</p>
-          <span className="text-[11px] text-slate-500">Historical action proposals</span>
-        </div>
-
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 shadow-sm">
-          <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
-            Allowed (Pass)
-          </span>
-          <p className="text-2xl font-black text-emerald-900 mt-1">{allowCount}</p>
-          <span className="text-[11px] text-emerald-700 font-medium">
-            {totalDecisions > 0 ? `${Math.round((allowCount / totalDecisions) * 100)}%` : "0%"} of total
-          </span>
-        </div>
-
-        <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4 shadow-sm">
-          <span className="text-xs font-bold uppercase tracking-wider text-amber-800">
-            Review Required
-          </span>
-          <p className="text-2xl font-black text-amber-900 mt-1">{reviewCount}</p>
-          <span className="text-[11px] text-amber-700 font-medium">
-            {totalDecisions > 0 ? `${Math.round((reviewCount / totalDecisions) * 100)}%` : "0%"} of total
-          </span>
-        </div>
-
-        <div className="rounded-xl border border-red-200 bg-red-50/50 p-4 shadow-sm">
-          <span className="text-xs font-bold uppercase tracking-wider text-red-800">
-            Hard Denials
-          </span>
-          <p className="text-2xl font-black text-red-900 mt-1">{denyCount}</p>
-          <span className="text-[11px] text-red-700 font-medium">
-            {totalDecisions > 0 ? `${Math.round((denyCount / totalDecisions) * 100)}%` : "0%"} of total
-          </span>
-        </div>
-      </div>
-
-      {/* Decisions Log Section */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="border-b border-slate-200 bg-slate-50 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900">
-              Recent Evaluated Governance Decisions
-            </h3>
-            <p className="text-xs text-slate-500">
-              Click any decision to inspect the authoritative policy breakdown and audit envelope.
-            </p>
+            <div className="flex items-center gap-4 border-t md:border-t-0 md:border-l border-slate-200 pt-4 md:pt-0 md:pl-6">
+              <div className="text-center">
+                <div className="text-xl font-bold text-slate-900 font-mono">
+                  {totalDecisions}
+                </div>
+                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                  Total Evaluated
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-bold text-emerald-700 font-mono">
+                  {allowCount}
+                </div>
+                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                  Allowed
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-bold text-amber-700 font-mono">
+                  {reviewCount}
+                </div>
+                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                  In Review
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-bold text-red-700 font-mono">
+                  {denyCount}
+                </div>
+                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                  Denied
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Outcome Filter Pills */}
-          <div className="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-lg">
-            {(["all", "allow", "review", "deny"] as const).map((filter) => (
-              <button
-                key={filter}
-                type="button"
-                onClick={() => setOutcomeFilter(filter)}
-                className={`px-2.5 py-1 text-xs font-semibold rounded capitalize transition-colors ${
-                  outcomeFilter === filter
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                {filter}
-              </button>
-            ))}
-          </div>
-        </div>
+          {/* Decision Stream Table */}
+          <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            {/* Table Toolbar */}
+            <div className="border-b border-slate-200 bg-slate-50 px-6 py-3 flex flex-wrap items-center justify-between gap-4">
+              <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                Authoritative Decision Ledger ({filteredDecisions.length})
+              </div>
 
-        {loading ? (
-          <div className="p-8 text-center text-xs text-slate-500">
-            Loading governance telemetry...
-          </div>
-        ) : filteredDecisions.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-500 space-y-2">
-            <p className="font-semibold text-slate-700">No decisions match this filter.</p>
-            <p>Run financial agent tasks or trigger test evaluations to populate runtime decisions.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="border-b border-slate-200 bg-slate-100/60 font-semibold text-slate-600 uppercase text-[10px] tracking-wider">
-                <tr>
-                  <th className="px-6 py-3">Outcome</th>
-                  <th className="px-6 py-3">Action ID / Trace</th>
-                  <th className="px-6 py-3">Reason Codes</th>
-                  <th className="px-6 py-3">Risk Tier</th>
-                  <th className="px-6 py-3">Profile</th>
-                  <th className="px-6 py-3">Timestamp</th>
-                  <th className="px-6 py-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredDecisions.map((dec) => {
-                  const outcome = (dec.outcome || dec.decision) as DecisionOutcome;
-                  const outcomeBadge =
-                    outcome === "allow"
-                      ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                      : outcome === "deny"
-                        ? "bg-red-100 text-red-800 border-red-300"
-                        : "bg-amber-100 text-amber-800 border-amber-300";
+              {/* Filters */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">Filter Outcome:</span>
+                <select
+                  value={outcomeFilter}
+                  onChange={(e) => setOutcomeFilter(e.target.value)}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs text-slate-700 focus:outline-none"
+                >
+                  <option value="all">All Outcomes</option>
+                  <option value="allow">Allow Only</option>
+                  <option value="review">Review Only</option>
+                  <option value="deny">Deny Only</option>
+                </select>
+              </div>
+            </div>
 
-                  return (
-                    <tr
-                      key={dec.action_id}
-                      onClick={() => handleInspect(dec)}
-                      className="hover:bg-slate-50 cursor-pointer transition-colors"
-                    >
-                      <td className="px-6 py-3.5">
-                        <span
-                          className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${outcomeBadge}`}
-                        >
-                          {outcome}
-                        </span>
-                      </td>
-                      <td className="px-6 py-3.5 font-mono text-[11px] text-slate-600">
-                        <div>{dec.action_id.slice(0, 8)}...</div>
-                        <div className="text-[10px] text-slate-400">{dec.trace_id.slice(0, 12)}</div>
-                      </td>
-                      <td className="px-6 py-3.5">
-                        <div className="flex flex-wrap gap-1 max-w-xs">
-                          {dec.reason_codes.slice(0, 2).map((rc) => (
-                            <span
-                              key={rc}
-                              className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] text-slate-700 border border-slate-200"
-                            >
-                              {rc}
-                            </span>
-                          ))}
-                          {dec.reason_codes.length > 2 && (
-                            <span className="text-[10px] text-slate-400 font-mono">
-                              +{dec.reason_codes.length - 2}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-3.5 font-semibold text-slate-800">
-                        {dec.risk_tier}
-                      </td>
-                      <td className="px-6 py-3.5 text-slate-600">
-                        {dec.profile_name}
-                      </td>
-                      <td className="px-6 py-3.5 text-slate-500 whitespace-nowrap">
-                        {new Date(dec.created_at).toLocaleTimeString()}
-                      </td>
-                      <td className="px-6 py-3.5 text-right">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleInspect(dec);
-                          }}
-                          className="rounded border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100"
-                        >
-                          Inspect
-                        </button>
-                      </td>
+            {loading ? (
+              <div className="p-12 text-center text-xs text-slate-400">Loading decisions...</div>
+            ) : filteredDecisions.length === 0 ? (
+              <div className="p-12 text-center text-xs text-slate-400">
+                No governance decisions match the selected filter.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50/50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                      <th className="py-3 px-6">Timestamp</th>
+                      <th className="py-3 px-6">Outcome</th>
+                      <th className="py-3 px-6">Action ID / Nonce</th>
+                      <th className="py-3 px-6">Risk Tier</th>
+                      <th className="py-3 px-6">Reason Codes</th>
+                      <th className="py-3 px-6 text-right">Technical Inspection</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredDecisions.map((dec) => {
+                      const outcome = dec.outcome || dec.decision;
+                      return (
+                        <tr key={dec.action_id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="py-3.5 px-6 font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                            {new Date(dec.created_at).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              second: "2-digit",
+                            })}
+                          </td>
+                          <td className="py-3.5 px-6 whitespace-nowrap">
+                            <span
+                              className="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                              style={{
+                                backgroundColor:
+                                  outcome === "allow"
+                                    ? "#DCFCE7"
+                                    : outcome === "deny"
+                                      ? "#FEE2E2"
+                                      : "#FEF3C7",
+                                color:
+                                  outcome === "allow"
+                                    ? "#15803D"
+                                    : outcome === "deny"
+                                      ? "#B91C1C"
+                                      : "#B45309",
+                              }}
+                            >
+                              {outcome}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-6 font-mono text-[11px] text-slate-700 whitespace-nowrap">
+                            <span className="font-bold text-slate-900">{dec.action_id.substring(0, 8)}...</span>
+                          </td>
+                          <td className="py-3.5 px-6 whitespace-nowrap">
+                            <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-100 font-bold text-slate-700">
+                              Tier {dec.risk_tier}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-6">
+                            <div className="flex flex-wrap gap-1">
+                              {dec.reason_codes.slice(0, 2).map((code) => (
+                                <code
+                                  key={code}
+                                  className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-mono text-slate-700"
+                                >
+                                  {code}
+                                </code>
+                              ))}
+                              {dec.reason_codes.length > 2 && (
+                                <span className="text-[10px] text-slate-400">
+                                  +{dec.reason_codes.length - 2} more
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-6 text-right whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => handleInspect(dec)}
+                              className="text-xs font-bold underline"
+                              style={{ color: "#0F766E" }}
+                            >
+                              Inspect Details →
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Action Inspector Drawer */}
+      {/* VIEW 2: EU AI ACT COMPLIANCE MATRIX */}
+      {viewMode === "eu_ai_act" && <EuAiActCompliance />}
+
+      {/* Action Inspector Modal */}
       <ActionInspector
         isOpen={isInspectorOpen}
         onClose={() => setIsInspectorOpen(false)}
