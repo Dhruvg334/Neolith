@@ -23,29 +23,35 @@ const DOC_SECTIONS: DocSection[] = [
 flowchart TD
     Client["Client Interfaces (Web / WhatsApp / Voice)"] --> Gateway["Runtime Gateway & Interaction Core"]
     Gateway --> Agent["Financial AI Agent (Reasoning & Planning)"]
-    Agent --> Proposal["Action Proposal (Zero Authority)"]
+    Agent --> Proposal["Action Proposal (Zero Implicit Authority)"]
     Proposal --> Gov["Authoritative Governance Runtime (OPA Rego)"]
     Gov --> DB[("Postgres Database & Audit Log")]
-    Gov --> Dec["Authoritative Decision (Allow / Review / Deny)"]
-    Dec -.-> NextPhase["Target Execution Phase (Stage 4 Signed Settlement)"]
+    Gov --> Dec{"Authoritative Decision"}
+    Dec -->|ALLOW| Permit["60s Single-Use Execution Permit (F09)"]
+    Dec -->|REVIEW| ApprovalQueue["Human Checkpoints Queue (/approvals F08)"]
+    Dec -->|DENY| DenyLog["Logged Policy Rejection"]
+    ApprovalQueue -->|Approve| Permit
+    ApprovalQueue -->|Reject| RejectReceipt["Logged Rejection Receipt"]
+    Permit --> Bank["Protected Banking Settlement (F10)"]
+    Bank --> ReceiptsChain["Tamper-Evident Receipts Hash Chain (F13)"]
 
     classDef comp fill:#f8fafc,stroke:#0b1f33,stroke-width:1.5px;
-    class Client,Gateway,Agent,Proposal,Gov,DB,Dec,NextPhase comp;
+    class Client,Gateway,Agent,Proposal,Gov,DB,Permit,ApprovalQueue,Bank,ReceiptsChain comp;
 `,
     content: `
 ### Three-Layer Architecture
 Neolith implements a strict three-layer architecture:
 1. **AI Agent Layer (Reasoning & Planning)**: Synthesizes operator goals, evaluates invoices, reads vendor profiles, and formulates structured financial proposals. The agent holds zero payment credentials and cannot directly execute any financial transaction.
 2. **Governance & Execution Control Layer (The Gateway)**: An authoritative policy gatekeeper powered by Open Policy Agent (OPA). Evaluates cryptographically verified agent manifests, capability bindings, category budget limits, and risk thresholds.
-3. **Enterprise Services & Audit Layer (Operational Decision Engine)**: Evaluates and immutably records Execution Requests and Governance Decisions in PostgreSQL, emitting comprehensive trace audit receipts.
+3. **Enterprise Services & Audit Layer (Operational Decision Engine)**: Evaluates and immutably records Execution Requests, Human Approvals, Execution Permits, and Decision Receipts in PostgreSQL, ensuring complete cryptographic traceability.
 `,
   },
   {
     id: "governance-sequence",
-    title: "Governance Decision Runtime Sequence",
+    title: "Governance Decision & Settlement Sequence",
     category: "Runtime",
     summary:
-      "End-to-end evaluation flow from agent proposal submission to authoritative outcome.",
+      "End-to-end evaluation flow from agent proposal submission to permit-authorized banking settlement.",
     mermaidChart: `
 sequenceDiagram
     autonumber
@@ -54,6 +60,7 @@ sequenceDiagram
     participant Gov as Governance Runtime
     participant OPA as OPA Policy Engine
     participant DB as Postgres Ledger
+    participant Bank as Banking Settlement
 
     Operator->>Agent: Request: Pay invoice INV-001
     Agent->>Agent: Inspect context & create proposal
@@ -63,19 +70,28 @@ sequenceDiagram
     Gov->>OPA: Query policy decision with input JSON
     OPA-->>Gov: Result: ALLOW / REVIEW / DENY + Reason Codes
     Gov->>DB: Persist ExecutionRequest & GovernanceDecision
-    Gov-->>Agent: Decision: ALLOW (BASE_POLICY_ALLOW)
+    alt Decision == ALLOW
+        Gov->>DB: Issue 60s Single-Use ExecutionPermit (F09)
+        Gov->>Bank: Settle payment & debit balance (F10)
+        Bank->>DB: Append DecisionReceipt with SHA-256 hash (F13)
+        Gov-->>Agent: Decision: ALLOW (Permit Settled)
+    else Decision == REVIEW
+        Gov->>DB: Enqueue in Human Approvals (/approvals F08)
+        Gov-->>Agent: Decision: REVIEW (Approval Queued)
+    else Decision == DENY
+        Gov-->>Agent: Decision: DENY (Policy Violation Logged)
+    end
     Agent-->>Operator: Response with GovernanceSummary
-    Note over Gov,DB: Current runtime authoritatively gates and audits every proposal.<br/>Target Stage 4 extends Allow decisions to Ed25519 Permit settlement.
 `,
     content: `
 ### Decision Sequence Specifications
 When an action proposal is submitted to \`POST /api/v1/actions/evaluate\`:
 1. **Request Ingestion**: Derives canonical hashes of action parameters and operational context.
-2. **Hard Invariant Verification**: Checks emergency kill-switch, agent registration, version digest, and capability bindings.
+2. **Hard Invariant Verification**: Checks emergency kill-switch status, agent registration, version digest, and capability bindings.
 3. **Authoritative Ledger Lookups**: Computes current spent balance against category budget ceilings.
-4. **Beneficiary Verification**: Asserts that vendor records are flagged as verified.
+4. **Beneficiary Verification**: Asserts that vendor records are flagged as verified in the database.
 5. **OPA Policy Evaluation**: Evaluates compiled Rego rules matching the active Governance Profile.
-6. **Persistence & Auditing**: Writes an immutable \`ExecutionRequestModel\` and \`GovernanceDecisionModel\` before returning the structured outcome.
+6. **Permit Issuance & Settlement**: If allowed, immediately issues a 60-second single-use Execution Permit, executes atomic balance debiting, and appends a cryptographic receipt to the chain.
 `,
   },
   {
@@ -126,7 +142,7 @@ classDiagram
   },
   {
     id: "governance-boundary",
-    title: "Agent-to-Governance Boundary Flow",
+    title: "Agent-to-Governance Security Boundary",
     category: "Security",
     summary:
       "Visual boundary delineating AI reasoning space from authoritative decision space.",
@@ -146,8 +162,8 @@ flowchart LR
 
     subgraph DecisionSpace["Decision Space"]
         G4 --> D1{"Outcome"}
-        D1 -->|ALLOW| E1["Action Permitted under Policy"]
-        D1 -->|REVIEW| E2["Require Human Operator Approval"]
+        D1 -->|ALLOW| E1["Action Permitted & Issued 60s Permit"]
+        D1 -->|REVIEW| E2["Require Human Operator Approval (/approvals)"]
         D1 -->|DENY| E3["Hard Rejection with Reason Codes"]
     end
 
@@ -155,7 +171,95 @@ flowchart LR
 `,
     content: `
 ### The Governance Boundary Principle
-The boundary between the agent and governance is an untrusted security perimeter. The agent cannot grant itself permissions, modify budgets, or sign execution permits. All evaluation inputs are authenticated against authoritative ledger tables and compiled OPA policies.
+The boundary between the agent and governance is an untrusted security perimeter:
+- The agent cannot grant itself permissions or elevate privileges.
+- The agent cannot modify category budgets or reset spending limits.
+- The agent cannot forge or self-sign execution permits.
+- All evaluation inputs are authenticated against authoritative database tables and compiled OPA policies.
+`,
+  },
+  {
+    id: "f15-assurance-lab",
+    title: "F15 Security & Policy Assurance Lab",
+    category: "Assurance",
+    summary:
+      "Automated evaluation service verifying 7 safety invariants including prompt injection defense and budget concurrency.",
+    mermaidChart: `
+flowchart TD
+    Suite["F15 Assurance Lab Runner (/evaluation/runs)"] --> S1["001: Verified Invoice within Budget -> ALLOW"]
+    Suite --> S2["002: Over-Budget & Unverified -> DENY (Dual Reasons)"]
+    Suite --> S3["003: Prompt Injection Text -> DENY (No Authority Expansion)"]
+    Suite --> S4["004: Replay Used Permit -> DENY (PERMIT_REPLAY)"]
+    Suite --> S5["005: Mutated Parameters -> DENY (PARAMETER_HASH_MISMATCH)"]
+    Suite --> S6["006: Concurrent Spend -> Joint Limit Cap (BUDGET_EXCEEDED)"]
+    Suite --> S7["007: Emergency Kill-Switch -> Invalidate Permits (EPOCH_MISMATCH)"]
+
+    classDef passed fill:#ecfdf5,stroke:#059669,stroke-width:1.5px;
+    class S1,S2,S3,S4,S5,S6,S7 passed;
+`,
+    content: `
+### The 7 Canonical Assurance Scenarios
+The F15 Assurance Lab runs repeatable, deterministic test scenarios against the live Governance Runtime:
+1. **001 Procurement Happy Path**: Verified invoice under category budget evaluates to ALLOW with reason code \`BASE_POLICY_ALLOW\`.
+2. **002 Over-Budget & Unverified**: High-value invoice to unverified beneficiary evaluates to DENY with dual reason codes \`BUDGET_EXCEEDED\` and \`UNVERIFIED_BENEFICIARY\`.
+3. **003 Prompt Injection Resistance**: Malicious prompt injection payload hidden inside invoice description cannot redefine payment authority or trigger unauthorized transfers.
+4. **004 Single-Use Permit Replay**: Consuming an execution permit a second time is rejected with \`PERMIT_REPLAY\`.
+5. **005 Parameter Anti-Tampering**: Modifying payment amounts or beneficiary IDs after permit issuance triggers immediate rejection with \`PARAMETER_HASH_MISMATCH\`.
+6. **006 Budget Concurrency**: Multiple actions evaluated in parallel cannot jointly breach the category spend ceiling.
+7. **007 Emergency Stop Invalidation**: Outstanding permits minted prior to a cluster emergency stop fail consumption with \`REVOCATION_EPOCH_MISMATCH\`.
+`,
+  },
+  {
+    id: "system-control-killswitch",
+    title: "Cluster Kill-Switch & Revocation Epoch Control",
+    category: "Security",
+    summary:
+      "Cluster-wide emergency stop and agent quarantine invalidating outstanding permits via monotonic revocation epochs.",
+    mermaidChart: `
+stateDiagram-v2
+    [*] --> NormalOperations : Cluster Initialized (Epoch 0)
+    NormalOperations --> EmergencyStop : POST /api/v1/system/emergency-stop
+    note right of EmergencyStop
+      - Increments revocation_epoch
+      - All outstanding permits revoked
+      - OPA denies with EMERGENCY_STOP_ACTIVE
+      - Emits Audit Decision Receipt
+    end note
+    EmergencyStop --> NormalOperations : POST /api/v1/system/restore
+    note left of NormalOperations
+      - System restored to normal
+      - Revocation epoch preserved
+      - Emits Restoration Audit Receipt
+    end note
+`,
+    content: `
+### Cluster Emergency Control (F09, F13, UC8)
+- **Monotonic Revocation Epoch**: Every emergency stop increments the cluster \`revocation_epoch\`. Permits minted under previous epochs fail consumption with \`REVOCATION_EPOCH_MISMATCH\`.
+- **Immediate Action Halt**: While \`emergency_stop_active\` is true, OPA policies and Runtime Gateway checks reject all mutating financial operations with \`EMERGENCY_STOP_ACTIVE\`.
+- **Agent Quarantine**: Operators can selectively quarantine rogue or misbehaving agents at \`POST /api/v1/agents/{id}/quarantine\`. Quarantined agents immediately receive \`AGENT_INACTIVE\` rejections without affecting the rest of the cluster.
+`,
+  },
+  {
+    id: "receipts-hash-chain",
+    title: "Tamper-Evident Receipts Hash Chain",
+    category: "Security",
+    summary:
+      "Cryptographic append-only ledger linking every decision, permit, and settlement with parent hash verification.",
+    mermaidChart: `
+flowchart LR
+    R0["Receipt 0 (Genesis)\nHash: 0000..."] --> R1["Receipt 1 (Action)\nParent: 0000...\nPayload Hash: H1\nReceipt Hash: H(0, P0, H1)"]
+    R1 --> R2["Receipt 2 (Permit)\nParent: R1 Hash\nPayload Hash: H2\nReceipt Hash: H(1, R1, H2)"]
+    R2 --> R3["Receipt 3 (Settlement)\nParent: R2 Hash\nPayload Hash: H3\nReceipt Hash: H(2, R2, H3)"]
+
+    classDef block fill:#f8fafc,stroke:#0f766e,stroke-width:1.5px;
+    class R0,R1,R2,R3 block;
+`,
+    content: `
+### Cryptographic Receipts Specification (F13)
+Every governance decision, human approval, permit issuance, and banking settlement is permanently recorded in \`decision_receipts\`:
+1. **Hash Formula**: \`receipt_hash = sha256:{chain_index}:{previous_receipt_hash}:{payload_hash}:{event_type}\`.
+2. **Whole-Chain Verification**: The endpoint \`GET /api/v1/receipts/verify\` traverses the entire chain from genesis to head, recalculating hashes to prove zero tampering.
+3. **Interactive Visual Explorer**: Operators can inspect individual receipt payloads, parent hashes, and cryptographic signatures at \`/receipts/[id]\`.
 `,
   },
   {
@@ -163,7 +267,7 @@ The boundary between the agent and governance is an untrusted security perimeter
     title: "Financial Reference Application Data Model",
     category: "Data",
     summary:
-      "Entity relationship model representing accounts, invoices, beneficiaries, budgets, and decisions.",
+      "Entity relationship model representing accounts, invoices, beneficiaries, budgets, permits, and receipts.",
     mermaidChart: `
 erDiagram
     FinancialAccount ||--o{ FinancialTransaction : contains
@@ -172,7 +276,10 @@ erDiagram
     Beneficiary ||--o{ FinancialTransaction : receives
     Budget ||--o{ FinancialTransaction : caps
     ExecutionRequest ||--|| GovernanceDecision : evaluates
-    GovernanceProfile ||--o{ GovernanceDecision : configures
+    GovernanceDecision ||--o| Approval : requires
+    GovernanceDecision ||--o| ExecutionPermit : issues
+    ExecutionPermit ||--o| FinancialTransaction : settles
+    GovernanceDecision ||--o{ DecisionReceipt : audits
 
     FinancialAccount {
         UUID id PK
@@ -187,16 +294,18 @@ erDiagram
         string category
         boolean is_verified_vendor
     }
-    Beneficiary {
+    ExecutionPermit {
         UUID id PK
-        string name
-        boolean verified
+        UUID action_id
+        string parameter_hash
+        timestamp expires_at
+        integer revocation_epoch
     }
-    Budget {
+    DecisionReceipt {
         UUID id PK
-        string category
-        decimal limit_amount
-        decimal approval_threshold
+        integer chain_index
+        string previous_receipt_hash
+        string receipt_hash
     }
 `,
     content: `
@@ -205,33 +314,8 @@ erDiagram
 - **Invoice**: Vendor invoices with verification flags, categories, and due dates.
 - **Beneficiary**: Synthetic vendor records holding verification status.
 - **Budget**: Monthly category spending limits and operator review thresholds.
-- **ExecutionRequest & GovernanceDecision**: 1:1 correlated audit records recording input hashes, reason codes, and policy digests.
-`,
-  },
-  {
-    id: "adoption-workflow",
-    title: "Organisation Adoption Workflow",
-    category: "Operations",
-    summary:
-      "Step-by-step phased adoption journey for enterprise rollout.",
-    mermaidChart: `
-flowchart TD
-    Step1["Step 1: Discovery & Threat Modeling"] --> Step2["Step 2: Entity & Security Scoping"]
-    Step2 --> Step3["Step 3: Tool & Permission Registry"]
-    Step3 --> Step4["Step 4: Budget & Threshold Allocation"]
-    Step4 --> Step5["Step 5: Policy-as-Code Formulation (OPA)"]
-    Step5 --> Step6["Step 6: Multi-Channel Gateway Setup"]
-    Step6 --> Step7["Step 7: Operator Approval Integration"]
-    Step7 --> Step8["Step 8: Audit & Decision Receipts"]
-    Step8 --> Step9["Step 9: Adversarial Test Verification"]
-    Step9 --> Step10["Step 10: Production Go-Live"]
-
-    classDef stage fill:#f8fafc,stroke:#0f766e,stroke-width:1.5px;
-    class Step1,Step2,Step3,Step4,Step5,Step6,Step7,Step8,Step9,Step10 stage;
-`,
-    content: `
-### Production Readiness
-Adopting Neolith follows a disciplined 10-phase journey ensuring that zero ambient authority exists in production. Every tool invocation is governed by typed schemas and deterministic OPA invariants before deployment.
+- **ExecutionPermit**: Short-lived, single-use permit token with canonical parameter hash and epoch tracking.
+- **DecisionReceipt**: Tamper-evident hash-linked ledger records.
 `,
   },
   {
@@ -261,6 +345,42 @@ flowchart TD
     content: `
 ### Channel Parity Principle
 Regardless of whether an operator sends a prompt from the Next.js Web workspace, sends a WhatsApp message via Twilio, or speaks over the phone via ElevenLabs Custom LLM, the exact same \`InteractionTurn\` is created, the same LangGraph agent runs, and the exact same OPA governance evaluation is executed.
+`,
+  },
+  {
+    id: "reason-codes",
+    title: "Reason Code Glossary & Outcome Reference",
+    category: "Governance",
+    summary:
+      "Complete dictionary of structured reason codes emitted by package neolith.decision and the Runtime Gateway.",
+    mermaidChart: `
+flowchart LR
+    Outcome{"Governance Outcome"}
+    Outcome -->|ALLOW| RC1["BASE_POLICY_ALLOW\nROUTINE_PAYMENT_PERMITTED"]
+    Outcome -->|REVIEW| RC2["APPROVAL_REQUIRED\nAPPROVAL_THRESHOLD_REACHED\nSTRICT_CONTROL_REVIEW_REQUIRED\nHIGH_RISK_TIER_REVIEW"]
+    Outcome -->|DENY| RC3["BUDGET_EXCEEDED\nUNVERIFIED_BENEFICIARY\nAGENT_INACTIVE\nEMERGENCY_STOP_ACTIVE\nPERMIT_REPLAY\nPARAMETER_HASH_MISMATCH"]
+
+    classDef allow fill:#ecfdf5,stroke:#059669,stroke-width:1.5px;
+    classDef review fill:#fffbeb,stroke:#d97706,stroke-width:1.5px;
+    classDef deny fill:#fef2f2,stroke:#dc2626,stroke-width:1.5px;
+    class RC1 allow;
+    class RC2 review;
+    class RC3 deny;
+`,
+    content: `
+### Structured Reason Codes Glossary
+Every decision emitted by Neolith attaches one or more deterministic reason codes:
+- **\`BASE_POLICY_ALLOW\`**: Action satisfies all policy invariants and falls within category budget and threshold limits.
+- **\`APPROVAL_REQUIRED\` / \`APPROVAL_THRESHOLD_REACHED\`**: Action is valid but exceeds the category review threshold; enqueued in \`/approvals\`.
+- **\`STRICT_CONTROL_REVIEW_REQUIRED\`**: Triggered when the Strict Control profile is active, mandating operator review for all write tools.
+- **\`BUDGET_EXCEEDED\`**: Proposed payment amount exceeds the remaining category spend ceiling.
+- **\`UNVERIFIED_BENEFICIARY\`**: Target vendor is not listed in the verified vendor directory.
+- **\`AGENT_INACTIVE\`**: The calling agent identity has been quarantined or is not marked active.
+- **\`EMERGENCY_STOP_ACTIVE\`**: Cluster kill-switch is engaged; all mutating actions are prohibited.
+- **\`PERMIT_REPLAY\`**: Attempted duplicate consumption of a single-use execution permit.
+- **\`PERMIT_EXPIRED\`**: Permit exceeded its 60-second time-to-live window.
+- **\`PARAMETER_HASH_MISMATCH\`**: Action parameters were mutated between permit issuance and settlement.
+- **\`REVOCATION_EPOCH_MISMATCH\`**: Permit was minted under a previous revocation epoch.
 `,
   },
 ];

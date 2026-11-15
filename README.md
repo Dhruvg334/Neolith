@@ -39,6 +39,53 @@ Instead of giving the AI direct authority to move money or modify company system
 
 ---
 
+<div align="center">
+
+### 📚 Essential Documentation & Quick Links
+
+| 🧭 **[Master Documentation Portal](docs/README.md)** | ⚡ **[5-Minute Quickstart Guide](docs/QUICKSTART.md)** | 🎬 **[Interactive Demo Guide](docs/DEMO_GUIDE.md)** | 🚀 **[Cloud Deployment Guide](docs/DEPLOYMENT.md)** |
+|:---:|:---:|:---:|:---:|
+| Full role-based reading guide & 30+ spec catalog | Local setup, run services & verify in 5 mins | Step-by-step walkthrough of all 6 live demos | Production Vercel & Render hosting setup |
+
+</div>
+
+### The Security Dilemma: Traditional Agents vs. Neolith Architecture
+
+```text
+Traditional Agent:
+[User / Task] ──► [LLM Agent (Holds Bank API Keys)] ──► [Direct Bank Execution]  ⚠️ UNILATERAL FINANCIAL RISK!
+                     - Vulnerable to prompt injection
+                     - Hallucinates amounts
+                     - No budget reservation or human review
+
+Neolith Architecture:
+[User / Task] ──► [LLM Agent (Reasoning Only)] ──► [FinancialActionProposal] (Zero Direct Authority)
+                                                           │
+                                                           ▼
+                                         [Neolith Governance Runtime Gateway]
+                                           ├─ OPA Rego Policies (Deterministic Rules)
+                                           ├─ Category Budget Locks (Atomic Reservation)
+                                           ├─ Human Checkpoints (/approvals Queue)
+                                           └─ Single-Use 60s Permit (SHA-256 Parameter Hash)
+                                                           │
+                                                           ▼
+                                              [Protected Banking Simulator]
+                                                           │
+                                                           ▼
+                                           [Tamper-Evident Receipts Hash Chain]
+```
+
+| Security Dimension | Traditional Autonomous Agent | Neolith Governed System |
+|:---|:---|:---|
+| **Authority Model** | Ambient authority; agent holds direct API credentials. | **Zero ambient authority.** Agent creates proposals; execution requires independent permits. |
+| **Prompt Injection Defense** | Vulnerable; poisoned invoice text reroutes funds. | **Deterministic policy gate.** Unverified vendors blocked by OPA Rego before execution. |
+| **Budget & Quotas** | Uncontrolled; concurrent tasks can drain treasury accounts. | **Atomic category budgets.** Limits checked and reserved dynamically; breaches denied. |
+| **Human Checkpoints** | Ad-hoc or absent; all-or-nothing autonomy. | **Policy-driven routing.** Routine actions auto-allow; high-value actions halt in `/approvals`. |
+| **Execution Token** | Static long-lived API keys in agent memory. | **60-second single-use Execution Permits** bound to parameter SHA-256 digests. |
+| **Audit & Accountability** | Ephemeral application logs; easy to tamper with. | **Tamper-evident Decision Receipts.** Append-only cryptographic hash chain permanently logs all events. |
+
+---
+
 <h2 align="center">Current Build Status</h2>
 
 The repository contains **Phase 0 (Foundation)**, **Phase 1 (Financial Sandbox & Domain Reference)**, **Phase 2 (Financial AI Agent & Multi-Channel Interaction Core)**, **Phase 3 (Policy-Driven Governance Runtime & Cloud Deployment)**, **Phase 4 (Human Checkpoints, Execution Permits, Banking Settlement & Receipts Chain)**, and **Phase 5 (Cluster-Wide Emergency Stop, Agent Quarantine, Direct Permit Consumption & F15 Assurance Lab)** fully implemented, tested, and verified.
@@ -62,7 +109,7 @@ The repository contains **Phase 0 (Foundation)**, **Phase 1 (Financial Sandbox &
 - **Canonical Evaluation Scenarios**:
   - **`INV-001` (Acme Cloud, INR 8,000.00)**: Evaluates to **`ALLOW`** (verified vendor, within software budget).
   - **`INV-002` (Nova Compute, INR 35,000.00)**: Evaluates to **`REVIEW`** (`APPROVAL_REQUIRED`, exceeds INR 25,000.00 threshold) and queues an approval checkpoint.
-  - **`INV-003` (Unknown Supplies, INR 85,000.00)**: Evaluates to **`DENY`** with dual reason codes (`BUDGET_EXCEEDED` and `UNVERIFIED_BENEFICIARY`).
+  - **`INV-003` (Unknown Supplies, INR 75,000.00)**: Evaluates to **`DENY`** with dual reason codes (`BUDGET_EXCEEDED` and `UNVERIFIED_BENEFICIARY`).
 - **Financial AI Agent (`services/agent-worker`)**: Stateful LangGraph agent with structured financial intent extraction, read-only context retrieval, evidence assembly, inspectable planning, and typed `FinancialActionProposal` generation.
 - **Multi-Channel Interaction Core (`services/api`)**: Unified normalisation of user turns into canonical `InteractionTurn` records across three ingress channels:
   1. **Web Console**: `POST /api/v1/interactions/message` and upgraded interactive web console at `/agent`.
