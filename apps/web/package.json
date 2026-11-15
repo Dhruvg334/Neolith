@@ -14,7 +14,7 @@
     "@neolith/contracts": "workspace:*",
     "@panzoom/panzoom": "^4.6.2",
     "mermaid": "^12.3.0",
-    "next": "15.2.4",
+    "next": "15.5.29",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-markdown": "^10.1.0",
@@ -26,7 +26,7 @@
     "@types/react": "19.0.10",
     "@types/react-dom": "19.0.4",
     "eslint": "9.22.0",
-    "eslint-config-next": "15.2.4",
+    "eslint-config-next": "15.5.29",
     "typescript": "5.7.3"
   }
 }
