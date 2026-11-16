@@ -47,10 +47,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=active_settings.cors_allowed_origins_list,
+        allow_origin_regex=r"^https?://.*",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.get("/", tags=["system"], operation_id="getRootStatus")
+    async def get_root_status() -> dict[str, str]:
+        """Root endpoint returning service identity, health links, and OpenAPI docs."""
+        return {
+            "status": "ok",
+            "service": active_settings.service_name,
+            "version": active_settings.service_version,
+            "health": "/health",
+            "ready": "/ready",
+            "docs": "/docs",
+            "api_v1": "/api/v1",
+        }
 
     @app.middleware("http")
     async def trace_correlation_middleware(
@@ -68,6 +82,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return response
 
     register_exception_handlers(app)
+    app.include_router(health_router)
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(financial_router, prefix="/api/v1")
     app.include_router(registry_router, prefix="/api/v1")

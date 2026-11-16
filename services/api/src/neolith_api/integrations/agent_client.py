@@ -44,7 +44,12 @@ class AgentWorkerClient:
         ).lower()
 
         if execution_mode == "in_process":
-            agent = FinancialAIAgent()
+            from neolith_agent.client import FinancialContextClient
+
+            port = os.getenv("PORT", "8000")
+            api_base = os.getenv("NEOLITH_API_BASE_URL") or f"http://127.0.0.1:{port}/api/v1"
+            ctx_client = FinancialContextClient(base_url=api_base)
+            agent = FinancialAIAgent(context_client=ctx_client)
             return await agent.process_turn(turn)
 
         # Explicit 'worker' execution mode: forward over HTTP with zero silent fallback

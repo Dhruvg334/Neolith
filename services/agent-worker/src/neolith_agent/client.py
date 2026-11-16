@@ -138,7 +138,8 @@ class FinancialContextClient:
                 "Must be 'api' or 'fixture'."
             )
         self.mode = normalized_mode
-        raw_url = base_url or os.getenv("NEOLITH_API_BASE_URL") or "http://localhost:8000/api/v1"
+        port = os.getenv("PORT", "8000")
+        raw_url = base_url or os.getenv("NEOLITH_API_BASE_URL") or f"http://127.0.0.1:{port}/api/v1"
         self.base_url = raw_url.rstrip("/")
         self._external_client = client
 
@@ -329,21 +330,48 @@ class FinancialContextClient:
         return data
 
     async def build_financial_context(self) -> FinancialContext:
-        """Build structured FinancialContext model from read endpoints."""
-        accounts = await self.get_accounts()
+        """Build structured FinancialContext model from read endpoints with fail-safe fallback."""
+        try:
+            accounts = await self.get_accounts()
+        except Exception as exc:
+            logger.warning(
+                "Failed to fetch live accounts from %s: %s; falling back to seed context",
+                self.base_url,
+                exc,
+            )
+            accounts = [dict(a) for a in FALLBACK_ACCOUNTS]
+
         primary_account = accounts[0] if accounts else {}
         account_id = UUID(str(primary_account.get("id")))
         available_balance = Decimal(str(primary_account.get("available_balance", "0.00")))
         currency = primary_account.get("currency", "INR")
 
-        budgets_raw = await self.get_budgets()
+        try:
+            budgets_raw = await self.get_budgets()
+        except Exception as exc:
+            logger.warning(
+                "Failed to fetch live budgets from %s: %s; falling back to seed context",
+                self.base_url,
+                exc,
+            )
+            budgets_raw = [dict(b) for b in FALLBACK_BUDGETS]
+
         category_budgets = {
             b["category"]: Decimal(str(b["available_amount"]))
             for b in budgets_raw
             if "category" in b and "available_amount" in b
         }
 
-        invoices_raw = await self.get_invoices(status="unpaid")
+        try:
+            invoices_raw = await self.get_invoices(status="unpaid")
+        except Exception as exc:
+            logger.warning(
+                "Failed to fetch live invoices from %s: %s; falling back to seed context",
+                self.base_url,
+                exc,
+            )
+            invoices_raw = [dict(inv) for inv in FALLBACK_INVOICES if inv.get("status") == "unpaid"]
+
         unpaid_invoices: list[InvoiceSummary] = []
         for inv in invoices_raw:
             unpaid_invoices.append(

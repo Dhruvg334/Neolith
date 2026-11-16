@@ -25,6 +25,12 @@ until curl -s -f http://127.0.0.1:8181/health > /dev/null 2>&1; do
 done
 echo "OPA daemon is healthy and evaluating policies on 127.0.0.1:8181."
 
+# Start background Redis if available (improves readiness probes without external dependency)
+if command -v redis-server > /dev/null 2>&1; then
+    echo "Starting local Redis daemon on 127.0.0.1:6379..."
+    redis-server --daemonize yes --bind 127.0.0.1 --port 6379 --dir /app/data || true
+fi
+
 # 2. Database migrations and idempotent seed
 echo "[3/4] Initializing database schema and deterministic seed..."
 
@@ -87,6 +93,7 @@ fi
 
 # 3. Start FastAPI application with Uvicorn
 BIND_PORT="${PORT:-10000}"
+export NEOLITH_API_BASE_URL="http://127.0.0.1:${BIND_PORT}/api/v1"
 echo "[4/4] Starting Uvicorn server on 0.0.0.0:${BIND_PORT}..."
 exec uvicorn neolith_api.main:app \
     --app-dir services/api/src \

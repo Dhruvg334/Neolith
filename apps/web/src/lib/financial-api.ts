@@ -259,15 +259,31 @@ export class ApiResponseError extends Error {
   }
 }
 
-const DEFAULT_API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+function resolveDefaultBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+  if (process.env.API_BASE_URL) {
+    return process.env.API_BASE_URL;
+  }
+  if (
+    typeof window !== "undefined" &&
+    window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1"
+  ) {
+    return "https://neolith-api.onrender.com/api/v1";
+  }
+  if (process.env.NODE_ENV === "production") {
+    return "https://neolith-api.onrender.com/api/v1";
+  }
+  return "http://localhost:8000/api/v1";
+}
 
 /**
  * Normalizes backend API URL to guarantee no duplicate `/api/v1` prefixes.
  */
 export function buildApiUrl(path: string): string {
-  const rawBase =
-    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+  const rawBase = resolveDefaultBaseUrl();
   const base = rawBase.replace(/\/+$/, "");
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
 
@@ -291,7 +307,7 @@ export function buildApiUrl(path: string): string {
 }
 
 export function getApiBaseUrl(): string {
-  return DEFAULT_API_BASE.replace(/\/+$/, "");
+  return resolveDefaultBaseUrl().replace(/\/+$/, "");
 }
 
 export type ApiStateResult<T> =

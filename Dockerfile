@@ -15,10 +15,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Install system dependencies: curl for OPA download and healthchecks, ca-certificates
+# Install system dependencies: curl for OPA download and healthchecks, ca-certificates, redis-server
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
+    redis-server \
     && rm -rf /var/lib/apt/lists/*
 
 # Install pinned Open Policy Agent (OPA) 1.22.2 static binary for AMD64
