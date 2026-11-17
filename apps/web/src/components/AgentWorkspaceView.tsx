@@ -467,7 +467,6 @@ export function AgentWorkspaceView({
     reasonText: string
   ) => {
     setSubmitting(true);
-    setErrorMsg(null);
 
     const userTurn: ChatTurn = {
       id: `user-${Date.now()}`,
@@ -692,7 +691,6 @@ export function AgentWorkspaceView({
     e.preventDefault();
     const amt = parseFloat(manualAmount);
     if (isNaN(amt) || amt <= 0) {
-      setErrorMsg("Please enter a valid amount.");
       return;
     }
 
