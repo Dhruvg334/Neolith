@@ -149,7 +149,7 @@ export function AgentTaskConsole() {
       };
     }
 
-    // 2. Budget violation check
+    // 2. Budget violation check against configured budget cap
     const budgetCap =
       category.includes("infra")
         ? settings.infrastructureBudget
@@ -157,15 +157,14 @@ export function AgentTaskConsole() {
           ? settings.softwareBudget
           : settings.miscellaneousBudget;
 
-    // Simulate existing spent amount
-    const alreadySpent = category.includes("infra") ? 30000 : 8000;
-    const remaining = Math.max(0, budgetCap - alreadySpent);
+    const remaining = Math.max(0, budgetCap);
 
     if (amountVal > remaining) {
+      const deficit = amountVal - remaining;
       return {
         outcome: "deny",
         reasonCodes: ["DENY_BUDGET_EXCEEDED", "INVARIANT_BREACH"],
-        ruleExplanation: `Proposed ${formatInrCurrency(amountVal.toString())} exceeds available ${action.category} budget (${formatInrCurrency(remaining.toString())} remaining). Hard-blocked at gateway.`,
+        ruleExplanation: `Proposed ${formatInrCurrency(amountVal.toString())} exceeds available ${action.category ?? "category"} budget of ${formatInrCurrency(remaining.toString())} (deficit of ${formatInrCurrency(deficit.toString())}). Hard-blocked at gateway.`,
       };
     }
 

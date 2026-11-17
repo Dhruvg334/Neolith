@@ -1,5 +1,6 @@
 """System-wide governance control, emergency stop, and revocation epoch endpoints (UC8, F09)."""
 
+import os
 from datetime import datetime
 from typing import Annotated
 
@@ -85,4 +86,69 @@ def restore_system(
         emergency_stop_active=state.emergency_stop_active,
         revocation_epoch=int(state.revocation_epoch),
         updated_at=state.updated_at,
+    )
+
+
+class LLMStatusResponse(BaseModel):
+    """Status of LLM provider connectivity and reasoning mode."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    is_online: bool
+    provider: str
+    model: str
+    message: str
+
+
+@router.get(
+    "/llm-status",
+    response_model=LLMStatusResponse,
+    status_code=status.HTTP_200_OK,
+    operation_id="getLLMStatus",
+)
+def get_llm_status() -> LLMStatusResponse:
+    """Report LLM connectivity status, provider, and model."""
+    gemini_key = (
+        os.getenv("GEMINI_API_KEY") or os.getenv("LLM_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    )
+    openai_key = os.getenv("OPENAI_API_KEY")
+    explicit_provider = (os.getenv("LLM_PROVIDER") or "").strip().lower()
+
+    if gemini_key or explicit_provider == "gemini":
+        model_name = os.getenv("GEMINI_MODEL") or os.getenv("LLM_MODEL_FAST") or "gemini-1.5-flash"
+        if gemini_key:
+            return LLMStatusResponse(
+                is_online=True,
+                provider="gemini",
+                model=model_name,
+                message="Connected to Google Gemini (Active Production Reasoning)",
+            )
+        return LLMStatusResponse(
+            is_online=False,
+            provider="gemini",
+            model=model_name,
+            message="Financial Agent is offline — testcases are being used for the time",
+        )
+
+    if openai_key or explicit_provider == "openai":
+        model_name = os.getenv("LLM_MODEL_FAST") or "gpt-4o-mini"
+        if openai_key:
+            return LLMStatusResponse(
+                is_online=True,
+                provider="openai",
+                model=model_name,
+                message="Connected to OpenAI (Active Production Reasoning)",
+            )
+        return LLMStatusResponse(
+            is_online=False,
+            provider="openai",
+            model=model_name,
+            message="Financial Agent is offline — testcases are being used for the time",
+        )
+
+    return LLMStatusResponse(
+        is_online=False,
+        provider="deterministic_mock",
+        model="deterministic-financial-reasoner",
+        message="Financial Agent is offline — testcases are being used for the time",
     )

@@ -7,7 +7,6 @@ import {
   Home,
   Bot,
   Wallet,
-  Activity,
   ShieldCheck,
   FileCode,
   CheckSquare,
@@ -16,19 +15,15 @@ import {
   Compass,
   X,
   ExternalLink,
-  Lock,
   PanelLeft,
   Users,
 } from "lucide-react";
 import { checkBackendHealth } from "@/lib/financial-api";
-import { InfoIcon } from "@/components/ui/InfoIcon";
 import { NeolithLogo } from "@/components/NeolithLogo";
 
 interface AppShellProps {
   readonly children: ReactNode;
 }
-
-export type ViewMode = "essentials" | "control";
 
 interface NavItem {
   readonly href: string;
@@ -40,8 +35,7 @@ interface NavItem {
 const ESSENTIALS_NAV: readonly NavItem[] = [
   { href: "/", label: "Home", icon: Home },
   { href: "/agent", label: "Financial Agent Console", icon: Bot, badge: "AI" },
-  { href: "/accounts", label: "Operating Accounts & Budgets", icon: Wallet },
-  { href: "/tasks", label: "Task Activity Ledger", icon: Activity },
+  { href: "/accounts", label: "Corporate Accounts & Contacts", icon: Wallet },
 ];
 
 const CONTROL_NAV: readonly NavItem[] = [
@@ -59,15 +53,10 @@ const KNOWLEDGE_NAV: readonly NavItem[] = [
 
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
-  const [viewMode, setViewMode] = useState<ViewMode>("essentials");
   const [backendStatus, setBackendStatus] = useState<"healthy" | "starting" | "unreachable" | "checking">("checking");
   const [trayOpen, setTrayOpen] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("neolith_view_mode");
-    if (saved === "control" || saved === "essentials") {
-      setViewMode(saved);
-    }
     void checkBackendHealth().then((res) => setBackendStatus(res.status));
   }, []);
 
@@ -86,13 +75,6 @@ export function AppShell({ children }: AppShellProps) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [trayOpen]);
-
-  const handleModeChange = (mode: ViewMode) => {
-    setViewMode(mode);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("neolith_view_mode", mode);
-    }
-  };
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-ember-500 selection:text-white">
@@ -117,9 +99,12 @@ export function AppShell({ children }: AppShellProps) {
             <Link href="/" className="group flex items-center gap-2">
               <NeolithLogo size="md" lightText={true} />
             </Link>
+          </div>
 
-            {/* Live Gateway Health Indicator */}
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-xs">
+          {/* Header Right Actions */}
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Live Gateway Health Indicator moved directly into navbar */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs shadow-sm">
               {backendStatus === "healthy" ? (
                 <>
                   <span className="relative flex h-2 w-2">
@@ -144,45 +129,6 @@ export function AppShell({ children }: AppShellProps) {
                   <span className="text-slate-400 font-medium">Probing Gateway</span>
                 </>
               )}
-            </div>
-          </div>
-
-          {/* Header Right Actions */}
-          <div className="flex items-center gap-3 sm:gap-4">
-            {/* View Mode Switcher */}
-            <div className="hidden md:flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-xl border border-slate-800">
-              <button
-                type="button"
-                onClick={() => handleModeChange("essentials")}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 ${
-                  viewMode === "essentials"
-                    ? "bg-slate-800 text-white shadow-sm"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-                title="Essentials mode: streamlined agent and requester workflows"
-              >
-                Essentials
-              </button>
-              <button
-                type="button"
-                onClick={() => handleModeChange("control")}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center gap-1.5 ${
-                  viewMode === "control"
-                    ? "bg-ember-500 text-white shadow-glow"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-                title="Control mode: deep policy, approval, and operator governance"
-              >
-                <Lock className="w-3 h-3" />
-                Control
-              </button>
-              <InfoIcon
-                title="Adaptive View Mode"
-                content="Essentials mode streamlines requester activity and financial summaries. Control mode reveals deep policy evaluation traces, human approval checkpoints, and the emergency kill-switch."
-                side="bottom"
-                badge="Dual Interface"
-                className="ml-0.5"
-              />
             </div>
 
             {/* Quick Action Button */}
@@ -225,40 +171,8 @@ export function AppShell({ children }: AppShellProps) {
                 </button>
               </div>
 
-              {/* Mode Switcher inside Tray for Mobile/Quick access */}
-              <div className="my-5 p-2 rounded-xl bg-slate-900 border border-slate-800">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2 px-1">
-                  Presentation Mode
-                </span>
-                <div className="grid grid-cols-2 gap-1">
-                  <button
-                    type="button"
-                    onClick={() => handleModeChange("essentials")}
-                    className={`py-1.5 text-xs font-bold rounded-lg transition-all ${
-                      viewMode === "essentials"
-                        ? "bg-slate-800 text-white shadow-sm"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    Essentials
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleModeChange("control")}
-                    className={`py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${
-                      viewMode === "control"
-                        ? "bg-ember-500 text-white shadow-glow"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    <Lock className="w-3 h-3" />
-                    Control
-                  </button>
-                </div>
-              </div>
-
               {/* Workspaces Navigation Groups */}
-              <div className="space-y-6">
+              <div className="space-y-6 mt-6">
                 {/* Section 1: Requester Flow */}
                 <div>
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 block px-2 mb-1.5">
@@ -425,7 +339,7 @@ export function AppShell({ children }: AppShellProps) {
                 </li>
                 <li>
                   <Link href="/accounts" className="hover:text-ember-600 transition-colors">
-                    Operating Accounts & Budgets
+                    Corporate Accounts & Contacts
                   </Link>
                 </li>
                 <li>
@@ -434,13 +348,13 @@ export function AppShell({ children }: AppShellProps) {
                   </Link>
                 </li>
                 <li>
-                  <Link href="/tasks" className="hover:text-ember-600 transition-colors">
-                    Task Activity Ledger
+                  <Link href="/governance" className="hover:text-ember-600 transition-colors">
+                    Governance & EU AI Act
                   </Link>
                 </li>
                 <li>
-                  <Link href="/dashboard" className="hover:text-ember-600 transition-colors">
-                    Treasury Operations
+                  <Link href="/policies" className="hover:text-ember-600 transition-colors">
+                    Policy Studio & Simulator
                   </Link>
                 </li>
               </ul>

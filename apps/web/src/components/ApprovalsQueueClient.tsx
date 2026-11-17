@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Badge, Card, CopyableId, EmptyState } from "@/components/ui";
 import {
   fetchApprovals,
@@ -282,6 +283,15 @@ export function ApprovalsQueueClient() {
                           className="w-full text-xs p-2 rounded border border-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-800 bg-white"
                         />
 
+                        {!appr.is_verified_vendor && (
+                          <div className="p-2 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-[11px] flex items-start gap-1.5 font-medium">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                            <span>
+                              Unsaved Contact Trigger: Payee has no verified directory record or CRM link. Human approval is mandatory under EU AI Act Article 14.
+                            </span>
+                          </div>
+                        )}
+
                         <div className="flex items-center gap-2 pt-1">
                           <button
                             type="button"
@@ -300,6 +310,26 @@ export function ApprovalsQueueClient() {
                             Reject
                           </button>
                         </div>
+
+                        {!appr.is_verified_vendor && (
+                          <button
+                            type="button"
+                            disabled={isSubmitting}
+                            onClick={() => {
+                              setActionNotes((prev) => ({
+                                ...prev,
+                                [appr.id]:
+                                  (prev[appr.id] || "") +
+                                  " [Approved and Saved to Verified Bank Contact Directory]",
+                              }));
+                              void handleDecision(appr.id, "approve");
+                            }}
+                            className="w-full py-1.5 px-3 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded transition-colors disabled:opacity-50 shadow-sm flex items-center justify-center gap-1.5"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Approve &amp; Save Contact to Directory</span>
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-2 text-xs">

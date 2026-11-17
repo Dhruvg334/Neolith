@@ -1279,3 +1279,41 @@ export async function runEvaluationSuite(
     return { success: false, data: null, error: msg };
   }
 }
+
+export interface LLMStatusDto {
+  readonly is_online: boolean;
+  readonly provider: string;
+  readonly model: string;
+  readonly message: string;
+}
+
+/**
+ * Fetch LLM provider status and connectivity from the backend.
+ */
+export async function getLlmStatus(): Promise<LLMStatusDto> {
+  const url = buildApiUrl("/system/llm-status");
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      return {
+        is_online: false,
+        provider: "deterministic_mock",
+        model: "deterministic-financial-reasoner",
+        message: "Financial Agent is offline — testcases are being used for the time",
+      };
+    }
+    return (await res.json()) as LLMStatusDto;
+  } catch {
+    return {
+      is_online: false,
+      provider: "deterministic_mock",
+      model: "deterministic-financial-reasoner",
+      message: "Financial Agent is offline — testcases are being used for the time",
+    };
+  }
+}
+

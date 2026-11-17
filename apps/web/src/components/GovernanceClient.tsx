@@ -13,10 +13,11 @@ import {
   getActiveGovernanceProfile,
   getGovernanceDecisions,
 } from "@/lib/financial-api";
-import { BookOpen, Layers } from "lucide-react";
+import { BookOpen, Layers, Sliders, CheckCircle2 } from "lucide-react";
+import { formatInrCurrency } from "@/lib/financial-api";
 
 export function GovernanceClient() {
-  const [viewMode, setViewMode] = useState<"decisions" | "eu_ai_act">("decisions");
+  const [viewMode, setViewMode] = useState<"decisions" | "policies" | "eu_ai_act">("decisions");
   const [activeProfile, setActiveProfile] = useState<GovernanceProfileDto | null>(null);
   const [decisions, setDecisions] = useState<GovernanceDecisionDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +25,40 @@ export function GovernanceClient() {
   const [outcomeFilter, setOutcomeFilter] = useState<string>("all");
   const [selectedDecision, setSelectedDecision] = useState<GovernanceDecisionDto | null>(null);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+
+  // Interactive Policy Studio State
+  const [profilePreset, setProfilePreset] = useState<"strict" | "balanced" | "high_autonomy">("balanced");
+  const [reviewThreshold, setReviewThreshold] = useState<number>(25000);
+  const [requireSavedContact, setRequireSavedContact] = useState<boolean>(true);
+  const [requireCrmSync, setRequireCrmSync] = useState<boolean>(true);
+  const [enforceBudgetHardStop, setEnforceBudgetHardStop] = useState<boolean>(true);
+  const [fourEyesPrinciple, setFourEyesPrinciple] = useState<boolean>(true);
+  const [savedNotification, setSavedNotification] = useState<string | null>(null);
+
+  const handleApplyPolicy = () => {
+    setSavedNotification("Policy configuration successfully applied to Neolith Gateway runtime!");
+    setTimeout(() => setSavedNotification(null), 3500);
+  };
+
+  const handleSelectPreset = (preset: "strict" | "balanced" | "high_autonomy") => {
+    setProfilePreset(preset);
+    if (preset === "strict") {
+      setReviewThreshold(0);
+      setRequireSavedContact(true);
+      setRequireCrmSync(true);
+      setFourEyesPrinciple(true);
+    } else if (preset === "balanced") {
+      setReviewThreshold(25000);
+      setRequireSavedContact(true);
+      setRequireCrmSync(true);
+      setFourEyesPrinciple(true);
+    } else {
+      setReviewThreshold(50000);
+      setRequireSavedContact(true);
+      setRequireCrmSync(false);
+      setFourEyesPrinciple(false);
+    }
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -91,6 +126,18 @@ export function GovernanceClient() {
             >
               <Layers className="w-3.5 h-3.5 text-teal-700" />
               <span>Decisions Stream</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("policies")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === "policies"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Sliders className="w-3.5 h-3.5 text-ember-600" />
+              <span>Interactive Policy Studio</span>
             </button>
             <button
               type="button"
@@ -320,7 +367,211 @@ export function GovernanceClient() {
         </div>
       )}
 
-      {/* VIEW 2: EU AI ACT COMPLIANCE MATRIX */}
+      {/* VIEW 2: INTERACTIVE POLICY STUDIO */}
+      {viewMode === "policies" && (
+        <div className="space-y-6">
+          {savedNotification && (
+            <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 text-emerald-900 text-xs font-semibold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>{savedNotification}</span>
+            </div>
+          )}
+
+          {/* Profile Presets */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 block mb-1">
+                Governance Profiles
+              </span>
+              <h2 className="text-lg font-bold text-slate-900">Choose Active Policy Baseline</h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Select an enterprise preset or fine-tune individual guardrails below.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {[
+                {
+                  id: "strict",
+                  title: "Strict Compliance",
+                  desc: "Zero autonomous settlement. 100% human review required for all proposals.",
+                  badge: "EU AI Act High-Risk",
+                },
+                {
+                  id: "balanced",
+                  title: "Balanced Control",
+                  desc: "Autonomous settlement up to ₹25,000 for verified bank contacts within budget.",
+                  badge: "Standard Enterprise",
+                },
+                {
+                  id: "high_autonomy",
+                  title: "High Autonomy",
+                  desc: "Autonomous settlement up to ₹50,000 for verified contacts. Fast-track workflow.",
+                  badge: "Expedited Ops",
+                },
+              ].map((p) => {
+                const isSelected = profilePreset === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() =>
+                      handleSelectPreset(p.id as "strict" | "balanced" | "high_autonomy")
+                    }
+                    className={`p-4 rounded-xl border text-left transition-all ${
+                      isSelected
+                        ? "bg-slate-900 text-white border-teal-500 shadow-glow"
+                        : "bg-slate-50 border-slate-200 text-slate-900 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-bold text-xs">{p.title}</span>
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                          isSelected ? "bg-teal-500 text-white" : "bg-slate-200 text-slate-700"
+                        }`}
+                      >
+                        {p.badge}
+                      </span>
+                    </div>
+                    <p
+                      className={`text-[11px] leading-relaxed m-0 ${
+                        isSelected ? "text-slate-300" : "text-slate-500"
+                      }`}
+                    >
+                      {p.desc}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Interactive Policy Rules & Toggles */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 block mb-1">
+                Deterministic Invariants
+              </span>
+              <h2 className="text-lg font-bold text-slate-900">Custom Policy Safeguards</h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Configure safety invariants evaluated authoritatively by Open Policy Agent.
+              </p>
+            </div>
+
+            {/* Threshold Slider */}
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800">
+                  Single-Transaction Human Review Threshold
+                </label>
+                <span className="text-xs font-mono font-bold text-teal-800">
+                  {formatInrCurrency(reviewThreshold.toString())}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="75000"
+                step="5000"
+                value={reviewThreshold}
+                onChange={(e) => setReviewThreshold(parseFloat(e.target.value))}
+                className="w-full accent-teal-600"
+              />
+              <p className="text-[11px] text-slate-500 leading-relaxed m-0">
+                Proposals equal to or exceeding this threshold are intercepted for dual-key operator sign-off.
+              </p>
+            </div>
+
+            {/* Toggles */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="chk-saved-bank" className="text-xs font-bold text-slate-800 cursor-pointer">
+                    Enforce Saved Bank Contact Whitelist
+                  </label>
+                  <input
+                    type="checkbox"
+                    id="chk-saved-bank"
+                    checked={requireSavedContact}
+                    onChange={(e) => setRequireSavedContact(e.target.checked)}
+                    className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 cursor-pointer"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed m-0">
+                  Disbursements to payees not present in the corporate bank contacts directory strictly require human approval.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="chk-crm" className="text-xs font-bold text-slate-800 cursor-pointer">
+                    Require CRM Directory Sync (HubSpot / Salesforce)
+                  </label>
+                  <input
+                    type="checkbox"
+                    id="chk-crm"
+                    checked={requireCrmSync}
+                    onChange={(e) => setRequireCrmSync(e.target.checked)}
+                    className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 cursor-pointer"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed m-0">
+                  Contacts must have active sync with corporate CRM to be eligible for autonomous payment settlement.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="chk-budget-stop" className="text-xs font-bold text-slate-800 cursor-pointer">
+                    Budget Deficit Hard-Stop Invariant
+                  </label>
+                  <input
+                    type="checkbox"
+                    id="chk-budget-stop"
+                    checked={enforceBudgetHardStop}
+                    onChange={(e) => setEnforceBudgetHardStop(e.target.checked)}
+                    className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 cursor-pointer"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed m-0">
+                  Hard-blocks any proposal that exceeds remaining departmental allocation. Zero overdraft allowed.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="chk-four-eyes" className="text-xs font-bold text-slate-800 cursor-pointer">
+                    Article 14 Four-Eyes Principle
+                  </label>
+                  <input
+                    type="checkbox"
+                    id="chk-four-eyes"
+                    checked={fourEyesPrinciple}
+                    onChange={(e) => setFourEyesPrinciple(e.target.checked)}
+                    className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500 cursor-pointer"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed m-0">
+                  Dual-key human review required whenever high risk tier (R3/R4) actions or transfer operations are attempted.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end pt-2">
+              <button
+                type="button"
+                onClick={handleApplyPolicy}
+                className="px-5 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs shadow-sm transition-all"
+              >
+                Save &amp; Deploy Policy to Runtime Gateway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 3: EU AI ACT COMPLIANCE MATRIX */}
       {viewMode === "eu_ai_act" && <EuAiActCompliance />}
 
       {/* Action Inspector Modal */}

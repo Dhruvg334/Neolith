@@ -111,6 +111,13 @@ FALLBACK_BENEFICIARIES = [
         "verified": False,
         "status": "pending",
     },
+    {
+        "id": "b4",
+        "name": "AWS Cloud",
+        "reference": "VPA-AWS-INDIA-991",
+        "verified": True,
+        "status": "active",
+    },
 ]
 
 

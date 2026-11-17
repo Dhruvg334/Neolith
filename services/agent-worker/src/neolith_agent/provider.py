@@ -78,10 +78,21 @@ class DeterministicMockLLMProvider:
         detected_category = "software"
         if any(
             k in lower
-            for k in ["infra", "server", "compute", "cluster", "gpu", "host", "datacenter"]
+            for k in [
+                "infra",
+                "server",
+                "compute",
+                "cluster",
+                "gpu",
+                "host",
+                "datacenter",
+                "vps",
+                "aws",
+                "cloud hosting",
+            ]
         ):
             detected_category = "infrastructure"
-        elif any(k in lower for k in ["soft", "saas", "license", "cloud", "api", "sub", "tool"]):
+        elif any(k in lower for k in ["soft", "saas", "license", "api", "sub", "tool"]):
             detected_category = "software"
         elif any(
             k in lower
@@ -89,17 +100,19 @@ class DeterministicMockLLMProvider:
         ):
             detected_category = "miscellaneous"
 
-        # Detect vendor dynamically
+        # Detect vendor dynamically (order longer phrases first)
         detected_vendor = "Enterprise Beneficiary"
         for v_name in [
+            "AWS Cloud Services",
+            "AWS Cloud",
+            "Amazon Web Services",
+            "AWS",
             "Acme Cloud Services",
             "Acme Cloud",
             "Nova Compute Systems",
             "Nova Compute",
             "Quantum Hosting Labs",
             "Quantum Labs",
-            "AWS",
-            "Amazon Web Services",
             "Google Cloud",
             "Microsoft Azure",
             "Logistics Corp",
@@ -108,6 +121,14 @@ class DeterministicMockLLMProvider:
             if v_name.lower() in lower:
                 detected_vendor = v_name
                 break
+
+        # Extract reason/description if present (e.g. "for VPS of August 2026 Month")
+        reason_match = re.search(r"\bfor\s+(.+?)(?:\.|$)", text, re.IGNORECASE)
+        extracted_reason = (
+            reason_match.group(1).strip()
+            if reason_match
+            else "Operational procurement and services"
+        )
 
         # Dynamic invoice pay intents
         if invoice_matches or (has_pay_verb and extracted_amount is not None):
@@ -144,9 +165,14 @@ class DeterministicMockLLMProvider:
                 "currency": "INR",
                 "category": category,
                 "vendor_name": vendor,
+                "reason": extracted_reason,
+                "thinking_summary": (
+                    f"Extracted {amount} INR transaction to {vendor} for "
+                    f"'{extracted_reason}' under {category} budget."
+                ),
                 "justification": (
                     f"Payment proposal dynamically formulated for {inv_id} ({vendor}) "
-                    f"under {category} monthly allocation."
+                    f"for {extracted_reason} under {category} monthly allocation."
                 ),
                 "evidence_refs": [
                     f"invoice:{inv_id}",

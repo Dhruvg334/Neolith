@@ -30,9 +30,9 @@ export interface AgentPolicySettings {
 export const DEFAULT_POLICY_SETTINGS: AgentPolicySettings = {
   profileStyle: "balanced",
   profileName: "Balanced Control",
-  softwareBudget: 50000,
-  infrastructureBudget: 30000,
-  miscellaneousBudget: 20000,
+  softwareBudget: 25000,
+  infrastructureBudget: 50000,
+  miscellaneousBudget: 10000,
   reviewThreshold: 25000,
   maxActionAmount: 100000,
   requireVerifiedBeneficiary: true,
