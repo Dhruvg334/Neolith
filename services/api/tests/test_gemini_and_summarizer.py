@@ -60,6 +60,41 @@ def test_create_llm_provider_factory(monkeypatch: pytest.MonkeyPatch) -> None:
     assert isinstance(fallback, DeterministicMockLLMProvider)
 
 
+def test_create_llm_provider_disabled_by_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """create_llm_provider falls back to DeterministicMock when DISABLE_GEMINI is true."""
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    monkeypatch.setenv("DISABLE_GEMINI", "true")
+    provider = create_llm_provider(provider_name="gemini")
+    assert isinstance(provider, DeterministicMockLLMProvider)
+
+
+def test_settings_disable_gemini(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Settings.effective_llm_provider returns mock when disable_gemini is True."""
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    monkeypatch.setenv("DISABLE_GEMINI", "true")
+    settings = Settings(
+        database_url="sqlite+pysqlite:///:memory:",
+        redis_url="redis://localhost:6379/0",
+        opa_url="http://localhost:8181",
+    )
+    assert settings.disable_gemini is True
+    assert settings.effective_llm_provider == "mock"
+
+
+def test_get_llm_status_disabled_by_env(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """GET /api/v1/system/llm-status reports offline deterministic mock when disabled."""
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+    monkeypatch.setenv("DISABLE_GEMINI", "true")
+    res = client.get("/api/v1/system/llm-status")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["is_online"] is False
+    assert data["provider"] == "deterministic_mock"
+    assert "testcases are being used" in data["message"]
+
+
 @pytest.mark.asyncio
 async def test_gemini_provider_generate_structured_success() -> None:
     """GeminiLLMProvider formats request to Google v1beta API and parses JSON response."""

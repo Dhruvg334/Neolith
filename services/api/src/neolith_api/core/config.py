@@ -97,6 +97,10 @@ class Settings(BaseSettings):
         default="gemini",
         validation_alias="LLM_PROVIDER",
     )
+    disable_gemini: bool = Field(
+        default=False,
+        validation_alias="DISABLE_GEMINI",
+    )
     llm_api_key: str = Field(default="", validation_alias="LLM_API_KEY")
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-3.5-flash", validation_alias="GEMINI_MODEL")
@@ -150,8 +154,8 @@ class Settings(BaseSettings):
 
     @property
     def effective_llm_provider(self) -> str:
-        """Return active LLM provider, accounting for available API keys."""
-        if self.llm_provider == "mock":
+        """Return active LLM provider, accounting for available API keys and disable flags."""
+        if self.disable_gemini or self.llm_provider == "mock":
             return "mock"
         if self.llm_provider == "openai" and self.llm_api_key:
             return "openai"

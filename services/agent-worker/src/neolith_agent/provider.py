@@ -364,10 +364,7 @@ class GeminiLLMProvider:
             raise ValueError(msg)
         self.api_key = key
         raw_model = (
-            model
-            or os.getenv("GEMINI_MODEL")
-            or os.getenv("LLM_MODEL_FAST")
-            or "gemini-3.5-flash"
+            model or os.getenv("GEMINI_MODEL") or os.getenv("LLM_MODEL_FAST") or "gemini-3.5-flash"
         ).strip()
         normalized = raw_model.lower().replace(" ", "-")
         if normalized in ("3.5-flash", "flash-3.5", "3.5"):
@@ -447,11 +444,12 @@ def create_llm_provider(
     model: str | None = None,
 ) -> LLMProviderAdapter:
     """Instantiate appropriate LLM provider with fail-safe fallback to deterministic mock."""
+    disable_gemini = os.getenv("DISABLE_GEMINI", "").strip().lower() in ("true", "1", "yes")
     name = (provider_name or os.getenv("LLM_PROVIDER") or "").strip().lower()
     gemini_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("LLM_API_KEY")
     openai_key = api_key or os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY")
 
-    if (name == "gemini" or (not name and gemini_key)) and gemini_key:
+    if not disable_gemini and (name == "gemini" or (not name and gemini_key)) and gemini_key:
         return GeminiLLMProvider(api_key=gemini_key, model=model)
     if (name == "openai" or (not name and openai_key)) and openai_key:
         return OpenAILLMProvider(api_key=openai_key, model=model)

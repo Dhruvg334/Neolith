@@ -108,6 +108,15 @@ class LLMStatusResponse(BaseModel):
 )
 def get_llm_status() -> LLMStatusResponse:
     """Report LLM connectivity status, provider, and model."""
+    disable_gemini = os.getenv("DISABLE_GEMINI", "").strip().lower() in ("true", "1", "yes")
+    if disable_gemini:
+        return LLMStatusResponse(
+            is_online=False,
+            provider="deterministic_mock",
+            model="deterministic-financial-reasoner",
+            message="Financial Agent is offline — testcases are being used for the time",
+        )
+
     gemini_key = (
         os.getenv("GEMINI_API_KEY") or os.getenv("LLM_API_KEY") or os.getenv("GOOGLE_API_KEY")
     )
