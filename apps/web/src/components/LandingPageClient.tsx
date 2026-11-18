@@ -18,7 +18,6 @@ import {
   DollarSign,
   Users,
   FileText,
-  Sparkles,
   Compass,
 } from "lucide-react";
 
@@ -108,11 +107,6 @@ export function LandingPageClient() {
     <div className="space-y-20 py-4 max-w-6xl mx-auto">
       {/* 1. HERO SECTION (SPACIOUS, CENTERED & HUMAN-UNDERSTANDABLE) */}
       <section className="text-center space-y-6 pt-4 pb-8 max-w-4xl mx-auto">
-        <div className="inline-flex items-center gap-2 rounded-full border border-ember-500/30 bg-ember-500/10 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-ember-700">
-          <Sparkles className="w-3.5 h-3.5 text-ember-600" />
-          <span>Autonomous Financial AI Governance</span>
-        </div>
-
         <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.12] text-slate-900">
           Let AI Agents Manage Corporate Finance.{" "}
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-ember-600 via-ember-500 to-amber-500">
