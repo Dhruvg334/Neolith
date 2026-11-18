@@ -18,84 +18,152 @@ import {
   DollarSign,
   Users,
   FileText,
+  ShieldCheck,
   Compass,
 } from "lucide-react";
 
+interface ScenarioCheck {
+  title: string;
+  statusText: string;
+  badgeStyle: "positive" | "warning" | "negative";
+  description: string;
+}
+
 interface VisualScenario {
   id: string;
-  name: string;
   invoiceId: string;
+  scenarioType: string;
   vendor: string;
   amount: string;
   category: string;
-  isVerified: boolean;
   status: "allow" | "review" | "deny";
-  statusLabel: string;
-  summary: string;
-  details: {
-    budgetStatus: string;
-    thresholdCheck: string;
-    vendorStatus: string;
-    actionTaken: string;
+  statusBadge: string;
+  statusHeadline: string;
+  plainEnglishStory: string;
+  checks: {
+    budget: ScenarioCheck;
+    threshold: ScenarioCheck;
+    vendor: ScenarioCheck;
+    outcome: ScenarioCheck;
   };
 }
 
 const VISUAL_SCENARIOS: VisualScenario[] = [
   {
     id: "sc-routine",
-    name: "Routine Software Subscription",
     invoiceId: "INV-001",
+    scenarioType: "Routine Monthly Bill",
     vendor: "Acme Cloud Services",
     amount: "₹8,000.00",
-    category: "Software",
-    isVerified: true,
+    category: "Software Subscription",
     status: "allow",
-    statusLabel: "Automatically Approved",
-    summary:
-      "Within monthly software budget and below manager review limit. Neolith issues a 60-second single-use execution permit and settles the invoice.",
-    details: {
-      budgetStatus: "₹8,000 used of ₹25,000 budget (₹17,000 remaining)",
-      thresholdCheck: "Below ₹25,000 human review limit (Passed)",
-      vendorStatus: "Verified Approved Vendor (Passed)",
-      actionTaken: "Issued single-use permit and recorded tamper-proof receipt.",
+    statusBadge: "Paid Automatically",
+    statusHeadline: "Safe & Approved Instantly",
+    plainEnglishStory:
+      "This is a regular subscription to an approved software supplier and fits comfortably inside your monthly budget. Neolith pays it automatically without taking up any of your team's time.",
+    checks: {
+      budget: {
+        title: "1. Monthly Department Budget",
+        statusText: "Within Budget",
+        badgeStyle: "positive",
+        description: "₹8,000 used of ₹25,000 Software budget (₹17,000 remaining this month).",
+      },
+      threshold: {
+        title: "2. Manager Sign-Off Rule",
+        statusText: "Under Limit",
+        badgeStyle: "positive",
+        description: "Well under the ₹25,000 manager sign-off threshold. No paperwork needed.",
+      },
+      vendor: {
+        title: "3. Supplier Safety",
+        statusText: "Verified Supplier",
+        badgeStyle: "positive",
+        description: "Recognized, verified vendor saved in your company contact directory.",
+      },
+      outcome: {
+        title: "4. Result for Your Bank Account",
+        statusText: "Paid Safely",
+        badgeStyle: "positive",
+        description: "Invoice settled directly and receipt logged to your company accounts ledger.",
+      },
     },
   },
   {
     id: "sc-high-value",
-    name: "High-Value Server Hardware",
     invoiceId: "INV-002",
+    scenarioType: "Large Equipment Purchase",
     vendor: "Nova Compute Systems",
     amount: "₹35,000.00",
     category: "Infrastructure",
-    isVerified: true,
     status: "review",
-    statusLabel: "Held for Manager Approval",
-    summary:
-      "Budget is available, but the amount exceeds the ₹25,000 manager sign-off threshold. Neolith halts execution and routes the payment to the approvals queue.",
-    details: {
-      budgetStatus: "₹35,000 within ₹50,000 infrastructure limit",
-      thresholdCheck: "Exceeds ₹25,000 policy threshold (Manager Sign-Off Required)",
-      vendorStatus: "Verified Approved Vendor (Passed)",
-      actionTaken: "Payment paused. Dispatched to Human Approvals Queue.",
+    statusBadge: "Needs Manager Approval",
+    statusHeadline: "Held Safely for Your Review",
+    plainEnglishStory:
+      "The vendor is legitimate and budget is available, but any bill over ₹25,000 requires human eyes before money leaves your company. Neolith pauses it and waits for a manager's one-click approval.",
+    checks: {
+      budget: {
+        title: "1. Monthly Department Budget",
+        statusText: "Budget Available",
+        badgeStyle: "positive",
+        description: "₹35,000 fits within the department's ₹50,000 infrastructure quota.",
+      },
+      threshold: {
+        title: "2. Manager Sign-Off Rule",
+        statusText: "Approval Required",
+        badgeStyle: "warning",
+        description: "Over your ₹25,000 policy limit — requires human sign-off before payment.",
+      },
+      vendor: {
+        title: "3. Supplier Safety",
+        statusText: "Verified Supplier",
+        badgeStyle: "positive",
+        description: "Recognized corporate vendor with verified bank details on file.",
+      },
+      outcome: {
+        title: "4. Result for Your Bank Account",
+        statusText: "Funds Safe in Your Bank",
+        badgeStyle: "warning",
+        description: "Money stays safely in your bank account until you click Approve in the dashboard.",
+      },
     },
   },
   {
     id: "sc-unverified",
-    name: "Unverified / Suspicious Vendor",
     invoiceId: "INV-003",
+    scenarioType: "Suspicious Unknown Bill",
     vendor: "Unknown Services Corp",
     amount: "₹60,000.00",
     category: "Miscellaneous",
-    isVerified: false,
     status: "deny",
-    statusLabel: "Blocked & Flagged",
-    summary:
-      "Vendor is unverified, and invoice exceeds the miscellaneous budget cap. Neolith blocks execution immediately with zero fund movement.",
-    details: {
-      budgetStatus: "Exceeds ₹10,000 category budget ceiling (Failed)",
-      thresholdCheck: "Exceeds safety limit (Failed)",
-      vendorStatus: "Unverified Vendor — Not on approved vendor list (Failed)",
-      actionTaken: "Blocked automatically. Logged incident to immutable audit ledger.",
+    statusBadge: "Blocked Instantly",
+    statusHeadline: "Hard-Blocked by Safety Rules",
+    plainEnglishStory:
+      "This vendor is not in your company's saved contacts directory, and the bill blows past the monthly miscellaneous limit. Neolith blocks the transaction instantly so zero company money is ever lost.",
+    checks: {
+      budget: {
+        title: "1. Monthly Department Budget",
+        statusText: "Over Budget",
+        badgeStyle: "negative",
+        description: "Exceeds the ₹10,000 monthly limit for miscellaneous spend by ₹50,000.",
+      },
+      threshold: {
+        title: "2. Manager Sign-Off Rule",
+        statusText: "Safety Violation",
+        badgeStyle: "negative",
+        description: "Failed spending cap rules for one-off charges without prior approval.",
+      },
+      vendor: {
+        title: "3. Supplier Safety",
+        statusText: "Unrecognized Sender",
+        badgeStyle: "negative",
+        description: "Unknown vendor not listed in your verified bank contacts directory.",
+      },
+      outcome: {
+        title: "4. Result for Your Bank Account",
+        statusText: "Zero Money Moved",
+        badgeStyle: "negative",
+        description: "Blocked completely. No money leaves your bank, and an alert is logged.",
+      },
     },
   },
 ];
@@ -273,17 +341,17 @@ export function LandingPageClient() {
         </div>
       </section>
 
-      {/* 4. INTERACTIVE DEMONSTRATION (CLEAN & VISUAL - NO CONFUSING JSON DUMPS) */}
+      {/* 4. REAL-WORLD BUSINESS EXAMPLES (CLEAN, INTUITIVE & NON-TECHNICAL) */}
       <section className="rounded-3xl border border-slate-800 bg-[#070B16] p-6 sm:p-8 text-white shadow-xl space-y-6">
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-ember-400 block mb-1">
-            Interactive Policy Demo
+            Real-World Company Examples
           </span>
           <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-            See How Neolith Evaluates Real-World Invoices
+            See How Company Money Is Protected in Real Life
           </h2>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl">
-            Click any scenario below to see how corporate governance rules automatically protect your company from overspending or suspicious payments.
+          <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
+            Choose a common billing situation below to see how your spending rules protect company bank accounts from overspending, surprise charges, and unauthorized vendors.
           </p>
         </div>
 
@@ -310,14 +378,14 @@ export function LandingPageClient() {
                 }`}
               >
                 <div className="flex items-center justify-between w-full">
-                  <span className="font-mono font-bold text-slate-300">{sc.invoiceId}</span>
+                  <span className="font-semibold text-slate-300 text-xs">{sc.scenarioType}</span>
                   <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${badgeColor}`}>
-                    {sc.status}
+                    {sc.statusBadge}
                   </span>
                 </div>
                 <div>
                   <div className="font-bold text-white text-sm">{sc.vendor}</div>
-                  <div className="text-xs font-mono text-slate-400 mt-0.5">{sc.amount} ({sc.category})</div>
+                  <div className="text-xs text-slate-400 mt-0.5">{sc.amount} • {sc.category}</div>
                 </div>
               </button>
             );
@@ -347,8 +415,10 @@ export function LandingPageClient() {
                 )}
               </span>
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-base text-white">{selectedScenario.name}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-bold text-base text-white">
+                    {selectedScenario.scenarioType}: {selectedScenario.vendor}
+                  </span>
                   <span
                     className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
                       selectedScenario.status === "allow"
@@ -358,36 +428,108 @@ export function LandingPageClient() {
                           : "bg-red-500/20 text-red-300"
                     }`}
                   >
-                    {selectedScenario.statusLabel}
+                    {selectedScenario.statusHeadline}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-1 m-0 leading-relaxed">
-                  {selectedScenario.summary}
+                <p className="text-xs sm:text-sm text-slate-300 mt-1.5 m-0 leading-relaxed font-normal">
+                  {selectedScenario.plainEnglishStory}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Evaluation Breakdown Grid */}
+          {/* 4 Plain-English Business Checkpoints */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
-              <span className="font-semibold text-slate-400 block text-[11px]">1. Department Budget Check</span>
-              <span className="text-slate-200 font-medium">{selectedScenario.details.budgetStatus}</span>
+            {/* Check 1: Budget */}
+            <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-slate-300 flex items-center gap-1.5 text-xs">
+                  <Wallet className="w-3.5 h-3.5 text-ember-400" />
+                  {selectedScenario.checks.budget.title}
+                </span>
+                <span
+                  className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                    selectedScenario.checks.budget.badgeStyle === "positive"
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : "bg-red-500/20 text-red-300"
+                  }`}
+                >
+                  {selectedScenario.checks.budget.statusText}
+                </span>
+              </div>
+              <p className="text-slate-300 text-xs leading-relaxed m-0">
+                {selectedScenario.checks.budget.description}
+              </p>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
-              <span className="font-semibold text-slate-400 block text-[11px]">2. Manager Threshold Check</span>
-              <span className="text-slate-200 font-medium">{selectedScenario.details.thresholdCheck}</span>
+            {/* Check 2: Manager Threshold */}
+            <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-slate-300 flex items-center gap-1.5 text-xs">
+                  <Users className="w-3.5 h-3.5 text-blue-400" />
+                  {selectedScenario.checks.threshold.title}
+                </span>
+                <span
+                  className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                    selectedScenario.checks.threshold.badgeStyle === "positive"
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : selectedScenario.checks.threshold.badgeStyle === "warning"
+                        ? "bg-amber-500/20 text-amber-300"
+                        : "bg-red-500/20 text-red-300"
+                  }`}
+                >
+                  {selectedScenario.checks.threshold.statusText}
+                </span>
+              </div>
+              <p className="text-slate-300 text-xs leading-relaxed m-0">
+                {selectedScenario.checks.threshold.description}
+              </p>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
-              <span className="font-semibold text-slate-400 block text-[11px]">3. Vendor Verification</span>
-              <span className="text-slate-200 font-medium">{selectedScenario.details.vendorStatus}</span>
+            {/* Check 3: Vendor Safety */}
+            <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-slate-300 flex items-center gap-1.5 text-xs">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  {selectedScenario.checks.vendor.title}
+                </span>
+                <span
+                  className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                    selectedScenario.checks.vendor.badgeStyle === "positive"
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : "bg-red-500/20 text-red-300"
+                  }`}
+                >
+                  {selectedScenario.checks.vendor.statusText}
+                </span>
+              </div>
+              <p className="text-slate-300 text-xs leading-relaxed m-0">
+                {selectedScenario.checks.vendor.description}
+              </p>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
-              <span className="font-semibold text-slate-400 block text-[11px]">4. System Execution Outcome</span>
-              <span className="text-slate-200 font-medium">{selectedScenario.details.actionTaken}</span>
+            {/* Check 4: Outcome for Company */}
+            <div className="p-4 rounded-xl bg-slate-900/70 border border-slate-800 space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-slate-300 flex items-center gap-1.5 text-xs">
+                  <DollarSign className="w-3.5 h-3.5 text-amber-400" />
+                  {selectedScenario.checks.outcome.title}
+                </span>
+                <span
+                  className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                    selectedScenario.checks.outcome.badgeStyle === "positive"
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : selectedScenario.checks.outcome.badgeStyle === "warning"
+                        ? "bg-amber-500/20 text-amber-300"
+                        : "bg-red-500/20 text-red-300"
+                  }`}
+                >
+                  {selectedScenario.checks.outcome.statusText}
+                </span>
+              </div>
+              <p className="text-slate-300 text-xs leading-relaxed m-0">
+                {selectedScenario.checks.outcome.description}
+              </p>
             </div>
           </div>
         </div>

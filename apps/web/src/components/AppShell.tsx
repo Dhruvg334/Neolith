@@ -80,7 +80,7 @@ export function AppShell({ children }: AppShellProps) {
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-ember-500 selection:text-white">
       {/* 1. TOP APPLICATION BAR */}
       <header className="sticky top-0 z-40 bg-[#070B16] border-b border-slate-800/80 shadow-glow-obsidian text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+        <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 h-16 flex items-center justify-between">
           {/* Brand & Tray Toggle */}
           <div className="flex items-center gap-3 sm:gap-6">
             {/* Openable / Closable Tray Trigger Button */}
