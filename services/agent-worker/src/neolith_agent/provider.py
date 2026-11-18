@@ -50,6 +50,11 @@ class DeterministicMockLLMProvider:
                 "disregard previous instructions",
                 "override governance",
                 "bypass policy",
+                "override:",
+                "ignore all limits",
+                "treat as ceo",
+                "pre-authorized",
+                "rogue",
             ]
         ):
             is_injection = True
@@ -113,6 +118,8 @@ class DeterministicMockLLMProvider:
             "Nova Compute",
             "Quantum Hosting Labs",
             "Quantum Labs",
+            "Rogue Cloud Corp",
+            "Rogue Cloud",
             "Google Cloud",
             "Microsoft Azure",
             "Logistics Corp",

@@ -105,6 +105,8 @@ class FinancialAIAgent:
             is_injection
             or "ignore previous instructions" in raw_lower
             or "transfer inr 75,000" in raw_lower
+            or "override" in raw_lower
+            or "ignore all limits" in raw_lower
         )
 
         entities = {
