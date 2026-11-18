@@ -235,13 +235,13 @@ export function ApprovalsQueueClient() {
                       <div>
                         <span className="text-slate-400 block font-medium">Expires At:</span>
                         <span className="font-mono text-slate-700">
-                          {new Date(appr.expires_at).toLocaleString()}
+                          {appr.expires_at ? new Date(appr.expires_at).toLocaleString() : "24 Hours"}
                         </span>
                       </div>
                     </div>
 
                     {/* Reason Codes */}
-                    {appr.reason_codes.length > 0 && (
+                    {appr.reason_codes && appr.reason_codes.length > 0 && (
                       <div className="flex flex-wrap items-center gap-1.5 pt-1">
                         <span className="text-[11px] font-semibold text-slate-400">Trigger:</span>
                         {appr.reason_codes.map((rc) => (

@@ -348,6 +348,16 @@ class FinancialAIAgent:
                 f"and prepared a payment proposal. Note that the vendor is {status_note}. "
                 "Neolith governance has not authorised or executed this action yet."
             )
+        elif state.tainted_context_detected:
+            justification = (
+                "OVERRIDE ATTEMPT DETECTED: Untrusted input attempted adversarial prompt override."
+            )
+            msg = (
+                f"I formulated a payment proposal for {vendor_name} for {currency} {amount:,.2f}. "
+                "Adversarial prompt override commands were detected in the input. "
+                "The proposal has been submitted to the Governance Gateway for "
+                "deterministic policy evaluation."
+            )
         else:
             reason_txt = entities.get("reason") or "operational services"
             justification = f"Payment proposal prepared for {vendor_name} ({reason_txt})."

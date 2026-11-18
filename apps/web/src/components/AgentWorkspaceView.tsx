@@ -20,6 +20,7 @@ import {
   buildApiUrl,
   formatInrCurrency,
   getLlmStatus,
+  saveClientApproval,
   type FinancialSummaryDto,
   type FinancialToolMetadataDto,
   type FinancialCategoryBudgetDto,
@@ -317,10 +318,16 @@ export function AgentWorkspaceView({
     // 2. Prompt Injection & Adversarial Override Defense (Zero Ambient Authority)
     const isAdversarialOverride =
       vendorLower.includes("rogue") ||
+      vendorLower.includes("attacker") ||
+      vendorLower.includes("malicious") ||
+      vendorLower.includes("hack") ||
       (action.justification || "").toLowerCase().includes("override") ||
-      (action.justification || "").toLowerCase().includes("ignore");
+      (action.justification || "").toLowerCase().includes("ignore") ||
+      (action.justification || "").toLowerCase().includes("ceo") ||
+      (action.justification || "").toLowerCase().includes("pre-authorized") ||
+      (action.justification || "").toLowerCase().includes("jailbreak");
 
-    if (isAdversarialOverride && !isSavedBankContact) {
+    if (isAdversarialOverride) {
       return {
         outcome: "deny",
         reasonCodes: [
@@ -334,12 +341,12 @@ export function AgentWorkspaceView({
       };
     }
 
-    // 3. Saved Bank Contact enforcement (EU AI Act Article 14 Invariant)
+    // 3. Saved Bank Contact enforcement (EU AI Act Article 14 / Non-Verified Beneficiary Invariant)
     if (settings.requireVerifiedBeneficiary && !isSavedBankContact) {
       return {
-        outcome: "review",
-        reasonCodes: ["UNVERIFIED_BENEFICIARY", "APPROVAL_REQUIRED"],
-        ruleExplanation: `Payee '${action.vendor_name}' is not in saved bank contacts or CRM directory. EU AI Act Article 14 requires explicit human review and approval before funds can be disbursed.`,
+        outcome: "deny",
+        reasonCodes: ["UNVERIFIED_BENEFICIARY", "POLICY_INVARIANT_BREACH"],
+        ruleExplanation: `Governance Gateway hard-blocked this action: Payee '${action.vendor_name}' is not in saved bank contacts or CRM directory. Policy strictly prohibits disbursing funds to unverified beneficiaries.`,
         allowedAmountToDeduct: 0,
       };
     }
@@ -415,7 +422,7 @@ export function AgentWorkspaceView({
     }
 
     // 4. Vendor extraction
-    let extractedVendor = matchedKnownInvoice?.vendor_name ?? "Enterprise Beneficiary";
+    let extractedVendor = matchedKnownInvoice?.vendor_name ?? "";
     if (!matchedKnownInvoice) {
       const vendors = [
         "AWS Cloud Services",
@@ -428,6 +435,8 @@ export function AgentWorkspaceView({
         "Nova Compute",
         "Quantum Hosting Labs",
         "Quantum Labs",
+        "Rogue Cloud Corp",
+        "Rogue Cloud",
         "Google Cloud",
         "Microsoft Azure",
       ];
@@ -435,6 +444,14 @@ export function AgentWorkspaceView({
         if (lower.includes(v.toLowerCase())) {
           extractedVendor = v;
           break;
+        }
+      }
+      if (!extractedVendor) {
+        const toMatch = text.match(/\bto\s+([A-Za-z0-9\s&._-]+?)(?:\s+for|\s+immediately|\.|$|\s+OVERRIDE|\s+ignore)/i);
+        if (toMatch && toMatch[1]) {
+          extractedVendor = toMatch[1].trim();
+        } else {
+          extractedVendor = "Enterprise Beneficiary";
         }
       }
     }
@@ -541,6 +558,28 @@ export function AgentWorkspaceView({
         summary_text: policyResult.ruleExplanation,
       };
 
+      if (policyResult.outcome === "review") {
+        saveClientApproval({
+          id: `appr-${Date.now().toString(16)}`,
+          action_id: effectiveGovernance.action_id,
+          action_hash: `sha256:${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`,
+          operation: effectiveProposal.action_type || "pay_invoice",
+          resource: effectiveProposal.target_id || "INV-NEW",
+          amount: effectiveProposal.amount || "0.00",
+          currency: effectiveProposal.currency || "INR",
+          category: effectiveProposal.category || "Infrastructure",
+          vendor_name: effectiveProposal.vendor_name || "Enterprise Vendor",
+          description: reasonText || "Operational payment proposal requiring human sign-off",
+          is_verified_vendor: true,
+          governance_outcome: "review",
+          reason_codes: policyResult.reasonCodes,
+          required_role: "approver",
+          state: "pending",
+          expires_at: new Date(Date.now() + 86400000).toISOString(),
+          created_at: new Date().toISOString(),
+        });
+      }
+
       // Deduct from budget if permitted
       if (policyResult.allowedAmountToDeduct > 0) {
         const cat = (effectiveProposal.category || "software").toLowerCase();
@@ -613,6 +652,28 @@ export function AgentWorkspaceView({
         budget_remaining_after: Math.max(0, 50000 - amtNum).toFixed(2),
         summary_text: policyResult.ruleExplanation,
       };
+
+      if (policyResult.outcome === "review") {
+        saveClientApproval({
+          id: `appr-${Date.now().toString(16)}`,
+          action_id: simGovernance.action_id,
+          action_hash: `sha256:sim-${Date.now().toString(16)}`,
+          operation: proposal.action_type || "pay_invoice",
+          resource: proposal.target_id || "INV-NEW",
+          amount: proposal.amount || "0.00",
+          currency: proposal.currency || "INR",
+          category: proposal.category || "Infrastructure",
+          vendor_name: proposal.vendor_name || "Enterprise Vendor",
+          description: reasonText || "Operational payment proposal requiring human sign-off",
+          is_verified_vendor: true,
+          governance_outcome: "review",
+          reason_codes: policyResult.reasonCodes,
+          required_role: "approver",
+          state: "pending",
+          expires_at: new Date(Date.now() + 86400000).toISOString(),
+          created_at: new Date().toISOString(),
+        });
+      }
 
       if (policyResult.allowedAmountToDeduct > 0) {
         const cat = (proposal.category || "software").toLowerCase();

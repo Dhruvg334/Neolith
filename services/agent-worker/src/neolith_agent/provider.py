@@ -129,6 +129,15 @@ class DeterministicMockLLMProvider:
                 detected_vendor = v_name
                 break
 
+        if not detected_vendor:
+            to_match = re.search(
+                r"\bto\s+([A-Za-z0-9\s&._-]+?)(?:\s+for|\s+immediately|\.|$|\s+override|\s+ignore)",
+                text,
+                re.IGNORECASE,
+            )
+            if to_match and to_match.group(1):
+                detected_vendor = to_match.group(1).strip()
+
         # Extract reason/description if present (e.g. "for VPS of August 2026 Month")
         reason_match = re.search(r"\bfor\s+(.+?)(?:\.|$)", text, re.IGNORECASE)
         extracted_reason = (
