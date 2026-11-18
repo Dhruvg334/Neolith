@@ -313,7 +313,7 @@ export function AgentActivitySummary({
                 </span>
                 <span className="text-slate-600">•</span>
                 <span>
-                  Model: <code className="font-mono text-orange-300">{summaryData?.model || "gemini-1.5-flash"}</code>
+                  Model: <code className="font-mono text-orange-300">{summaryData?.model || "gemini-3.5-flash"}</code>
                 </span>
               </div>
               <span className="text-[10px] text-slate-500 font-mono">

@@ -63,7 +63,7 @@ def test_create_llm_provider_factory(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.mark.asyncio
 async def test_gemini_provider_generate_structured_success() -> None:
     """GeminiLLMProvider formats request to Google v1beta API and parses JSON response."""
-    provider = GeminiLLMProvider(api_key="mock-key-123", model="gemini-1.5-flash")
+    provider = GeminiLLMProvider(api_key="mock-key-123", model="gemini-3.5-flash")
 
     mock_gemini_response = {
         "candidates": [

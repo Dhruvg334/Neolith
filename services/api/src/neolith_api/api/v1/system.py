@@ -115,7 +115,14 @@ def get_llm_status() -> LLMStatusResponse:
     explicit_provider = (os.getenv("LLM_PROVIDER") or "").strip().lower()
 
     if gemini_key or explicit_provider == "gemini":
-        model_name = os.getenv("GEMINI_MODEL") or os.getenv("LLM_MODEL_FAST") or "gemini-1.5-flash"
+        raw_model = os.getenv("GEMINI_MODEL") or os.getenv("LLM_MODEL_FAST") or "gemini-3.5-flash"
+        norm_model = raw_model.strip().lower().replace(" ", "-")
+        if norm_model in ("3.5-flash", "flash-3.5", "3.5"):
+            model_name = "gemini-3.5-flash"
+        elif not norm_model.startswith("gemini-"):
+            model_name = f"gemini-{norm_model}"
+        else:
+            model_name = norm_model
         if gemini_key:
             return LLMStatusResponse(
                 is_online=True,

@@ -99,9 +99,11 @@ class Settings(BaseSettings):
     )
     llm_api_key: str = Field(default="", validation_alias="LLM_API_KEY")
     gemini_api_key: str = Field(default="", validation_alias="GEMINI_API_KEY")
-    gemini_model: str = Field(default="gemini-1.5-flash", validation_alias="GEMINI_MODEL")
-    llm_model_fast: str = Field(default="", validation_alias="LLM_MODEL_FAST")
-    llm_model_reasoning: str = Field(default="", validation_alias="LLM_MODEL_REASONING")
+    gemini_model: str = Field(default="gemini-3.5-flash", validation_alias="GEMINI_MODEL")
+    llm_model_fast: str = Field(default="gemini-3.5-flash", validation_alias="LLM_MODEL_FAST")
+    llm_model_reasoning: str = Field(
+        default="gemini-3.5-flash", validation_alias="LLM_MODEL_REASONING"
+    )
     embedding_model: str = Field(default="", validation_alias="EMBEDDING_MODEL")
 
     neolith_agent_worker_url: str = Field(

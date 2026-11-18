@@ -363,9 +363,19 @@ class GeminiLLMProvider:
             msg = "Gemini API key must be provided or set via GEMINI_API_KEY / LLM_API_KEY"
             raise ValueError(msg)
         self.api_key = key
-        self.model = (
-            model or os.getenv("GEMINI_MODEL") or os.getenv("LLM_MODEL_FAST") or "gemini-1.5-flash"
-        )
+        raw_model = (
+            model
+            or os.getenv("GEMINI_MODEL")
+            or os.getenv("LLM_MODEL_FAST")
+            or "gemini-3.5-flash"
+        ).strip()
+        normalized = raw_model.lower().replace(" ", "-")
+        if normalized in ("3.5-flash", "flash-3.5", "3.5"):
+            self.model = "gemini-3.5-flash"
+        elif not normalized.startswith("gemini-"):
+            self.model = f"gemini-{normalized}"
+        else:
+            self.model = normalized
         self.timeout = timeout
         self.endpoint = (
             f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
