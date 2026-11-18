@@ -12,6 +12,8 @@ import {
   Code2,
 } from "lucide-react";
 import { MermaidViewer } from "@/components/MermaidViewer";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { InfoIcon } from "@/components/ui/InfoIcon";
 import { Modal } from "@/components/ui/Modal";
 
@@ -67,7 +69,9 @@ flowchart TD
     ),
     content: `
 ### Three-Layer Architecture
+
 Neolith implements a strict three-layer architecture:
+
 1. **AI Agent Layer (Reasoning & Planning)**: Synthesizes operator goals, evaluates invoices, reads vendor profiles, and formulates structured financial proposals. The agent holds zero payment credentials and cannot directly execute any financial transaction.
 2. **Governance & Execution Control Layer (The Gateway)**: An authoritative policy gatekeeper powered by Open Policy Agent (OPA). Evaluates cryptographically verified agent manifests, capability bindings, category budget limits, and risk thresholds.
 3. **Enterprise Services & Audit Layer (Operational Decision Engine)**: Evaluates and immutably records Execution Requests, Human Approvals, Execution Permits, and Decision Receipts in PostgreSQL, ensuring complete cryptographic traceability.
@@ -121,7 +125,9 @@ sequenceDiagram
     ),
     content: `
 ### Decision Sequence Specifications
+
 When an action proposal is submitted to \`POST /api/v1/actions/evaluate\`:
+
 1. **Request Ingestion**: Derives canonical hashes of action parameters and operational context.
 2. **Hard Invariant Verification**: Checks emergency kill-switch status, agent registration, version digest, and capability bindings.
 3. **Authoritative Ledger Lookups**: Computes current spent balance against category budget ceilings.
@@ -154,7 +160,9 @@ flowchart LR
     ),
     content: `
 ### Configurable Governance Profiles
+
 Neolith supports dynamic governance profiles:
+
 - **Strict Control**: Mandates human approval for all write operations, regardless of value or category budget.
 - **Balanced Control (Default)**: Automatically permits routine actions below approval thresholds (e.g. INR 25,000 for infrastructure), queuing larger disbursements in \`/approvals\`.
 - **High Autonomy**: Grants autonomous settlement up to high category ceilings, reserving human review strictly for R4 high-risk mutations or explicit policy exceptions.
@@ -205,11 +213,13 @@ flowchart TB
     ),
     content: `
 ### The Governance Boundary Principle
+
 The boundary between the agent and governance is an untrusted security perimeter:
-- The agent cannot grant itself permissions or elevate privileges.
-- The agent cannot modify category budgets or reset spending limits.
-- The agent cannot forge or self-sign execution permits.
-- All evaluation inputs are authenticated against authoritative database tables and compiled OPA policies.
+
+- **No Self-Elevation**: The agent cannot grant itself permissions or elevate privileges.
+- **Protected Budgets**: The agent cannot modify category budgets or reset spending limits.
+- **Unforgeable Permits**: The agent cannot forge or self-sign execution permits.
+- **Authoritative Validation**: All evaluation inputs are authenticated against authoritative database tables and compiled OPA policies.
 `,
   },
   {
@@ -241,7 +251,9 @@ flowchart TD
     ),
     content: `
 ### The 7 Canonical Assurance Scenarios
+
 The F15 Assurance Lab runs repeatable, deterministic test scenarios against the live Governance Runtime:
+
 1. **001 Procurement Happy Path**: Verified invoice under category budget evaluates to ALLOW with reason code \`BASE_POLICY_ALLOW\`.
 2. **002 Over-Budget & Unverified**: High-value invoice to unverified beneficiary evaluates to DENY with dual reason codes \`BUDGET_EXCEEDED\` and \`UNVERIFIED_BENEFICIARY\`.
 3. **003 Prompt Injection Resistance**: Malicious prompt injection payload hidden inside invoice description cannot redefine payment authority or trigger unauthorized transfers.
@@ -274,6 +286,9 @@ stateDiagram-v2
     ),
     content: `
 ### Cluster Emergency Control (F09, F13, UC8)
+
+Operational safeguards for halting unauthorized actions across the platform:
+
 - **Monotonic Revocation Epoch**: Every emergency stop increments the cluster \`revocation_epoch\`. Permits minted under previous epochs fail consumption with \`REVOCATION_EPOCH_MISMATCH\`.
 - **Immediate Action Halt**: While \`emergency_stop_active\` is true, OPA policies and Runtime Gateway checks reject all mutating financial operations with \`EMERGENCY_STOP_ACTIVE\`.
 - **Agent Quarantine**: Operators can selectively quarantine rogue or misbehaving agents at \`POST /api/v1/agents/{id}/quarantine\`. Quarantined agents immediately receive \`AGENT_INACTIVE\` rejections without affecting the rest of the cluster.
@@ -302,10 +317,12 @@ flowchart LR
     ),
     content: `
 ### Cryptographic Receipts Chain
+
 Every operational event generates an immutable \`DecisionReceipt\`:
-- Chain index increments strictly monotonically.
-- Each receipt hashes its payload alongside the \`previous_receipt_hash\`.
-- Tampering with any historical database row breaks the cryptographic chain, enabling instant external audit detection.
+
+- **Strict Monotonicity**: Chain index increments strictly monotonically without gaps.
+- **Parent Hash Linking**: Each receipt hashes its payload alongside the \`previous_receipt_hash\`.
+- **Audit Verification**: Tampering with any historical database row breaks the cryptographic chain, enabling instant external audit detection.
 `,
   },
   {
@@ -331,7 +348,9 @@ flowchart LR
     ),
     content: `
 ### Structured Reason Codes Glossary
+
 Every decision emitted by Neolith attaches one or more deterministic reason codes:
+
 - **\`BASE_POLICY_ALLOW\`**: Action satisfies all policy invariants and falls within category budget and threshold limits.
 - **\`APPROVAL_REQUIRED\` / \`APPROVAL_THRESHOLD_REACHED\`**: Action is valid but exceeds the category review threshold; enqueued in \`/approvals\`.
 - **\`STRICT_CONTROL_REVIEW_REQUIRED\`**: Triggered when the Strict Control profile is active, mandating operator review for all write tools.
@@ -553,33 +572,54 @@ export function DocsClient() {
               </div>
 
               {/* Detailed Markdown Content */}
-              <div className="prose prose-slate max-w-none text-xs sm:text-sm text-slate-700 leading-relaxed space-y-4 pt-4 border-t border-slate-100">
-                {activeSection.content.split("\n\n").map((paragraph, idx) => {
-                  if (paragraph.startsWith("### ")) {
-                    return (
-                      <h3 key={idx} className="text-lg font-black text-slate-900 tracking-tight mt-6 mb-2">
-                        {paragraph.replace("### ", "")}
+              <div className="prose prose-slate max-w-none text-xs sm:text-sm text-slate-700 leading-relaxed pt-4 border-t border-slate-100">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h3: ({ children }) => (
+                      <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight mt-6 mb-3">
+                        {children}
                       </h3>
-                    );
-                  }
-                  if (paragraph.startsWith("1. ") || paragraph.startsWith("- ")) {
-                    const lines = paragraph.split("\n");
-                    return (
-                      <ul key={idx} className="space-y-2 pl-4 list-disc text-slate-700 font-normal">
-                        {lines.map((line, lIdx) => (
-                          <li key={lIdx} className="leading-relaxed">
-                            {line.replace(/^(\d+\.\s*|-\s*)/, "")}
-                          </li>
-                        ))}
+                    ),
+                    h4: ({ children }) => (
+                      <h4 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight mt-4 mb-2">
+                        {children}
+                      </h4>
+                    ),
+                    p: ({ children }) => (
+                      <p className="leading-relaxed font-normal text-slate-700 mb-4">
+                        {children}
+                      </p>
+                    ),
+                    ul: ({ children }) => (
+                      <ul className="space-y-2.5 pl-5 list-disc text-slate-700 font-normal my-3">
+                        {children}
                       </ul>
-                    );
-                  }
-                  return (
-                    <p key={idx} className="leading-relaxed font-normal">
-                      {paragraph}
-                    </p>
-                  );
-                })}
+                    ),
+                    ol: ({ children }) => (
+                      <ol className="space-y-2.5 pl-5 list-decimal text-slate-700 font-normal my-3">
+                        {children}
+                      </ol>
+                    ),
+                    li: ({ children }) => (
+                      <li className="leading-relaxed pl-1 text-slate-700">
+                        {children}
+                      </li>
+                    ),
+                    strong: ({ children }) => (
+                      <strong className="font-bold text-slate-900">
+                        {children}
+                      </strong>
+                    ),
+                    code: ({ children }) => (
+                      <code className="px-1.5 py-0.5 rounded-md bg-slate-100 text-ember-700 border border-slate-200 font-mono text-[11px] sm:text-xs font-semibold">
+                        {children}
+                      </code>
+                    ),
+                  }}
+                >
+                  {activeSection.content.trim()}
+                </ReactMarkdown>
               </div>
 
               {/* Previous / Next Pagination Footer */}
